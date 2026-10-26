@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+#[Fillable(['driver_entry_id', 'position', 'q1_millis', 'q2_millis', 'q3_millis'])]
+class QualifyingResult extends Model
+{
+    /**
+     * @return BelongsTo<DriverEntry, $this>
+     */
+    public function driverEntry(): BelongsTo
+    {
+        return $this->belongsTo(DriverEntry::class);
+    }
+}

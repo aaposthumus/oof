@@ -1,0 +1,22 @@
+{
+  "MRData": {
+    "xmlns": "",
+    "series": "f1",
+    "url": "https://api.jolpi.ca/ergast/f1/seasons.json",
+    "limit": "100",
+    "offset": "0",
+    "total": "2",
+    "SeasonTable": {
+      "Seasons": [
+        {
+          "season": "2024",
+          "url": "https://en.wikipedia.org/wiki/2024_Formula_One_World_Championship"
+        },
+        {
+          "season": "2026",
+          "url": "https://en.wikipedia.org/wiki/2026_Formula_One_World_Championship"
+        }
+      ]
+    }
+  }
+}

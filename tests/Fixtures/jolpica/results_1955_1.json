@@ -1,0 +1,136 @@
+{
+  "MRData": {
+    "xmlns": "",
+    "series": "f1",
+    "url": "https://api.jolpi.ca/ergast/f1/1955/1/results.json",
+    "limit": "100",
+    "offset": "0",
+    "total": "4",
+    "RaceTable": {
+      "season": "1955",
+      "round": "1",
+      "Races": [
+        {
+          "season": "1955",
+          "round": "1",
+          "url": "https://en.wikipedia.org/wiki/1955_Argentine_Grand_Prix",
+          "raceName": "Argentine Grand Prix",
+          "Circuit": {
+            "circuitId": "galvez",
+            "url": "https://en.wikipedia.org/wiki/Autódromo_Oscar_y_Juan_Gálvez",
+            "circuitName": "Autódromo Juan y Oscar Gálvez",
+            "Location": {
+              "lat": "-34.6943",
+              "long": "-58.4593",
+              "locality": "Buenos Aires",
+              "country": "Argentina"
+            }
+          },
+          "date": "1955-01-16",
+          "Results": [
+            {
+              "number": "12",
+              "position": "2",
+              "positionText": "2",
+              "points": "2",
+              "Driver": {
+                "driverId": "farina",
+                "url": "http://en.wikipedia.org/wiki/Nino_Farina",
+                "givenName": "Nino",
+                "familyName": "Farina",
+                "dateOfBirth": "1906-10-30",
+                "nationality": "Italian"
+              },
+              "Constructor": {
+                "constructorId": "ferrari",
+                "url": "https://en.wikipedia.org/wiki/Scuderia_Ferrari",
+                "name": "Ferrari",
+                "nationality": "Italian"
+              },
+              "grid": "1",
+              "laps": "96",
+              "status": "Finished",
+              "Time": {
+                "millis": "10928200",
+                "time": "+1:29.600"
+              }
+            },
+            {
+              "number": "12",
+              "position": "2",
+              "positionText": "2",
+              "points": "2",
+              "Driver": {
+                "driverId": "trintignant",
+                "url": "http://en.wikipedia.org/wiki/Maurice_Trintignant",
+                "givenName": "Maurice",
+                "familyName": "Trintignant",
+                "dateOfBirth": "1917-10-30",
+                "nationality": "French"
+              },
+              "Constructor": {
+                "constructorId": "ferrari",
+                "url": "https://en.wikipedia.org/wiki/Scuderia_Ferrari",
+                "name": "Ferrari",
+                "nationality": "Italian"
+              },
+              "grid": "1",
+              "laps": "96",
+              "status": "Finished",
+              "Time": {
+                "millis": "10928200",
+                "time": "+1:29.600"
+              }
+            },
+            {
+              "number": "10",
+              "position": "3",
+              "positionText": "3",
+              "points": "1.33",
+              "Driver": {
+                "driverId": "farina",
+                "url": "http://en.wikipedia.org/wiki/Nino_Farina",
+                "givenName": "Nino",
+                "familyName": "Farina",
+                "dateOfBirth": "1906-10-30",
+                "nationality": "Italian"
+              },
+              "Constructor": {
+                "constructorId": "ferrari",
+                "url": "https://en.wikipedia.org/wiki/Scuderia_Ferrari",
+                "name": "Ferrari",
+                "nationality": "Italian"
+              },
+              "grid": "5",
+              "laps": "94",
+              "status": "+2 Laps"
+            },
+            {
+              "number": "10",
+              "position": "3",
+              "positionText": "3",
+              "points": "1.33",
+              "Driver": {
+                "driverId": "trintignant",
+                "url": "http://en.wikipedia.org/wiki/Maurice_Trintignant",
+                "givenName": "Maurice",
+                "familyName": "Trintignant",
+                "dateOfBirth": "1917-10-30",
+                "nationality": "French"
+              },
+              "Constructor": {
+                "constructorId": "ferrari",
+                "url": "https://en.wikipedia.org/wiki/Scuderia_Ferrari",
+                "name": "Ferrari",
+                "nationality": "Italian"
+              },
+              "grid": "5",
+              "laps": "94",
+              "status": "+2 Laps"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

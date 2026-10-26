@@ -1,0 +1,70 @@
+{
+  "MRData": {
+    "xmlns": "",
+    "series": "f1",
+    "url": "https://api.jolpi.ca/ergast/f1/2024/5/driverstandings.json",
+    "limit": "100",
+    "offset": "0",
+    "total": "2",
+    "StandingsTable": {
+      "season": "2024",
+      "round": "5",
+      "StandingsLists": [
+        {
+          "season": "2024",
+          "round": "5",
+          "DriverStandings": [
+            {
+              "position": "1",
+              "positionText": "1",
+              "points": "110",
+              "wins": "4",
+              "Driver": {
+                "driverId": "max_verstappen",
+                "permanentNumber": "3",
+                "code": "VER",
+                "url": "http://en.wikipedia.org/wiki/Max_Verstappen",
+                "givenName": "Max",
+                "familyName": "Verstappen",
+                "dateOfBirth": "1997-09-30",
+                "nationality": "Dutch"
+              },
+              "Constructors": [
+                {
+                  "constructorId": "red_bull",
+                  "url": "https://en.wikipedia.org/wiki/Red_Bull_Racing",
+                  "name": "Red Bull",
+                  "nationality": "Austrian"
+                }
+              ]
+            },
+            {
+              "position": "5",
+              "positionText": "5",
+              "points": "58",
+              "wins": "0",
+              "Driver": {
+                "driverId": "norris",
+                "permanentNumber": "1",
+                "code": "NOR",
+                "url": "http://en.wikipedia.org/wiki/Lando_Norris",
+                "givenName": "Lando",
+                "familyName": "Norris",
+                "dateOfBirth": "1999-11-13",
+                "nationality": "British"
+              },
+              "Constructors": [
+                {
+                  "constructorId": "mclaren",
+                  "url": "https://en.wikipedia.org/wiki/McLaren",
+                  "name": "McLaren",
+                  "nationality": "British"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

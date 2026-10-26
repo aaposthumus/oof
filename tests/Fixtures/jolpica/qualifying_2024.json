@@ -1,0 +1,83 @@
+{
+  "MRData": {
+    "xmlns": "",
+    "series": "f1",
+    "url": "https://api.jolpi.ca/ergast/f1/2024/5/qualifying.json",
+    "limit": "100",
+    "offset": "0",
+    "total": "2",
+    "RaceTable": {
+      "season": "2024",
+      "round": "5",
+      "Races": [
+        {
+          "season": "2024",
+          "round": "5",
+          "url": "https://en.wikipedia.org/wiki/2024_Chinese_Grand_Prix",
+          "raceName": "Chinese Grand Prix",
+          "Circuit": {
+            "circuitId": "shanghai",
+            "url": "https://en.wikipedia.org/wiki/Shanghai_International_Circuit",
+            "circuitName": "Shanghai International Circuit",
+            "Location": {
+              "lat": "31.3389",
+              "long": "121.22",
+              "locality": "Shanghai",
+              "country": "China"
+            }
+          },
+          "date": "2024-04-21",
+          "time": "07:00:00Z",
+          "QualifyingResults": [
+            {
+              "number": "1",
+              "position": "1",
+              "Driver": {
+                "driverId": "max_verstappen",
+                "permanentNumber": "3",
+                "code": "VER",
+                "url": "http://en.wikipedia.org/wiki/Max_Verstappen",
+                "givenName": "Max",
+                "familyName": "Verstappen",
+                "dateOfBirth": "1997-09-30",
+                "nationality": "Dutch"
+              },
+              "Constructor": {
+                "constructorId": "red_bull",
+                "url": "https://en.wikipedia.org/wiki/Red_Bull_Racing",
+                "name": "Red Bull",
+                "nationality": "Austrian"
+              },
+              "Q1": "1:34.742",
+              "Q2": "1:33.794",
+              "Q3": "1:33.660"
+            },
+            {
+              "number": "4",
+              "position": "4",
+              "Driver": {
+                "driverId": "norris",
+                "permanentNumber": "1",
+                "code": "NOR",
+                "url": "http://en.wikipedia.org/wiki/Lando_Norris",
+                "givenName": "Lando",
+                "familyName": "Norris",
+                "dateOfBirth": "1999-11-13",
+                "nationality": "British"
+              },
+              "Constructor": {
+                "constructorId": "mclaren",
+                "url": "https://en.wikipedia.org/wiki/McLaren",
+                "name": "McLaren",
+                "nationality": "British"
+              },
+              "Q1": "1:34.842",
+              "Q2": "1:34.460",
+              "Q3": "1:34.165"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

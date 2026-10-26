@@ -1,0 +1,76 @@
+{
+  "MRData": {
+    "xmlns": "",
+    "series": "f1",
+    "url": "https://api.jolpi.ca/ergast/f1/2024/results.json",
+    "limit": "100",
+    "offset": "100",
+    "total": "103",
+    "RaceTable": {
+      "season": "2024",
+      "Races": [
+        {
+          "season": "2024",
+          "round": "5",
+          "url": "https://en.wikipedia.org/wiki/2024_Chinese_Grand_Prix",
+          "raceName": "Chinese Grand Prix",
+          "Circuit": {
+            "circuitId": "shanghai",
+            "url": "https://en.wikipedia.org/wiki/Shanghai_International_Circuit",
+            "circuitName": "Shanghai International Circuit",
+            "Location": {
+              "lat": "31.3389",
+              "long": "121.22",
+              "locality": "Shanghai",
+              "country": "China"
+            }
+          },
+          "date": "2024-04-21",
+          "time": "07:00:00Z",
+          "Results": [
+            {
+              "number": "11",
+              "position": "3",
+              "positionText": "3",
+              "points": "15",
+              "Driver": {
+                "driverId": "perez",
+                "permanentNumber": "11",
+                "code": "PER",
+                "url": "http://en.wikipedia.org/wiki/Sergio_P%C3%A9rez",
+                "givenName": "Sergio",
+                "familyName": "Pérez",
+                "dateOfBirth": "1990-01-26",
+                "nationality": "Mexican"
+              },
+              "Constructor": {
+                "constructorId": "red_bull",
+                "url": "https://en.wikipedia.org/wiki/Red_Bull_Racing",
+                "name": "Red Bull",
+                "nationality": "Austrian"
+              },
+              "grid": "2",
+              "laps": "56",
+              "status": "Finished",
+              "Time": {
+                "millis": "6071714",
+                "time": "+19.160"
+              },
+              "FastestLap": {
+                "rank": "7",
+                "lap": "33",
+                "Time": {
+                  "time": "1:39.388"
+                },
+                "AverageSpeed": {
+                  "units": "kph",
+                  "speed": "197.444"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
