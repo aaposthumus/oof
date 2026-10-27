@@ -9,7 +9,9 @@ use App\Filament\Resources\MomentCandidates\Pages\ListMomentCandidates;
 use App\Filament\Resources\MomentCandidates\Pages\ViewMomentCandidate;
 use App\Filament\Widgets\AdminStatsOverview;
 use App\Models\HistoricMoment;
+use App\Models\Driver;
 use App\Models\MomentCandidate;
+use App\Models\MomentSensitivity;
 use App\Models\Round;
 use App\Models\Season;
 use App\Models\User;
@@ -118,5 +120,13 @@ class AcceptCandidateTest extends TestCase
             ->assertSeeInOrder(['A spectator was killed.', 'Title']);
 
         Livewire::test(AdminStatsOverview::class)->assertSee('Candidates to review');
+    }
+
+    public function test_a_moment_shows_the_note_of_a_driver_level_entry_on_its_round(): void
+    {
+        $candidate = $this->candidate();
+        MomentSensitivity::factory()->injury()->for($candidate->round)->for(Driver::factory())->create(['note' => 'A driver was injured.']);
+
+        $this->assertSame('A driver was injured.', $candidate->accept()->sensitivityNote());
     }
 }

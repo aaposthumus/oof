@@ -6,4 +6,5 @@ enum SensitivitySeverity: string
 {
     case Fatal = 'fatal';
     case Injury = 'injury';
+    case Minor = 'minor';
 }

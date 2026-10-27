@@ -37,7 +37,7 @@ class MomentSensitivitySeederTest extends TestCase
         $this->seed(MomentSensitivitySeeder::class);
 
         $fatal = MomentSensitivity::query()->where('severity', SensitivitySeverity::Fatal)->get();
-        $injuries = MomentSensitivity::query()->where('severity', SensitivitySeverity::Injury)->get();
+        $injuries = MomentSensitivity::query()->whereIn('severity', [SensitivitySeverity::Injury, SensitivitySeverity::Minor])->get();
         $this->assertCount(count(MomentSensitivitySeeder::WEEKENDS), $fatal);
         $this->assertNull($fatal->pluck('driver_id')->filter()->first());
         $this->assertCount(count(MomentSensitivitySeeder::INJURIES), $injuries);
@@ -46,8 +46,29 @@ class MomentSensitivitySeederTest extends TestCase
         $lauda = $injuries->first(fn (MomentSensitivity $sensitivity) => $sensitivity->driver?->jolpica_driver_id === 'lauda');
         $this->assertSame('1976 German Grand Prix', $lauda->round->season->year.' '.$lauda->round->name);
         $this->assertSame(MomentSensitivitySeeder::WEEKENDS['1959|German Grand Prix'], MomentSensitivity::whereRelation('round', 'name', 'German Grand Prix')->whereRelation('round.season', 'year', 1959)->sole()->note);
+        $this->assertEqualsCanonicalizing(
+            ['fisichella', 'mcnish', 'alonso', 'max_verstappen', 'zhou', 'albon'],
+            $injuries->where('severity', SensitivitySeverity::Minor)->map(fn (MomentSensitivity $sensitivity) => $sensitivity->driver->jolpica_driver_id)->values()->all(),
+        );
+        $this->assertSame(
+            SensitivitySeverity::Injury,
+            $injuries->first(fn (MomentSensitivity $sensitivity) => str_contains($sensitivity->note, 'partially collapsed lung'))->severity,
+        );
         $this->assertNull($injuries->first(fn (MomentSensitivity $sensitivity) => str_contains($sensitivity->note, 'Cameraman'))->driver_id);
         $this->assertNotNull(MomentSensitivity::where('note', 'like', 'Patrick Depailler%')->value('id'));
+    }
+
+    public function test_rerunning_turns_an_injury_row_into_a_minor_one_without_duplicating_it(): void
+    {
+        $this->createRoundsAndDrivers();
+        $round = Round::whereRelation('season', 'year', 2021)->where('name', 'British Grand Prix')->sole();
+        $verstappen = Driver::where('jolpica_driver_id', 'max_verstappen')->sole();
+        $old = MomentSensitivity::factory()->injury()->for($round)->for($verstappen)->create(['note' => 'Old.']);
+
+        $this->seed(MomentSensitivitySeeder::class);
+
+        $this->assertModelMissing($old);
+        $this->assertSame(SensitivitySeverity::Minor, MomentSensitivity::where('round_id', $round->id)->where('driver_id', $verstappen->id)->sole()->severity);
     }
 
     public function test_rerunning_keeps_a_level_changed_by_hand_and_cleans_up_legacy_injury_rows(): void

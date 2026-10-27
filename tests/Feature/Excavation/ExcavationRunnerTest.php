@@ -123,20 +123,38 @@ class ExcavationRunnerTest extends TestCase
         $this->assertSame(1, $result->stats['sensitive']);
     }
 
-    public function test_a_driver_level_sensitivity_flags_that_driver_and_round_level_candidates_but_not_other_drivers(): void
+    public function test_a_driver_level_sensitivity_flags_every_candidate_of_its_round_but_no_other_round(): void
     {
         $round = Round::factory()->create();
+        $elsewhere = Round::factory()->create();
         [$flagged, $other] = Driver::factory()->count(2)->create();
-        MomentSensitivity::factory()->for($round)->for($flagged)->create(['note' => 'The driver was injured in practice.']);
+        MomentSensitivity::factory()->injury()->for($round)->for($flagged)->create(['note' => 'The driver was injured in practice.']);
 
         app(ExcavationRunner::class)->run($this->excavator(
             new Candidate($round->id, $flagged->id, null, 80.0, []),
             new Candidate($round->id, $other->id, null, 60.0, []),
             new Candidate($round->id, null, null, 50.0, []),
+            new Candidate($elsewhere->id, $other->id, null, 40.0, []),
         ), new DigParameters);
 
-        $this->assertEqualsCanonicalizing([$flagged->id, null], MomentCandidate::where('is_sensitive', true)->pluck('driver_id')->all());
-        $this->assertSame('The driver was injured in practice.', MomentCandidate::whereNull('driver_id')->value('sensitivity_note'));
+        $this->assertSame([3, 1], [
+            MomentCandidate::where('round_id', $round->id)->where('is_sensitive', true)->count(),
+            MomentCandidate::where('round_id', $elsewhere->id)->where('is_sensitive', false)->count(),
+        ]);
+        $this->assertSame('The driver was injured in practice.', MomentCandidate::where('driver_id', $other->id)->where('round_id', $round->id)->value('sensitivity_note'));
+    }
+
+    public function test_a_minor_entry_flags_its_own_round_but_never_a_related_one(): void
+    {
+        $round = Round::factory()->create();
+        $related = Round::factory()->create(['name' => 'Dutch Grand Prix']);
+        $involved = Driver::factory()->create();
+        MomentSensitivity::factory()->minor()->for($related)->for($involved)->create(['note' => 'The champion had precautionary checks.']);
+        MomentSensitivity::factory()->minor()->for($round)->for($involved)->create(['note' => 'Checks after a crash.']);
+
+        $candidate = $this->runWith(new Candidate($round->id, null, null, 50.0, [], relatedRoundIds: [$related->id], relatedDriverIds: [$involved->id]));
+
+        $this->assertSame('Checks after a crash.', $candidate->sensitivityNote);
     }
 
     public function test_a_driver_level_block_only_flags_a_round_level_candidate(): void

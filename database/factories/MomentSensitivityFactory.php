@@ -34,6 +34,11 @@ class MomentSensitivityFactory extends Factory
         return $this->state(fn () => ['severity' => SensitivitySeverity::Injury]);
     }
 
+    public function minor(): static
+    {
+        return $this->state(fn () => ['severity' => SensitivitySeverity::Minor]);
+    }
+
     public function blocked(): static
     {
         return $this->state(fn () => ['level' => SensitivityLevel::Blocked]);

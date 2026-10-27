@@ -62,7 +62,7 @@ class HistoricMoment extends Model
     /**
      * The note to show a reviewer when this moment touches something
      * sensitive: the candidate's own note, else a sensitivity entry on the
-     * round that covers the whole round or the candidate's driver.
+     * round, preferring one that covers the whole round.
      */
     public function sensitivityNote(): ?string
     {
@@ -74,7 +74,6 @@ class HistoricMoment extends Model
 
         return MomentSensitivity::query()
             ->where('round_id', $this->round_id)
-            ->where(fn ($query) => $query->whereNull('driver_id')->orWhere('driver_id', $candidate?->driver_id))
             ->orderByRaw('driver_id is null')
             ->value('note');
     }

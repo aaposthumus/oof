@@ -81,9 +81,10 @@ class MomentSensitivitySeeder extends Seeder
     ];
 
     /**
-     * Serious injuries: weekend key, the Jolpica id of the F1 driver injured (null when the injured are not F1 drivers), note.
+     * Injuries: weekend key, the Jolpica id of the F1 driver injured (null when the injured are not F1 drivers), note
+     * and optionally the severity: injury (the default) or minor (only precautionary hospital checks).
      *
-     * @var list<array{0: string, 1: string|null, 2: string}>
+     * @var list<array{0: string, 1: string|null, 2: string, 3?: SensitivitySeverity}>
      */
     public const INJURIES = [
         ['1955|Monaco Grand Prix', 'ascari', 'Alberto Ascari\'s car went into the harbour during the race; he escaped with a nose injury.'],
@@ -125,9 +126,9 @@ class MomentSensitivitySeeder extends Seeder
         ['1997|Japanese Grand Prix', 'morbidelli', 'Gianni Morbidelli is recorded as not starting because of an injury; the circumstances are unconfirmed.'],
         ['1999|British Grand Prix', 'michael_schumacher', 'Michael Schumacher broke a leg in a first-lap crash.'],
         ['2001|Belgian Grand Prix', 'burti', 'Luciano Burti was taken to hospital with a severe concussion after a crash during the race.'],
-        ['2002|French Grand Prix', 'fisichella', 'Giancarlo Fisichella was taken to hospital for checks after a heavy practice crash and did not start; reports differ on whether he was concussed.'],
-        ['2002|Japanese Grand Prix', 'mcnish', 'Allan McNish crashed heavily in qualifying, was taken for medical checks with bruising and did not start.'],
-        ['2003|Brazilian Grand Prix', 'alonso', 'Fernando Alonso hit debris from Mark Webber\'s accident during the race and was taken to hospital for checks.'],
+        ['2002|French Grand Prix', 'fisichella', 'Giancarlo Fisichella was taken to hospital for checks after a heavy practice crash and did not start; reports differ on whether he was concussed.', SensitivitySeverity::Minor],
+        ['2002|Japanese Grand Prix', 'mcnish', 'Allan McNish crashed heavily in qualifying, was taken for medical checks with bruising and did not start.', SensitivitySeverity::Minor],
+        ['2003|Brazilian Grand Prix', 'alonso', 'Fernando Alonso hit debris from Mark Webber\'s accident during the race and was taken to hospital for checks.', SensitivitySeverity::Minor],
         ['2003|Monaco Grand Prix', 'button', 'Jenson Button was taken to hospital with concussion after a practice crash and did not start the race.'],
         ['2004|United States Grand Prix', 'ralf_schumacher', 'Ralf Schumacher suffered two cracked vertebrae in a crash during the race.'],
         ['2007|Canadian Grand Prix', 'kubica', 'Robert Kubica was taken to hospital with concussion and a sprained ankle after a heavy crash during the race.'],
@@ -139,9 +140,9 @@ class MomentSensitivitySeeder extends Seeder
         ['2018|Bahrain Grand Prix', null, 'Ferrari mechanic Francesco Cigarini broke a leg when struck by a car leaving a pit stop.'],
         ['2019|Belgian Grand Prix', null, 'Formula 2 driver Juan Manuel Correa was seriously injured in the same crash.'],
         ['2020|Bahrain Grand Prix', 'grosjean', 'Romain Grosjean was taken to hospital with burns after the car split and caught fire in a first-lap crash.'],
-        ['2021|British Grand Prix', 'max_verstappen', 'Max Verstappen was taken to hospital for checks after a first-lap crash and was released the same day.'],
-        ['2022|British Grand Prix', 'zhou', 'Guanyu Zhou\'s car flipped in a first-lap crash; he was checked at the medical centre and reports differ on a hospital visit.'],
-        ['2022|British Grand Prix', 'albon', 'Alexander Albon was taken to hospital for precautionary checks after the same first-lap crash.'],
+        ['2021|British Grand Prix', 'max_verstappen', 'Max Verstappen was taken to hospital for checks after a first-lap crash and was released the same day.', SensitivitySeverity::Minor],
+        ['2022|British Grand Prix', 'zhou', 'Guanyu Zhou\'s car flipped in a first-lap crash; he was checked at the medical centre and reports differ on a hospital visit.', SensitivitySeverity::Minor],
+        ['2022|British Grand Prix', 'albon', 'Alexander Albon was taken to hospital for precautionary checks after the same first-lap crash.', SensitivitySeverity::Minor],
     ];
 
     /**
@@ -155,12 +156,22 @@ class MomentSensitivitySeeder extends Seeder
             $this->seed($key, null, SensitivitySeverity::Fatal, $note);
         }
 
-        foreach (self::INJURIES as [$key, $jolpicaDriverId, $note]) {
+        foreach (self::INJURIES as $entry) {
+            [$key, $jolpicaDriverId, $note] = $entry;
+            $severity = $entry[3] ?? SensitivitySeverity::Injury;
             $driverId = $jolpicaDriverId === null
                 ? null
                 : Driver::query()->where('jolpica_driver_id', $jolpicaDriverId)->value('id') ?? throw new RuntimeException("Driver not found: {$jolpicaDriverId}");
 
-            $this->seed($key, $driverId, SensitivitySeverity::Injury, $note);
+            MomentSensitivity::query()
+                ->where('round_id', $this->round($key)->id)
+                ->where('driver_id', $driverId)
+                ->whereIn('severity', [SensitivitySeverity::Injury, SensitivitySeverity::Minor])
+                ->where('severity', '!=', $severity)
+                ->where('level', SensitivityLevel::Sensitive)
+                ->delete();
+
+            $this->seed($key, $driverId, $severity, $note);
         }
     }
 

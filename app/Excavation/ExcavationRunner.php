@@ -39,10 +39,10 @@ use Throwable;
  * percentile ranks within their type, recalculated after every dig.
  *
  * A sensitivity blocks the candidates of its round, or only that driver's
- * when it names one. It flags every candidate it concerns: those of its
- * round (round-level candidates also by a driver's sensitivity) and, for a
- * story that spans other rounds, a fatal entry in any of them or an injury
- * to one of the drivers the story is about.
+ * when it names one. It flags every candidate of its round, whoever the
+ * driver is. For a story that spans other rounds, only a fatal entry in any
+ * of them or an injury to one of the drivers the story is about flags it;
+ * minor entries (precautionary checks) never reach beyond their own round.
  *
  * Unreviewed candidates that a dig no longer finds are removed, within the
  * seasons the dig covered, so a corrected threshold or fixed data does not
@@ -114,7 +114,7 @@ class ExcavationRunner
                     ->unique()
                     ->flatMap(fn (int $roundId) => $sensitivities->get($roundId, collect()))
                     ->filter(fn (MomentSensitivity $sensitivity) => $this->flagsRelatedRound($sensitivity, $candidate));
-                $matches = $own->filter(fn (MomentSensitivity $sensitivity) => $this->flags($sensitivity, $candidate))->concat($related);
+                $matches = $own->concat($related);
 
                 return $matches->isEmpty() ? $candidate : $candidate->markSensitive($matches
                     ->map(fn (MomentSensitivity $sensitivity) => $sensitivity->round_id === $candidate->roundId
@@ -178,22 +178,15 @@ class ExcavationRunner
     }
 
     /**
-     * A round-level sensitivity concerns every candidate, a driver's only that
-     * driver's candidates and the round-level ones.
-     */
-    private function flags(MomentSensitivity $sensitivity, Candidate $candidate): bool
-    {
-        return $sensitivity->driver_id === null || $candidate->driverId === null || $sensitivity->driver_id === $candidate->driverId;
-    }
-
-    /**
      * A sensitivity on a story's other rounds flags it only when it is fatal,
-     * or an injury to one of the drivers the story is about.
+     * or an injury to one of the drivers the story is about. Minor never does.
      */
     private function flagsRelatedRound(MomentSensitivity $sensitivity, Candidate $candidate): bool
     {
         return $sensitivity->severity === SensitivitySeverity::Fatal
-            || ($sensitivity->driver_id !== null && in_array($sensitivity->driver_id, $candidate->relatedDriverIds, true));
+            || ($sensitivity->severity === SensitivitySeverity::Injury
+                && $sensitivity->driver_id !== null
+                && in_array($sensitivity->driver_id, $candidate->relatedDriverIds, true));
     }
 
     /**

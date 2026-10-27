@@ -32,7 +32,11 @@ class MomentSensitivitiesTable
                 TextColumn::make('severity')
                     ->badge()
                     ->formatStateUsing(fn (SensitivitySeverity $state): string => ucfirst($state->value))
-                    ->color(fn (SensitivitySeverity $state): string => $state === SensitivitySeverity::Fatal ? 'danger' : 'warning'),
+                    ->color(fn (SensitivitySeverity $state): string => match ($state) {
+                        SensitivitySeverity::Fatal => 'danger',
+                        SensitivitySeverity::Injury => 'warning',
+                        SensitivitySeverity::Minor => 'gray',
+                    }),
                 TextColumn::make('note')
                     ->limit(80)
                     ->wrap(),

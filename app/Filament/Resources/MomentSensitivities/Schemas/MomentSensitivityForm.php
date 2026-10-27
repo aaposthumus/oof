@@ -40,9 +40,10 @@ class MomentSensitivityForm
                     ->options([
                         SensitivitySeverity::Fatal->value => 'Fatal: someone was killed',
                         SensitivitySeverity::Injury->value => 'Injury: someone was seriously injured',
+                        SensitivitySeverity::Minor->value => 'Minor: precautionary checks, no lasting injury',
                     ])
                     ->default(SensitivitySeverity::Fatal->value)
-                    ->helperText('Stories spanning a season, such as a title decider, only flag fatal entries and injuries to the drivers involved.')
+                    ->helperText('Stories spanning a season, such as a title decider, only flag fatal entries and injuries to the drivers involved; minor ones never leave their round.')
                     ->required(),
                 Textarea::make('note')
                     ->required()

@@ -13,9 +13,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Marks a round, or one driver in it, as sensitive (candidates are kept but
  * flagged for review) or blocked (excavation skips it). Without a driver it
- * covers the whole round. The severity (fatal or injury) decides whether it
- * also flags stories that span the season: those only take fatal entries and
- * injuries to the drivers involved.
+ * covers the whole round; either way it flags every candidate of its round
+ * (only a block is limited to its driver). The severity (fatal, injury or
+ * minor) decides whether it also flags stories that span the season: those
+ * only take fatal entries and injuries to the drivers involved.
  */
 #[Fillable(['round_id', 'driver_id', 'level', 'severity', 'note'])]
 class MomentSensitivity extends Model
