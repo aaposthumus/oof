@@ -50,6 +50,16 @@ class HistoricMoment extends Model
     }
 
     /**
+     * Whether nobody has worked on this moment yet: still a draft with an empty
+     * story. Such a moment is safe to delete together with its candidate's
+     * status change.
+     */
+    public function isUntouchedDraft(): bool
+    {
+        return $this->status === HistoricMomentStatus::Draft && trim((string) $this->story) === '';
+    }
+
+    /**
      * The note to show a reviewer when this moment touches something
      * sensitive: the candidate's own note, else a sensitivity entry on the
      * round that covers the whole round or the candidate's driver.

@@ -192,6 +192,10 @@ return [
     | points). Raw score: 100 × (1 − ratio); half_points_score without an
     | estimate.
     |
+    | scheduled_laps overrides the estimate for a round ("year|round name")
+    | where the circuit's layout differed from its other seasons. Such rounds
+    | are not used to estimate their neighbours either.
+    |
     */
 
     'shortest_race' => [
@@ -200,6 +204,12 @@ return [
         'half_points_min' => 0.4,
         'half_points_max' => 0.6,
         'half_points_score' => 50,
+        'scheduled_laps' => [
+            // Monza with the banking: 10 km laps, 500 km (1961: 430 km) instead of 5.7 km laps.
+            '1955|Italian Grand Prix' => 50,
+            '1956|Italian Grand Prix' => 50,
+            '1961|Italian Grand Prix' => 43,
+        ],
     ],
 
     /*
@@ -247,8 +257,9 @@ return [
     | it did not become champion, when the title was still open before it, or
     | when the champion won by at most max_margin_wins × the points for a
     | win. Before 1991 dropped scores make "still open" an estimate. Raw
-    | score: lead_change_score, open_score or close_score, plus up to
-    | margin_score for a small final margin.
+    | score: lead_change_score (also for drivers level on points before the
+    | final round), open_score or close_score, plus up to margin_score for a
+    | small final margin; drivers level on points always get all of it.
     |
     */
 

@@ -15,7 +15,10 @@ use Illuminate\Support\Collection;
  * Only completed seasons count: the last round on the calendar must have
  * standings. Before 1991, dropped scores make "still open before the final
  * round" an estimate. The story spans the season, so all its rounds are
- * related for sensitivities.
+ * related for sensitivities, and the champion and runner-up are the drivers
+ * whose injuries elsewhere in the season matter. Drivers level on points
+ * before the final round count like a lead change and earn the full margin
+ * score, since that race alone decided the title.
  */
 class TitleDeciderExcavator implements Excavator
 {
@@ -28,7 +31,7 @@ class TitleDeciderExcavator implements Excavator
 
     public function version(): int
     {
-        return 1;
+        return 2;
     }
 
     public function dig(DigParameters $parameters): Collection
@@ -86,7 +89,8 @@ class TitleDeciderExcavator implements Excavator
         $leadBefore = (float) $leaderBefore->points - (float) $secondBefore->points;
 
         $leadChange = $leaderBefore->driver_id !== $champion->driver_id;
-        $openBefore = $leadChange || $leadBefore <= $maxFinalPoints;
+        $levelBefore = $leadBefore == 0.0;
+        $openBefore = $leadChange || $levelBefore || $leadBefore <= $maxFinalPoints;
         $close = $winPoints > 0 && $margin <= (float) config('excavators.title_decider.max_margin_wins') * $winPoints;
 
         if (! $openBefore && ! $close) {
@@ -94,11 +98,11 @@ class TitleDeciderExcavator implements Excavator
         }
 
         $base = match (true) {
-            $leadChange => config('excavators.title_decider.lead_change_score'),
+            $leadChange || $levelBefore => config('excavators.title_decider.lead_change_score'),
             $openBefore => config('excavators.title_decider.open_score'),
             default => config('excavators.title_decider.close_score'),
         };
-        $closeness = $winPoints > 0 ? 1 - min(1, $margin / $winPoints) : 0;
+        $closeness = $levelBefore ? 1 : ($winPoints > 0 ? 1 - min(1, $margin / $winPoints) : 0);
 
         return new Candidate(
             roundId: $final->id,
@@ -113,10 +117,12 @@ class TitleDeciderExcavator implements Excavator
                 'lead_before_final' => $leadBefore,
                 'max_points_in_final' => $maxFinalPoints,
                 'lead_change' => $leadChange,
+                'level_on_points_before_final' => $levelBefore,
                 'open_before_final' => $openBefore,
                 'estimate_with_dropped_scores' => $final->season->year <= (int) config('excavators.title_decider.dropped_scores_until'),
             ],
             relatedRoundIds: $rounds->pluck('id')->reject(fn (int $id) => $id === $final->id)->values()->all(),
+            relatedDriverIds: [(int) $champion->driver_id, (int) $runnerUp->driver_id],
         );
     }
 }

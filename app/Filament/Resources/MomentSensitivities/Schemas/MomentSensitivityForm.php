@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MomentSensitivities\Schemas;
 
 use App\Enums\SensitivityLevel;
+use App\Enums\SensitivitySeverity;
 use App\Models\Driver;
 use App\Models\Round;
 use Filament\Forms\Components\Select;
@@ -34,6 +35,14 @@ class MomentSensitivityForm
                         SensitivityLevel::Blocked->value => 'Blocked: excavation skips it',
                     ])
                     ->default(SensitivityLevel::Sensitive->value)
+                    ->required(),
+                Select::make('severity')
+                    ->options([
+                        SensitivitySeverity::Fatal->value => 'Fatal: someone was killed',
+                        SensitivitySeverity::Injury->value => 'Injury: someone was seriously injured',
+                    ])
+                    ->default(SensitivitySeverity::Fatal->value)
+                    ->helperText('Stories spanning a season, such as a title decider, only flag fatal entries and injuries to the drivers involved.')
                     ->required(),
                 Textarea::make('note')
                     ->required()

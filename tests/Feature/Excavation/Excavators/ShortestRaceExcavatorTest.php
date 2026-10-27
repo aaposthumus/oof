@@ -48,7 +48,39 @@ class ShortestRaceExcavatorTest extends TestCase
 
         $this->assertSame(Round::where('round_number', 3)->whereRelation('season', 'year', 2021)->value('id'), $candidate->roundId);
         $this->assertSame(75.0, $candidate->score);
-        $this->assertSame(['laps' => 11, 'estimated_scheduled_laps' => 44.0, 'ratio' => 0.25, 'half_points' => true, 'winner_points' => 12.5], $candidate->evidence);
+        $this->assertSame(['laps' => 11, 'estimated_scheduled_laps' => 44.0, 'ratio' => 0.25, 'scheduled_laps_override' => false, 'half_points' => true, 'winner_points' => 12.5], $candidate->evidence);
+    }
+
+    public function test_a_configured_scheduled_distance_replaces_the_estimate_and_keeps_such_rounds_out_of_neighbouring_estimates(): void
+    {
+        config(['excavators.shortest_race.scheduled_laps' => ['1956|Italian Grand Prix' => 50]]);
+        $monza = Circuit::factory()->create();
+
+        foreach ([1955 => 80, 1956 => 50, 1957 => 80, 1958 => 80] as $year => $laps) {
+            $this->race(Season::factory()->create(['year' => $year]), 1, $monza, laps: $laps, winnerPoints: 8, runnerUpPoints: 6);
+        }
+        $banked = Season::factory()->create(['year' => 1959]);
+        $this->race($banked, 1, $monza, laps: 25, winnerPoints: 8, runnerUpPoints: 6);
+
+        $candidates = app(ShortestRaceExcavator::class)->dig(new DigParameters);
+
+        // 1956 ran its configured 50 laps, so it is no short race against the 80 laps of its neighbours...
+        $this->assertNotContains(Round::whereRelation('season', 'year', 1956)->value('id'), $candidates->pluck('roundId')->all());
+        // ...and 1959 is judged against the three normal years only (80), not the 1956 outlier.
+        $short = $candidates->sole();
+        $this->assertSame([25, 80.0, 0.313], [$short->evidence['laps'], $short->evidence['estimated_scheduled_laps'], $short->evidence['ratio']]);
+        $this->assertFalse($short->evidence['scheduled_laps_override']);
+    }
+
+    public function test_a_configured_distance_still_finds_a_shortened_race(): void
+    {
+        config(['excavators.shortest_race.scheduled_laps' => ['1961|Italian Grand Prix' => 43]]);
+        $monza = Circuit::factory()->create();
+        $this->race(Season::factory()->create(['year' => 1961]), 1, $monza, laps: 10, winnerPoints: 8, runnerUpPoints: 6);
+
+        $candidate = app(ShortestRaceExcavator::class)->dig(new DigParameters)->sole();
+
+        $this->assertSame([43.0, true], [$candidate->evidence['estimated_scheduled_laps'], $candidate->evidence['scheduled_laps_override']]);
     }
 
     public function test_a_shared_win_with_halved_points_is_no_half_points_race(): void
@@ -67,6 +99,6 @@ class ShortestRaceExcavatorTest extends TestCase
         return $this->createRaceWith($season, $roundNumber, [
             [Driver::factory()->create(), Result::factory()->classified(1)->state(['laps_completed' => $laps, 'points' => $winnerPoints])],
             [Driver::factory()->create(), Result::factory()->classified(2)->state(['laps_completed' => $laps, 'points' => $runnerUpPoints])],
-        ], ['circuit_id' => $circuit->id]);
+        ], ['circuit_id' => $circuit->id, 'name' => 'Italian Grand Prix']);
     }
 }

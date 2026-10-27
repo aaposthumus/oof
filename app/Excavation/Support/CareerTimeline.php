@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
  * Careers always span the full history; excavators filter only what they
  * return by DigParameters.
  *
- * Each row has: round_id, season_id, year, round_number, date, circuit_id,
+ * Each row has: round_id, round_name, season_id, year, round_number, date, circuit_id,
  * race_session_id, driver_id, driver_name, date_of_birth, season_team_id,
  * car_number, grid, position, position_text, status, points (float),
  * laps_completed, time_millis, is_disqualified, is_start, start_number
@@ -50,7 +50,7 @@ class CareerTimeline
             ->orderBy('rounds.round_number')
             ->orderBy('results.classification_order')
             ->select([
-                'rounds.id as round_id', 'rounds.season_id', 'seasons.year', 'rounds.round_number', 'rounds.date', 'rounds.circuit_id',
+                'rounds.id as round_id', 'rounds.name as round_name', 'rounds.season_id', 'seasons.year', 'rounds.round_number', 'rounds.date', 'rounds.circuit_id',
                 'driver_entries.race_session_id', 'driver_entries.driver_id', 'driver_entries.season_team_id', 'driver_entries.car_number',
                 'drivers.given_name', 'drivers.family_name', 'drivers.date_of_birth',
                 'results.grid', 'results.position', 'results.position_text', 'results.status', 'results.points',

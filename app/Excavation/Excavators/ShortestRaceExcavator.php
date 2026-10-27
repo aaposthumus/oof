@@ -11,7 +11,10 @@ use Illuminate\Support\Collection;
 /**
  * Races cut short: the winner's laps against the scheduled distance, which
  * the data lacks, so it is estimated from the winners' laps at the same
- * circuit in nearby seasons. Half-points races always count.
+ * circuit in nearby seasons. Where that estimate is wrong because the
+ * circuit's layout differed, the config gives the scheduled laps of the
+ * round; such rounds are also left out of their neighbours' estimates.
+ * Half-points races always count.
  */
 class ShortestRaceExcavator implements Excavator
 {
@@ -24,13 +27,14 @@ class ShortestRaceExcavator implements Excavator
 
     public function version(): int
     {
-        return 1;
+        return 2;
     }
 
     public function dig(DigParameters $parameters): Collection
     {
         $maxRatio = (float) config('excavators.shortest_race.max_ratio');
         $window = (int) config('excavators.shortest_race.window_years');
+        $overrides = config('excavators.shortest_race.scheduled_laps');
 
         $races = $this->timeline->byRound()
             ->map(fn (Collection $race) => (object) [
@@ -43,16 +47,18 @@ class ShortestRaceExcavator implements Excavator
             'winner' => $this->mode($season->map(fn (object $race) => $race->winner->points)),
             'runner_up' => $this->mode($season->map(fn (object $race) => $race->runner_up?->points)->filter(fn (?float $points) => $points !== null)),
         ]);
+        $overrideOf = fn (object $race) => $overrides["{$race->winner->year}|{$race->winner->round_name}"] ?? null;
         $byCircuit = $races->groupBy(fn (object $race) => $race->winner->circuit_id);
 
         return $races
             ->filter(fn (object $race) => $parameters->includes($race->winner->year))
-            ->map(function (object $race) use ($byCircuit, $usualPoints, $window, $maxRatio) {
+            ->map(function (object $race) use ($byCircuit, $usualPoints, $window, $maxRatio, $overrideOf) {
                 $winner = $race->winner;
+                $override = $overrideOf($race);
                 $nearby = $byCircuit[$winner->circuit_id]
-                    ->filter(fn (object $other) => $other->winner->round_id !== $winner->round_id && abs($other->winner->year - $winner->year) <= $window)
+                    ->filter(fn (object $other) => $other->winner->round_id !== $winner->round_id && abs($other->winner->year - $winner->year) <= $window && $overrideOf($other) === null)
                     ->map(fn (object $other) => $other->winner->laps_completed);
-                $scheduledLaps = $nearby->isEmpty() ? null : (float) $nearby->median();
+                $scheduledLaps = $override !== null ? (float) $override : ($nearby->isEmpty() ? null : (float) $nearby->median());
                 $ratio = $scheduledLaps ? min(1, $winner->laps_completed / $scheduledLaps) : null;
                 $halfPoints = $this->isHalfPoints($race, $usualPoints[$winner->year]);
 
@@ -69,6 +75,7 @@ class ShortestRaceExcavator implements Excavator
                         'laps' => $winner->laps_completed,
                         'estimated_scheduled_laps' => $scheduledLaps,
                         'ratio' => $ratio === null ? null : round($ratio, 3),
+                        'scheduled_laps_override' => $override !== null,
                         'half_points' => $halfPoints,
                         'winner_points' => $winner->points,
                     ],

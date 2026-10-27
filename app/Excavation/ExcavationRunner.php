@@ -4,6 +4,7 @@ namespace App\Excavation;
 
 use App\Enums\MomentCandidateStatus;
 use App\Enums\SensitivityLevel;
+use App\Enums\SensitivitySeverity;
 use App\Excavation\Excavators\AgeRecordExcavator;
 use App\Excavation\Excavators\ClosestFinishExcavator;
 use App\Excavation\Excavators\CuriousRetirementExcavator;
@@ -39,8 +40,13 @@ use Throwable;
  *
  * A sensitivity blocks the candidates of its round, or only that driver's
  * when it names one. It flags every candidate it concerns: those of its
- * round (round-level candidates also by a driver's sensitivity) and those
- * whose story spans its round.
+ * round (round-level candidates also by a driver's sensitivity) and, for a
+ * story that spans other rounds, a fatal entry in any of them or an injury
+ * to one of the drivers the story is about.
+ *
+ * Unreviewed candidates that a dig no longer finds are removed, within the
+ * seasons the dig covered, so a corrected threshold or fixed data does not
+ * leave stale candidates behind.
  */
 class ExcavationRunner
 {
@@ -103,10 +109,12 @@ class ExcavationRunner
                     return null;
                 }
 
-                $matches = collect([$candidate->roundId, ...$candidate->relatedRoundIds])
+                $related = collect($candidate->relatedRoundIds)
+                    ->reject(fn (int $roundId) => $roundId === $candidate->roundId)
                     ->unique()
                     ->flatMap(fn (int $roundId) => $sensitivities->get($roundId, collect()))
-                    ->filter(fn (MomentSensitivity $sensitivity) => $this->flags($sensitivity, $candidate));
+                    ->filter(fn (MomentSensitivity $sensitivity) => $this->flagsRelatedRound($sensitivity, $candidate));
+                $matches = $own->filter(fn (MomentSensitivity $sensitivity) => $this->flags($sensitivity, $candidate))->concat($related);
 
                 return $matches->isEmpty() ? $candidate : $candidate->markSensitive($matches
                     ->map(fn (MomentSensitivity $sensitivity) => $sensitivity->round_id === $candidate->roundId
@@ -125,6 +133,7 @@ class ExcavationRunner
             'updated' => 0,
             'sensitive' => $candidates->where('isSensitive', true)->count(),
             'blocked' => $blocked,
+            'pruned' => 0,
             'ranked' => 0,
         ];
 
@@ -144,6 +153,7 @@ class ExcavationRunner
             }
 
             $this->blockExisting($excavator, $sensitivities->flatten()->where('level', SensitivityLevel::Blocked));
+            $stats['pruned'] = $this->pruneStale($excavator, $parameters, $found);
             $stats['ranked'] = $this->recalculateScores($excavator->key());
 
             $run->update(['finished_at' => now(), 'candidates_found' => $candidates->count()]);
@@ -174,6 +184,39 @@ class ExcavationRunner
     private function flags(MomentSensitivity $sensitivity, Candidate $candidate): bool
     {
         return $sensitivity->driver_id === null || $candidate->driverId === null || $sensitivity->driver_id === $candidate->driverId;
+    }
+
+    /**
+     * A sensitivity on a story's other rounds flags it only when it is fatal,
+     * or an injury to one of the drivers the story is about.
+     */
+    private function flagsRelatedRound(MomentSensitivity $sensitivity, Candidate $candidate): bool
+    {
+        return $sensitivity->severity === SensitivitySeverity::Fatal
+            || ($sensitivity->driver_id !== null && in_array($sensitivity->driver_id, $candidate->relatedDriverIds, true));
+    }
+
+    /**
+     * Delete unreviewed candidates of this type in the dug seasons that the
+     * dig did not find, unless a historic moment still belongs to them.
+     * Candidates found but blocked were set to blocked, so they stay.
+     *
+     * @param  Collection<int, Candidate>  $found
+     * @return int Number of candidates deleted
+     */
+    private function pruneStale(Excavator $excavator, DigParameters $parameters, Collection $found): int
+    {
+        $foundKeys = $found->map(fn (Candidate $candidate) => $this->candidateKey($candidate->roundId, $candidate->driverId))->flip();
+
+        return MomentCandidate::query()
+            ->where('type', $excavator->key())
+            ->where('status', MomentCandidateStatus::New)
+            ->whereDoesntHave('historicMoment')
+            ->whereHas('round.season', fn ($season) => $parameters->applyTo($season, 'year'))
+            ->get()
+            ->reject(fn (MomentCandidate $candidate) => $foundKeys->has($this->candidateKey($candidate->round_id, $candidate->driver_id)))
+            ->each->delete()
+            ->count();
     }
 
     private function store(ExcavationRun $run, Excavator $excavator, Candidate $candidate): MomentCandidate

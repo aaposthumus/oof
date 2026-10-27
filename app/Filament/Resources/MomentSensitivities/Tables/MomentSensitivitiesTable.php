@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MomentSensitivities\Tables;
 
 use App\Enums\SensitivityLevel;
+use App\Enums\SensitivitySeverity;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
@@ -28,6 +29,10 @@ class MomentSensitivitiesTable
                     ->badge()
                     ->formatStateUsing(fn (SensitivityLevel $state): string => ucfirst($state->value))
                     ->color(fn (SensitivityLevel $state): string => $state === SensitivityLevel::Blocked ? 'danger' : 'warning'),
+                TextColumn::make('severity')
+                    ->badge()
+                    ->formatStateUsing(fn (SensitivitySeverity $state): string => ucfirst($state->value))
+                    ->color(fn (SensitivitySeverity $state): string => $state === SensitivitySeverity::Fatal ? 'danger' : 'warning'),
                 TextColumn::make('note')
                     ->limit(80)
                     ->wrap(),

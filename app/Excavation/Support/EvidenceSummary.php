@@ -192,7 +192,7 @@ final class EvidenceSummary
     private static function shortestRaceSummary(array $evidence): string
     {
         $laps = $evidence['estimated_scheduled_laps'] !== null
-            ? "{$evidence['laps']} of about ".round($evidence['estimated_scheduled_laps']).' laps'
+            ? "{$evidence['laps']} of ".(($evidence['scheduled_laps_override'] ?? false) ? '' : 'about ').round($evidence['estimated_scheduled_laps']).' laps'
             : "{$evidence['laps']} laps";
 
         return $laps.($evidence['half_points'] ? ', half points' : '');

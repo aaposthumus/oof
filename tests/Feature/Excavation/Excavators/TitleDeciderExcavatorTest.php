@@ -45,9 +45,28 @@ class TitleDeciderExcavatorTest extends TestCase
         $this->assertSame([$final->id, $champion->id], [$candidate->roundId, $candidate->driverId]);
         $this->assertSame(98.0, $candidate->score);
         $this->assertSame([$first->id, $second->id], $candidate->relatedRoundIds);
+        $this->assertSame([$champion->id, $leader->id], $candidate->relatedDriverIds);
         $this->assertSame(1.0, $candidate->evidence['final_margin']);
         $this->assertTrue($candidate->evidence['lead_change']);
         $this->assertFalse($candidate->evidence['estimate_with_dropped_scores']);
+    }
+
+    public function test_drivers_level_on_points_before_the_final_race_score_like_a_lead_change_with_the_full_margin_bonus(): void
+    {
+        [$champion, $runnerUp] = Driver::factory()->count(2)->create();
+        $level = Season::factory()->create(['year' => 2021]);
+        $this->race($level, 1, $champion, $runnerUp, [$champion->id => 20, $runnerUp->id => 20]);
+        $final = $this->race($level, 2, $champion, $runnerUp, [$champion->id => 30, $runnerUp->id => 26]);
+        $ahead = Season::factory()->create(['year' => 2022]);
+        $this->race($ahead, 1, $champion, $runnerUp, [$champion->id => 20, $runnerUp->id => 15]);
+        $this->race($ahead, 2, $champion, $runnerUp, [$champion->id => 30, $runnerUp->id => 26]);
+
+        $candidates = app(TitleDeciderExcavator::class)->dig(new DigParameters)->keyBy('roundId');
+
+        $this->assertSame(100.0, $candidates[$final->id]->score);
+        $this->assertTrue($candidates[$final->id]->evidence['level_on_points_before_final']);
+        $this->assertFalse($candidates[$final->id]->evidence['lead_change']);
+        $this->assertSame(72.0, $candidates->except($final->id)->sole()->score);
     }
 
     public function test_ignores_a_title_settled_before_the_final_race_and_an_unfinished_season(): void

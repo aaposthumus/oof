@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\SensitivityLevel;
+use App\Enums\SensitivitySeverity;
 use App\Models\MomentSensitivity;
 use App\Models\Round;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -23,8 +24,14 @@ class MomentSensitivityFactory extends Factory
             'round_id' => Round::factory(),
             'driver_id' => null,
             'level' => SensitivityLevel::Sensitive,
+            'severity' => SensitivitySeverity::Fatal,
             'note' => fake()->sentence(),
         ];
+    }
+
+    public function injury(): static
+    {
+        return $this->state(fn () => ['severity' => SensitivitySeverity::Injury]);
     }
 
     public function blocked(): static

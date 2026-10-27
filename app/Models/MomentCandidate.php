@@ -102,4 +102,40 @@ class MomentCandidate extends Model
             'status' => HistoricMomentStatus::Draft,
         ]);
     }
+
+    /**
+     * Set a status other than accepted; use accept() for that one. Leaving
+     * accepted deletes the draft historic moment when nobody has worked on it
+     * (see HistoricMoment::isUntouchedDraft()); an edited or published moment
+     * is kept.
+     */
+    public function changeStatus(MomentCandidateStatus $status): void
+    {
+        if ($this->status === MomentCandidateStatus::Accepted && $status !== MomentCandidateStatus::Accepted) {
+            $moment = $this->historicMoment;
+
+            if ($moment?->isUntouchedDraft()) {
+                $moment->delete();
+                $this->unsetRelation('historicMoment');
+            }
+        }
+
+        $this->update(['status' => $status]);
+    }
+
+    public function resetToNew(): void
+    {
+        $this->changeStatus(MomentCandidateStatus::New);
+    }
+
+    /**
+     * Whether changing this accepted candidate to another status would leave
+     * its historic moment in place, because it was edited or published.
+     */
+    public function keepsMomentWhenLeavingAccepted(): bool
+    {
+        return $this->status === MomentCandidateStatus::Accepted
+            && $this->historicMoment !== null
+            && ! $this->historicMoment->isUntouchedDraft();
+    }
 }

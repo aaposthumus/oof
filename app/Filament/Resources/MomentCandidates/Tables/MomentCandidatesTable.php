@@ -99,28 +99,38 @@ class MomentCandidatesTable
                         ->icon('heroicon-o-check')
                         ->color('success')
                         ->requiresConfirmation()
-                        ->action(fn (Collection $records) => $records->each->accept())
+                        ->hidden(fn ($livewire): bool => self::filteredOn($livewire, MomentCandidateStatus::Accepted))
+                        ->action(fn (Collection $records) => $records->reject(fn (MomentCandidate $record) => $record->status === MomentCandidateStatus::Accepted)->each->accept())
                         ->deselectRecordsAfterCompletion(),
-                    BulkAction::make('reject')
-                        ->label('Reject')
-                        ->icon('heroicon-o-x-mark')
-                        ->color('gray')
+                    ...collect([
+                        [MomentCandidateStatus::Rejected, 'reject', 'Reject', 'heroicon-o-x-mark', 'gray'],
+                        [MomentCandidateStatus::Blocked, 'block', 'Block', 'heroicon-o-no-symbol', 'danger'],
+                        [MomentCandidateStatus::New, 'reset', 'Reset to new', 'heroicon-o-arrow-uturn-left', 'info'],
+                    ])->map(fn (array $definition) => BulkAction::make($definition[1])
+                        ->label($definition[2])
+                        ->icon($definition[3])
+                        ->color($definition[4])
                         ->requiresConfirmation()
-                        ->action(fn (Collection $records) => $records->each->update(['status' => MomentCandidateStatus::Rejected]))
-                        ->deselectRecordsAfterCompletion(),
-                    BulkAction::make('block')
-                        ->label('Block')
-                        ->icon('heroicon-o-no-symbol')
-                        ->color('danger')
-                        ->requiresConfirmation()
-                        ->action(fn (Collection $records) => $records->each->update(['status' => MomentCandidateStatus::Blocked]))
-                        ->deselectRecordsAfterCompletion(),
+                        ->modalDescription('Accepted candidates lose their draft historic moment when it is untouched (draft, empty story). A moment that was edited or published remains.')
+                        ->hidden(fn ($livewire): bool => self::filteredOn($livewire, $definition[0]))
+                        ->action(fn (Collection $records) => $records->reject(fn (MomentCandidate $record) => $record->status === $definition[0])->each->changeStatus($definition[0]))
+                        ->deselectRecordsAfterCompletion())->all(),
                 ]),
             ]);
     }
 
     /**
-     * Accept, reject and block, shared by the list rows and the detail page.
+     * Whether the list is filtered on one status, so the bulk action that sets it changes nothing.
+     */
+    private static function filteredOn(object $livewire, MomentCandidateStatus $status): bool
+    {
+        return ($livewire->tableFilters['status']['value'] ?? null) === $status->value;
+    }
+
+    /**
+     * Accept, reject, block and reset to new, shared by the list rows and the
+     * detail page. Each shows only while it would change the status. Leaving
+     * accepted asks for confirmation when the historic moment stays.
      *
      * @return array<int, Action>
      */
@@ -131,22 +141,29 @@ class MomentCandidatesTable
                 ->label('Accept')
                 ->icon('heroicon-o-check')
                 ->color('success')
+                ->visible(fn (MomentCandidate $record): bool => $record->status !== MomentCandidateStatus::Accepted)
                 ->action(function (MomentCandidate $record, $livewire): void {
                     $moment = $record->accept();
 
                     $livewire->redirect(HistoricMomentResource::getUrl('edit', ['record' => $moment]));
                 }),
-            Action::make('reject')
-                ->label('Reject')
-                ->icon('heroicon-o-x-mark')
-                ->color('gray')
-                ->action(fn (MomentCandidate $record) => $record->update(['status' => MomentCandidateStatus::Rejected])),
-            Action::make('block')
-                ->label('Block')
-                ->icon('heroicon-o-no-symbol')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->action(fn (MomentCandidate $record) => $record->update(['status' => MomentCandidateStatus::Blocked])),
+            self::statusAction('reject', 'Reject', 'heroicon-o-x-mark', 'gray', MomentCandidateStatus::Rejected),
+            self::statusAction('block', 'Block', 'heroicon-o-no-symbol', 'danger', MomentCandidateStatus::Blocked, alwaysConfirm: true),
+            self::statusAction('reset', 'Reset to new', 'heroicon-o-arrow-uturn-left', 'info', MomentCandidateStatus::New),
         ];
+    }
+
+    private static function statusAction(string $name, string $label, string $icon, string $color, MomentCandidateStatus $status, bool $alwaysConfirm = false): Action
+    {
+        return Action::make($name)
+            ->label($label)
+            ->icon($icon)
+            ->color($color)
+            ->visible(fn (MomentCandidate $record): bool => $record->status !== $status)
+            ->requiresConfirmation(fn (MomentCandidate $record): bool => $alwaysConfirm || $record->keepsMomentWhenLeavingAccepted())
+            ->modalDescription(fn (MomentCandidate $record): ?string => $record->keepsMomentWhenLeavingAccepted()
+                ? 'The historic moment of this candidate has been edited or published, so it will remain after this change. Delete it from the historic moments if you no longer want it.'
+                : null)
+            ->action(fn (MomentCandidate $record) => $record->changeStatus($status));
     }
 }

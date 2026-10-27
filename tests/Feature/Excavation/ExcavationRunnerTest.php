@@ -9,9 +9,11 @@ use App\Excavation\ExcavationRunner;
 use App\Excavation\Excavator;
 use App\Models\Driver;
 use App\Models\ExcavationRun;
+use App\Models\HistoricMoment;
 use App\Models\MomentCandidate;
 use App\Models\MomentSensitivity;
 use App\Models\Round;
+use App\Models\Season;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Collection;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -42,7 +44,7 @@ class ExcavationRunnerTest extends TestCase
             'status' => MomentCandidateStatus::New,
             'is_sensitive' => false,
         ]);
-        $this->assertSame(['found' => 1, 'created' => 1, 'updated' => 0, 'sensitive' => 0, 'blocked' => 0, 'ranked' => 1], $result->stats);
+        $this->assertSame(['found' => 1, 'created' => 1, 'updated' => 0, 'sensitive' => 0, 'blocked' => 0, 'pruned' => 0, 'ranked' => 1], $result->stats);
         $this->assertEquals(['starters' => 6, 'raw_score' => 70.0], MomentCandidate::sole()->evidence);
     }
 
@@ -70,7 +72,7 @@ class ExcavationRunnerTest extends TestCase
             new Candidate($round->id, $first->id, null, 80.0, []),
             new Candidate($round->id, $second->id, null, 60.0, []),
         ), new DigParameters);
-        app(ExcavationRunner::class)->run($this->excavator(new Candidate($round->id, $first->id, null, 85.0, [])), new DigParameters);
+        app(ExcavationRunner::class)->run($this->excavator(new Candidate($round->id, $first->id, null, 85.0, [])), new DigParameters(seasons: [$round->season->year + 1]));
 
         $this->assertDatabaseCount('moment_candidates', 2);
         $this->assertDatabaseHas('moment_candidates', ['driver_id' => $first->id, 'score' => 100.0]);
@@ -230,7 +232,8 @@ class ExcavationRunnerTest extends TestCase
 
     public function test_recalculates_every_candidate_of_the_type_but_no_other_type(): void
     {
-        [$old, $new] = Round::factory()->count(2)->create();
+        $old = Round::factory()->for(Season::factory()->create(['year' => 1999]))->create();
+        $new = Round::factory()->create();
         $oldCandidate = MomentCandidate::factory()->create(['type' => 'test_excavator', 'round_id' => $old->id, 'score' => 100, 'evidence' => ['raw_score' => 40.0]]);
         $otherType = MomentCandidate::factory()->create(['type' => 'other_excavator', 'score' => 12.34, 'evidence' => ['raw_score' => 5.0]]);
 
@@ -242,10 +245,15 @@ class ExcavationRunnerTest extends TestCase
 
     public function test_ranks_candidates_stored_before_raw_scores_by_their_old_score_and_keeps_it(): void
     {
-        $legacy = MomentCandidate::factory()->create(['type' => 'test_excavator', 'score' => 50, 'evidence' => ['starters' => 8]]);
+        $legacy = MomentCandidate::factory()->create([
+            'type' => 'test_excavator',
+            'round_id' => Round::factory()->for(Season::factory()->create(['year' => 1999])),
+            'score' => 50,
+            'evidence' => ['starters' => 8],
+        ]);
         $round = Round::factory()->create();
 
-        app(ExcavationRunner::class)->run($this->excavator(new Candidate($round->id, null, null, 70.0, [])), new DigParameters);
+        app(ExcavationRunner::class)->run($this->excavator(new Candidate($round->id, null, null, 70.0, [])), new DigParameters(seasons: [2005]));
 
         $legacy->refresh();
         $this->assertSame('0.00', $legacy->score);
@@ -288,6 +296,73 @@ class ExcavationRunnerTest extends TestCase
         $this->assertCount(1, $result->candidates);
         $this->assertDatabaseCount('excavation_runs', 0);
         $this->assertDatabaseCount('moment_candidates', 0);
+    }
+
+    public function test_an_injury_flags_a_related_round_only_for_the_drivers_the_story_is_about(): void
+    {
+        $round = Round::factory()->create();
+        $related = Round::factory()->create(['name' => 'Dutch Grand Prix']);
+        [$involved, $other] = Driver::factory()->count(2)->create();
+        MomentSensitivity::factory()->injury()->for($related)->create(['note' => 'A mechanic was injured.']);
+        MomentSensitivity::factory()->injury()->for($related)->for($other)->create(['note' => 'Another driver was injured.']);
+
+        $unrelated = $this->runWith(new Candidate($round->id, null, null, 50.0, [], relatedRoundIds: [$related->id], relatedDriverIds: [$involved->id]));
+        MomentSensitivity::factory()->injury()->for($related)->for($involved)->create(['note' => 'The champion was injured.']);
+        MomentCandidate::query()->delete();
+        $involvedHit = $this->runWith(new Candidate($round->id, null, null, 50.0, [], relatedRoundIds: [$related->id], relatedDriverIds: [$involved->id]));
+
+        $this->assertFalse($unrelated->isSensitive);
+        $this->assertTrue($involvedHit->isSensitive);
+        $this->assertSame("{$related->season->year} Dutch Grand Prix: The champion was injured.", $involvedHit->sensitivityNote);
+    }
+
+    public function test_a_fatal_entry_on_a_related_round_always_flags_but_the_own_round_flags_any_severity(): void
+    {
+        $round = Round::factory()->create();
+        $related = Round::factory()->create(['name' => 'Dutch Grand Prix']);
+        MomentSensitivity::factory()->for($related)->create(['note' => 'A marshal was killed.']);
+        MomentSensitivity::factory()->injury()->for($round)->create(['note' => 'A mechanic was injured.']);
+
+        $candidate = $this->runWith(new Candidate($round->id, null, null, 50.0, [], relatedRoundIds: [$related->id]));
+
+        $this->assertSame("A mechanic was injured. {$related->season->year} Dutch Grand Prix: A marshal was killed.", $candidate->sensitivityNote);
+    }
+
+    public function test_removes_unreviewed_candidates_that_a_dig_no_longer_finds_within_its_seasons(): void
+    {
+        $inScope = Round::factory()->for(Season::factory()->create(['year' => 2005]))->create();
+        $stillFound = Round::factory()->for($inScope->season)->create();
+        $outOfScope = Round::factory()->for(Season::factory()->create(['year' => 1999]))->create();
+        $stale = MomentCandidate::factory()->create(['type' => 'test_excavator', 'round_id' => $inScope->id]);
+        $withMoment = MomentCandidate::factory()->create(['type' => 'test_excavator', 'round_id' => $inScope->id, 'driver_id' => Driver::factory()]);
+        HistoricMoment::factory()->create(['moment_candidate_id' => $withMoment->id]);
+        $accepted = MomentCandidate::factory()->accepted()->create(['type' => 'test_excavator', 'round_id' => $inScope->id, 'driver_id' => Driver::factory()]);
+        $old = MomentCandidate::factory()->create(['type' => 'test_excavator', 'round_id' => $outOfScope->id]);
+        $otherType = MomentCandidate::factory()->create(['type' => 'other_excavator', 'round_id' => $inScope->id]);
+
+        $result = app(ExcavationRunner::class)->run($this->excavator(new Candidate($stillFound->id, null, null, 50.0, [])), new DigParameters(seasons: [2005]));
+
+        $this->assertModelMissing($stale);
+        $this->assertModelExists($withMoment);
+        $this->assertModelExists($accepted);
+        $this->assertModelExists($old);
+        $this->assertModelExists($otherType);
+        $this->assertSame(1, $result->stats['pruned']);
+    }
+
+    public function test_a_dry_run_removes_nothing(): void
+    {
+        $stale = MomentCandidate::factory()->create(['type' => 'test_excavator']);
+
+        $result = app(ExcavationRunner::class)->run($this->excavator(), new DigParameters, dryRun: true);
+
+        $this->assertSame(1, $result->stats['pruned']);
+        $this->assertModelExists($stale);
+    }
+
+    private function runWith(Candidate $candidate): Candidate
+    {
+        return app(ExcavationRunner::class)->run($this->excavator($candidate), new DigParameters)->candidates->sole();
     }
 
     private function excavator(Candidate ...$candidates): Excavator
