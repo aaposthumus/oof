@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\HistoricMomentStatus;
 use App\Enums\MomentCandidateStatus;
+use App\Excavation\Support\EvidenceSummary;
 use Database\Factories\MomentCandidateFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * A possible historic moment found by an excavator, waiting for review. Its
@@ -67,5 +70,36 @@ class MomentCandidate extends Model
     public function seasonTeam(): BelongsTo
     {
         return $this->belongsTo(SeasonTeam::class);
+    }
+
+    /**
+     * @return HasOne<HistoricMoment, $this>
+     */
+    public function historicMoment(): HasOne
+    {
+        return $this->hasOne(HistoricMoment::class);
+    }
+
+    /**
+     * Mark the candidate accepted and make sure a draft historic moment exists
+     * for it, with a prefilled title and an empty story. Safe to repeat.
+     */
+    public function accept(): HistoricMoment
+    {
+        $this->loadMissing('round.season', 'driver');
+
+        $this->update(['status' => MomentCandidateStatus::Accepted]);
+
+        $year = $this->round->season->year;
+
+        return $this->historicMoment()->firstOrCreate([], [
+            'round_id' => $this->round_id,
+            'date' => $this->round->date,
+            'title' => "{$year} {$this->round->name}: ".EvidenceSummary::titlePhrase($this),
+            'story' => '',
+            'tags' => [],
+            'era' => (intdiv($year, 10) * 10).'s',
+            'status' => HistoricMomentStatus::Draft,
+        ]);
     }
 }
