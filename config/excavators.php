@@ -101,7 +101,7 @@ return [
         'min_position' => 5,
         'min_relative' => 0.4,
         'only_win_bonus' => 40,
-        'early_season_rounds' => 3,
+        'early_season_rounds' => 4,
         'excluded_teams' => [
             ['year' => 2007, 'team' => 'mclaren'],
         ],
