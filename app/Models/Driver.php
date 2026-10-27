@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Database\Factories\DriverFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -12,6 +14,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['jolpica_driver_id', 'given_name', 'family_name', 'code', 'permanent_number', 'date_of_birth', 'nationality', 'wikipedia_url'])]
 class Driver extends Model
 {
+    /** @use HasFactory<DriverFactory> */
+    use HasFactory;
+
     /**
      * Get the attributes that should be cast.
      *

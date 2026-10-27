@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\SessionType;
+use Database\Factories\ResultFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,6 +16,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['driver_entry_id', 'grid', 'position', 'position_text', 'classification_order', 'is_classified', 'status', 'points', 'laps_completed', 'time_text', 'time_millis', 'fastest_lap_number', 'fastest_lap_rank', 'fastest_lap_time_millis'])]
 class Result extends Model
 {
+    /** @use HasFactory<ResultFactory> */
+    use HasFactory;
+
     /**
      * Get the attributes that should be cast.
      *

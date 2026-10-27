@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Database\Factories\DriverEntryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable(['race_session_id', 'driver_id', 'season_team_id', 'car_number'])]
 class DriverEntry extends Model
 {
+    /** @use HasFactory<DriverEntryFactory> */
+    use HasFactory;
+
     /**
      * @return BelongsTo<RaceSession, $this>
      */

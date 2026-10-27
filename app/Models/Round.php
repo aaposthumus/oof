@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Database\Factories\RoundFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['season_id', 'round_number', 'circuit_id', 'name', 'short_name', 'country_name', 'country_code', 'jolpica_race_name', 'date', 'time', 'wikipedia_url'])]
 class Round extends Model
 {
+    /** @use HasFactory<RoundFactory> */
+    use HasFactory;
+
     /**
      * Get the attributes that should be cast.
      *
