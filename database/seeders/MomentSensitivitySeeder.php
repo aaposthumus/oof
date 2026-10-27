@@ -12,6 +12,7 @@ use RuntimeException;
  * World Championship weekends on which someone was fatally injured in
  * connection with the event: drivers, marshals, spectators, team members and
  * drivers in support races. All are seeded as sensitive, never blocked.
+ * Sensitive is only a review flag, so uncertain entries are included too.
  *
  * Run with: php artisan db:seed --class=MomentSensitivitySeeder
  * Safe to re-run: it updates notes but keeps a level that was changed by hand.
@@ -47,6 +48,7 @@ class MomentSensitivitySeeder extends Seeder
         '1970|Italian Grand Prix' => 'Jochen Rindt was killed in a crash in practice.',
         '1973|Dutch Grand Prix' => 'Roger Williamson was killed in a crash during the race.',
         '1973|United States Grand Prix' => 'François Cevert was killed in a crash in practice.',
+        '1974|South African Grand Prix' => 'Peter Revson was killed in a crash during a testing session at Kyalami, eight days before the race.',
         '1974|United States Grand Prix' => 'Helmuth Koinigg was killed in a crash during the race.',
         '1975|Spanish Grand Prix' => 'People beside the track, among them a fireman, photojournalists and a spectator, were killed when Rolf Stommelen\'s car left the circuit.',
         '1975|Austrian Grand Prix' => 'Mark Donohue and marshal Manfred Schaller were fatally injured in Donohue\'s warm-up crash.',

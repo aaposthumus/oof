@@ -38,11 +38,12 @@ class ExcavationRunnerTest extends TestCase
             'type' => 'test_excavator',
             'round_id' => $round->id,
             'driver_id' => null,
-            'score' => 70.0,
+            'score' => 100.0,
             'status' => MomentCandidateStatus::New,
             'is_sensitive' => false,
         ]);
-        $this->assertSame(['found' => 1, 'created' => 1, 'updated' => 0, 'sensitive' => 0, 'blocked' => 0], $result->stats);
+        $this->assertSame(['found' => 1, 'created' => 1, 'updated' => 0, 'sensitive' => 0, 'blocked' => 0, 'ranked' => 1], $result->stats);
+        $this->assertEquals(['starters' => 6, 'raw_score' => 70.0], MomentCandidate::sole()->evidence);
     }
 
     public function test_re_digging_updates_a_round_level_candidate_instead_of_duplicating_it(): void
@@ -54,8 +55,8 @@ class ExcavationRunnerTest extends TestCase
         $result = $runner->run($this->excavator(new Candidate($round->id, null, null, 70.0, ['starters' => 6])), new DigParameters);
 
         $candidate = MomentCandidate::sole();
-        $this->assertSame('70.00', $candidate->score);
-        $this->assertSame(['starters' => 6], $candidate->evidence);
+        $this->assertSame('100.00', $candidate->score);
+        $this->assertEquals(['starters' => 6, 'raw_score' => 70.0], $candidate->evidence);
         $this->assertSame(ExcavationRun::latest('id')->first()->id, $candidate->excavation_run_id);
         $this->assertSame(1, $result->stats['updated']);
     }
@@ -72,7 +73,8 @@ class ExcavationRunnerTest extends TestCase
         app(ExcavationRunner::class)->run($this->excavator(new Candidate($round->id, $first->id, null, 85.0, [])), new DigParameters);
 
         $this->assertDatabaseCount('moment_candidates', 2);
-        $this->assertDatabaseHas('moment_candidates', ['driver_id' => $first->id, 'score' => 85.0]);
+        $this->assertDatabaseHas('moment_candidates', ['driver_id' => $first->id, 'score' => 100.0]);
+        $this->assertDatabaseHas('moment_candidates', ['driver_id' => $second->id, 'score' => 0.0]);
     }
 
     /**
@@ -96,7 +98,8 @@ class ExcavationRunnerTest extends TestCase
 
         $existing->refresh();
         $this->assertSame($status, $existing->status);
-        $this->assertSame('75.00', $existing->score);
+        $this->assertSame('100.00', $existing->score);
+        $this->assertEquals(75.0, $existing->evidence['raw_score']);
         $this->assertTrue($existing->is_sensitive);
     }
 
@@ -136,6 +139,7 @@ class ExcavationRunnerTest extends TestCase
     public function test_skips_a_blocked_round_and_blocks_its_existing_unreviewed_candidates(): void
     {
         $existing = MomentCandidate::factory()->create(['type' => 'test_excavator']);
+        $blockedScore = $existing->score;
         $accepted = MomentCandidate::factory()->accepted()->for($existing->round)->create(['type' => 'test_excavator', 'driver_id' => Driver::factory()]);
         $otherType = MomentCandidate::factory()->for($existing->round)->create(['type' => 'other_excavator']);
         MomentSensitivity::factory()->blocked()->for($existing->round)->create();
@@ -143,7 +147,7 @@ class ExcavationRunnerTest extends TestCase
         $result = app(ExcavationRunner::class)->run($this->excavator(new Candidate($existing->round_id, null, null, 90.0, [])), new DigParameters);
 
         $this->assertSame(MomentCandidateStatus::Blocked, $existing->refresh()->status);
-        $this->assertNotEquals('90.00', $existing->score);
+        $this->assertSame($blockedScore, $existing->score);
         $this->assertSame(MomentCandidateStatus::Accepted, $accepted->refresh()->status);
         $this->assertSame(MomentCandidateStatus::New, $otherType->refresh()->status);
         $this->assertCount(0, $result->candidates);
@@ -172,6 +176,77 @@ class ExcavationRunnerTest extends TestCase
         app(ExcavationRunner::class)->run($this->excavator(new Candidate($candidate->round_id, null, null, 50.0, [])), new DigParameters);
 
         $this->assertSame(MomentCandidateStatus::New, $candidate->refresh()->status);
+    }
+
+    public function test_scores_candidates_as_percentile_ranks_within_their_type_and_keeps_the_raw_score(): void
+    {
+        $rounds = Round::factory()->count(4)->create();
+
+        $result = app(ExcavationRunner::class)->run($this->excavator(
+            new Candidate($rounds[0]->id, null, null, 30.0, ['n' => 1]),
+            new Candidate($rounds[1]->id, null, null, 10.0, ['n' => 2]),
+            new Candidate($rounds[2]->id, null, null, 20.0, ['n' => 3]),
+            new Candidate($rounds[3]->id, null, null, 30.0, ['n' => 4]),
+        ), new DigParameters);
+
+        $this->assertSame([100.0, 100.0, 33.33, 0.0], $result->candidates->pluck('score')->all());
+        $this->assertSame([30.0, 30.0, 20.0, 10.0], $result->candidates->pluck('evidence.raw_score')->all());
+        $this->assertEquals(
+            [$rounds[0]->id => 100.0, $rounds[1]->id => 0.0, $rounds[2]->id => 33.33, $rounds[3]->id => 100.0],
+            MomentCandidate::pluck('score', 'round_id')->map(fn (string $score) => (float) $score)->all(),
+        );
+        $this->assertSame(4, $result->stats['ranked']);
+    }
+
+    public function test_recalculates_every_candidate_of_the_type_but_no_other_type(): void
+    {
+        [$old, $new] = Round::factory()->count(2)->create();
+        $oldCandidate = MomentCandidate::factory()->create(['type' => 'test_excavator', 'round_id' => $old->id, 'score' => 100, 'evidence' => ['raw_score' => 40.0]]);
+        $otherType = MomentCandidate::factory()->create(['type' => 'other_excavator', 'score' => 12.34, 'evidence' => ['raw_score' => 5.0]]);
+
+        app(ExcavationRunner::class)->run($this->excavator(new Candidate($new->id, null, null, 60.0, [])), new DigParameters(seasons: [2005]));
+
+        $this->assertSame('0.00', $oldCandidate->refresh()->score);
+        $this->assertSame('12.34', $otherType->refresh()->score);
+    }
+
+    public function test_ranks_candidates_stored_before_raw_scores_by_their_old_score_and_keeps_it(): void
+    {
+        $legacy = MomentCandidate::factory()->create(['type' => 'test_excavator', 'score' => 50, 'evidence' => ['starters' => 8]]);
+        $round = Round::factory()->create();
+
+        app(ExcavationRunner::class)->run($this->excavator(new Candidate($round->id, null, null, 70.0, [])), new DigParameters);
+
+        $legacy->refresh();
+        $this->assertSame('0.00', $legacy->score);
+        $this->assertEquals(['starters' => 8, 'raw_score' => 50.0], $legacy->evidence);
+    }
+
+    public function test_ranks_reviewed_candidates_but_not_blocked_ones(): void
+    {
+        $round = Round::factory()->create();
+        MomentCandidate::factory()->accepted()->create(['type' => 'test_excavator', 'evidence' => ['raw_score' => 90.0]]);
+        $blocked = MomentCandidate::factory()->create(['type' => 'test_excavator', 'status' => MomentCandidateStatus::Blocked, 'score' => 77, 'evidence' => ['raw_score' => 1.0]]);
+
+        $result = app(ExcavationRunner::class)->run($this->excavator(new Candidate($round->id, null, null, 45.0, [])), new DigParameters);
+
+        $this->assertSame(2, $result->stats['ranked']);
+        $this->assertSame(0.0, $result->candidates->sole()->score);
+        $this->assertSame('77.00', $blocked->refresh()->score);
+    }
+
+    public function test_a_dry_run_stores_nothing_but_reports_the_scores_of_a_real_run(): void
+    {
+        $existing = MomentCandidate::factory()->create(['type' => 'test_excavator', 'score' => 100, 'evidence' => ['raw_score' => 40.0]]);
+        $round = Round::factory()->create();
+
+        $result = app(ExcavationRunner::class)->run($this->excavator(new Candidate($round->id, null, null, 70.0, [])), new DigParameters, dryRun: true);
+
+        $this->assertSame(100.0, $result->candidates->sole()->score);
+        $this->assertSame(1, $result->stats['created']);
+        $this->assertSame('100.00', $existing->refresh()->score);
+        $this->assertDatabaseCount('excavation_runs', 1);
+        $this->assertDatabaseCount('moment_candidates', 1);
     }
 
     public function test_a_dry_run_stores_nothing(): void

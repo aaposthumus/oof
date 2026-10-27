@@ -17,6 +17,7 @@ class OofDigTest extends TestCase
         $season = Season::factory()->create(['year' => 2005]);
         $this->createRace($season, $this->field(running: 10));
         $this->createRace($season, $this->field(running: 10));
+        $this->createRace($season, $this->field(running: 10));
         $round = $this->createRace($season, $this->field(running: 4, withdrawn: 6), 'United States Grand Prix');
         MomentSensitivity::factory()->for($round)->create(['note' => 'A marshal was killed.']);
 
@@ -40,7 +41,7 @@ class OofDigTest extends TestCase
 
         $this->artisan('oof:dig')
             ->expectsOutputToContain('fewest_starters (v1)')
-            ->expectsOutputToContain('starters=4 entries=10 season_median_starters=10.0 ratio=0.4')
+            ->expectsOutputToContain('starters=4 entries=10 season_median_starters=10.0 ratio=0.4 raw_score=60.0')
             ->expectsOutputToContain('fewest_finishers (v1)')
             ->expectsOutputToContain('grid_to_win_climb (v1)')
             ->expectsOutputToContain('across all excavators')

@@ -8,7 +8,7 @@ namespace App\Excavation;
 final readonly class Candidate
 {
     /**
-     * @param  float  $score  0-100, comparable across excavators
+     * @param  float  $score  Raw score of the excavator, 0-100; the runner ranks it within the type
      * @param  array<string, int|float|bool|string|null>  $evidence  The raw numbers behind the hit
      */
     public function __construct(
@@ -27,6 +27,14 @@ final readonly class Candidate
     public static function scoreFromShare(float $share): float
     {
         return round(max(0, min(1, $share)) * 100, 2);
+    }
+
+    /**
+     * The same hit with its percentile rank as score and the raw score kept in the evidence.
+     */
+    public function withRankedScore(float $score): self
+    {
+        return new self($this->roundId, $this->driverId, $this->seasonTeamId, $score, [...$this->evidence, 'raw_score' => $this->score], $this->isSensitive, $this->sensitivityNote);
     }
 
     public function markSensitive(string $note): self

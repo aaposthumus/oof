@@ -11,8 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * A possible historic moment found by an excavator, waiting for review. Its
- * type is the key of the excavator that found it; its score is 0-100 for
- * every type, so candidates of different types can be compared.
+ * type is the key of the excavator that found it. Its score is the percentile
+ * rank (0-100, best = 100) of its raw score among all candidates of its type,
+ * so candidates of different types can be compared; the raw score is kept in
+ * the evidence as raw_score.
  */
 #[Fillable(['excavation_run_id', 'type', 'round_id', 'driver_id', 'season_team_id', 'score', 'evidence', 'status', 'is_sensitive', 'sensitivity_note'])]
 class MomentCandidate extends Model

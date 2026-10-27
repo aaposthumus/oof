@@ -21,7 +21,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | A race is a hit when its starters are at most max_ratio of the season's
-    | median field, or at most max_starters cars. Score: 100 × (1 − ratio).
+    | median field, or at most max_starters cars. Raw score: 100 × (1 − ratio).
     |
     */
 
@@ -37,7 +37,7 @@ return [
     |
     | Counts cars running at the flag. A race is a hit when at most max_ratio
     | of its starters were running at the end, or at most max_running cars,
-    | and at least min_starters cars started. Score: 100 × (1 − ratio).
+    | and at least min_starters cars started. Raw score: 100 × (1 − ratio).
     |
     */
 
@@ -55,7 +55,7 @@ return [
     | A winner is a hit when they started at least min_grid and at least
     | min_relative of the way down the field (0 = pole, 1 = last), so a 5th
     | place start in a 6-car race is no climb. A pit-lane start counts as
-    | last. Score: 100 × that relative position.
+    | last. Raw score: 100 × that relative position.
     |
     */
 

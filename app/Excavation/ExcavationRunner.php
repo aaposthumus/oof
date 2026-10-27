@@ -7,6 +7,7 @@ use App\Enums\SensitivityLevel;
 use App\Excavation\Excavators\FewestFinishersExcavator;
 use App\Excavation\Excavators\FewestStartersExcavator;
 use App\Excavation\Excavators\GridToWinClimbExcavator;
+use App\Excavation\Support\PercentileRank;
 use App\Models\ExcavationRun;
 use App\Models\MomentCandidate;
 use App\Models\MomentSensitivity;
@@ -14,11 +15,13 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * Runs excavators: records each run, applies moment sensitivities and stores
  * the candidates. Re-digging updates existing candidates; a status set by a
- * reviewer (accepted, rejected) is never changed.
+ * reviewer (accepted, rejected) is never changed. Candidate scores are
+ * percentile ranks within their type, recalculated after every dig.
  */
 class ExcavationRunner
 {
@@ -46,6 +49,10 @@ class ExcavationRunner
             ->all();
     }
 
+    /**
+     * Everything is written inside one transaction. A dry run rolls it back, so
+     * its created and updated counts and percentile scores match a real run.
+     */
     public function run(Excavator $excavator, DigParameters $parameters, bool $dryRun = false): ExcavationResult
     {
         $startedAt = now();
@@ -76,29 +83,46 @@ class ExcavationRunner
             'updated' => 0,
             'sensitive' => $candidates->where('isSensitive', true)->count(),
             'blocked' => $blocked,
+            'ranked' => 0,
         ];
 
-        if (! $dryRun) {
-            DB::transaction(function () use ($excavator, $parameters, $startedAt, $candidates, $sensitivities, &$stats) {
-                $run = ExcavationRun::create([
-                    'excavator' => $excavator->key(),
-                    'excavator_version' => $excavator->version(),
-                    'parameters' => $parameters->toArray(),
-                    'started_at' => $startedAt,
-                ]);
+        DB::beginTransaction();
 
-                foreach ($candidates as $candidate) {
-                    $stored = $this->store($run, $excavator, $candidate);
-                    $stats[$stored->wasRecentlyCreated ? 'created' : 'updated']++;
-                }
+        try {
+            $run = ExcavationRun::create([
+                'excavator' => $excavator->key(),
+                'excavator_version' => $excavator->version(),
+                'parameters' => $parameters->toArray(),
+                'started_at' => $startedAt,
+            ]);
 
-                $this->blockExisting($excavator, $sensitivities->flatten()->where('level', SensitivityLevel::Blocked));
+            foreach ($candidates as $candidate) {
+                $stored = $this->store($run, $excavator, $candidate);
+                $stats[$stored->wasRecentlyCreated ? 'created' : 'updated']++;
+            }
 
-                $run->update(['finished_at' => now(), 'candidates_found' => $candidates->count()]);
-            });
+            $this->blockExisting($excavator, $sensitivities->flatten()->where('level', SensitivityLevel::Blocked));
+            $stats['ranked'] = $this->recalculateScores($excavator->key());
+
+            $run->update(['finished_at' => now(), 'candidates_found' => $candidates->count()]);
+
+            $scores = MomentCandidate::query()
+                ->where('type', $excavator->key())
+                ->get(['round_id', 'driver_id', 'score'])
+                ->mapWithKeys(fn (MomentCandidate $stored) => [$this->candidateKey($stored->round_id, $stored->driver_id) => (float) $stored->score]);
+        } catch (Throwable $exception) {
+            DB::rollBack();
+
+            throw $exception;
         }
 
-        return new ExcavationResult($excavator, $candidates, $stats);
+        $dryRun ? DB::rollBack() : DB::commit();
+
+        return new ExcavationResult(
+            $excavator,
+            $candidates->map(fn (Candidate $candidate) => $candidate->withRankedScore($scores[$this->candidateKey($candidate->roundId, $candidate->driverId)])),
+            $stats,
+        );
     }
 
     private function store(ExcavationRun $run, Excavator $excavator, Candidate $candidate): MomentCandidate
@@ -118,7 +142,7 @@ class ExcavationRunner
             'excavation_run_id' => $run->id,
             'season_team_id' => $candidate->seasonTeamId,
             'score' => $candidate->score,
-            'evidence' => $candidate->evidence,
+            'evidence' => [...$candidate->evidence, 'raw_score' => $candidate->score],
             'is_sensitive' => $candidate->isSensitive,
             'sensitivity_note' => $candidate->sensitivityNote,
         ]);
@@ -131,6 +155,38 @@ class ExcavationRunner
         $model->save();
 
         return $model;
+    }
+
+    /**
+     * Replace the score of every candidate of the type, not only those just
+     * dug, by the percentile rank of its raw score. Blocked candidates are
+     * left out. Candidates stored before raw scores existed keep their old
+     * score as raw score.
+     *
+     * @return int Number of candidates ranked
+     */
+    private function recalculateScores(string $type): int
+    {
+        $candidates = MomentCandidate::query()
+            ->where('type', $type)
+            ->where('status', '!=', MomentCandidateStatus::Blocked)
+            ->get();
+
+        $rawScores = $candidates->mapWithKeys(fn (MomentCandidate $candidate) => [$candidate->id => (float) ($candidate->evidence['raw_score'] ?? $candidate->score)]);
+        $percentiles = PercentileRank::of($rawScores->all());
+
+        foreach ($candidates as $candidate) {
+            $candidate->evidence = [...$candidate->evidence, 'raw_score' => $rawScores[$candidate->id]];
+            $candidate->score = $percentiles[$candidate->id];
+            $candidate->save();
+        }
+
+        return $candidates->count();
+    }
+
+    private function candidateKey(int $roundId, ?int $driverId): string
+    {
+        return $roundId.':'.($driverId ?? 0);
     }
 
     /**

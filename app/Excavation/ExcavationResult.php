@@ -10,8 +10,8 @@ use Illuminate\Support\Collection;
 final readonly class ExcavationResult
 {
     /**
-     * @param  Collection<int, Candidate>  $candidates  Kept candidates, highest score first
-     * @param  array{found: int, created: int, updated: int, sensitive: int, blocked: int}  $stats
+     * @param  Collection<int, Candidate>  $candidates  Kept candidates with their percentile score, highest first
+     * @param  array{found: int, created: int, updated: int, sensitive: int, blocked: int, ranked: int}  $stats
      */
     public function __construct(
         public Excavator $excavator,
