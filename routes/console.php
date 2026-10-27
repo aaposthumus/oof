@@ -17,3 +17,9 @@ Schedule::command('oof:normalize')
     ->hourlyAt(30)
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/normalize.log'));
+
+// After the 04:00 import and the 04:30 normalize.
+Schedule::command('oof:dig')
+    ->dailyAt('04:50')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/dig.log'));

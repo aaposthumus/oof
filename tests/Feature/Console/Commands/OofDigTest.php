@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Console\Commands;
 
+use App\Excavation\ExcavationRunner;
 use App\Models\MomentSensitivity;
 use App\Models\Season;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -44,10 +45,11 @@ class OofDigTest extends TestCase
             ->expectsOutputToContain('starters=4 entries=10 season_median_starters=10.0 ratio=0.4 raw_score=60.0')
             ->expectsOutputToContain('fewest_finishers (v1)')
             ->expectsOutputToContain('grid_to_win_climb (v1)')
+            ->expectsOutputToContain('slowest_pit_stop (v1)')
             ->expectsOutputToContain('across all excavators')
             ->assertSuccessful();
 
-        $this->assertDatabaseCount('excavation_runs', 3);
+        $this->assertDatabaseCount('excavation_runs', count(ExcavationRunner::EXCAVATORS));
     }
 
     public function test_rejects_an_unknown_excavator(): void

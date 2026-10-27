@@ -8,8 +8,9 @@ namespace App\Excavation;
 final readonly class Candidate
 {
     /**
-     * @param  float  $score  Raw score of the excavator, 0-100; the runner ranks it within the type
+     * @param  float  $score  Raw score of the excavator, higher is more remarkable (mostly 0-100); the runner ranks it within the type
      * @param  array<string, int|float|bool|string|null>  $evidence  The raw numbers behind the hit
+     * @param  list<int>  $relatedRoundIds  Other rounds the story spans; their sensitivities flag it, but never block it
      */
     public function __construct(
         public int $roundId,
@@ -19,6 +20,7 @@ final readonly class Candidate
         public array $evidence,
         public bool $isSensitive = false,
         public ?string $sensitivityNote = null,
+        public array $relatedRoundIds = [],
     ) {}
 
     /**
@@ -34,11 +36,11 @@ final readonly class Candidate
      */
     public function withRankedScore(float $score): self
     {
-        return new self($this->roundId, $this->driverId, $this->seasonTeamId, $score, [...$this->evidence, 'raw_score' => $this->score], $this->isSensitive, $this->sensitivityNote);
+        return new self($this->roundId, $this->driverId, $this->seasonTeamId, $score, [...$this->evidence, 'raw_score' => $this->score], $this->isSensitive, $this->sensitivityNote, $this->relatedRoundIds);
     }
 
     public function markSensitive(string $note): self
     {
-        return new self($this->roundId, $this->driverId, $this->seasonTeamId, $this->score, $this->evidence, true, $note);
+        return new self($this->roundId, $this->driverId, $this->seasonTeamId, $this->score, $this->evidence, true, $note, $this->relatedRoundIds);
     }
 }

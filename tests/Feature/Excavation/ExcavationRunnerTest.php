@@ -121,11 +121,11 @@ class ExcavationRunnerTest extends TestCase
         $this->assertSame(1, $result->stats['sensitive']);
     }
 
-    public function test_a_driver_level_sensitivity_flags_only_that_driver(): void
+    public function test_a_driver_level_sensitivity_flags_that_driver_and_round_level_candidates_but_not_other_drivers(): void
     {
         $round = Round::factory()->create();
         [$flagged, $other] = Driver::factory()->count(2)->create();
-        MomentSensitivity::factory()->for($round)->for($flagged)->create();
+        MomentSensitivity::factory()->for($round)->for($flagged)->create(['note' => 'The driver was injured in practice.']);
 
         app(ExcavationRunner::class)->run($this->excavator(
             new Candidate($round->id, $flagged->id, null, 80.0, []),
@@ -133,7 +133,37 @@ class ExcavationRunnerTest extends TestCase
             new Candidate($round->id, null, null, 50.0, []),
         ), new DigParameters);
 
-        $this->assertSame([$flagged->id], MomentCandidate::where('is_sensitive', true)->pluck('driver_id')->all());
+        $this->assertEqualsCanonicalizing([$flagged->id, null], MomentCandidate::where('is_sensitive', true)->pluck('driver_id')->all());
+        $this->assertSame('The driver was injured in practice.', MomentCandidate::whereNull('driver_id')->value('sensitivity_note'));
+    }
+
+    public function test_a_driver_level_block_only_flags_a_round_level_candidate(): void
+    {
+        $round = Round::factory()->create();
+        MomentSensitivity::factory()->blocked()->for($round)->for(Driver::factory())->create(['note' => 'Family asked not to feature this.']);
+
+        $result = app(ExcavationRunner::class)->run($this->excavator(new Candidate($round->id, null, null, 50.0, [])), new DigParameters);
+
+        $this->assertSame(0, $result->stats['blocked']);
+        $this->assertTrue($result->candidates->sole()->isSensitive);
+    }
+
+    public function test_sensitivities_on_related_rounds_flag_with_the_round_named_but_never_block(): void
+    {
+        $round = Round::factory()->create();
+        $related = Round::factory()->create(['name' => 'Dutch Grand Prix']);
+        $blockedElsewhere = Round::factory()->create();
+        MomentSensitivity::factory()->for($related)->create(['note' => 'A marshal was killed.']);
+        MomentSensitivity::factory()->blocked()->for($blockedElsewhere)->create(['note' => 'Blocked.']);
+
+        $result = app(ExcavationRunner::class)->run($this->excavator(
+            new Candidate($round->id, null, null, 50.0, [], relatedRoundIds: [$related->id, $blockedElsewhere->id]),
+        ), new DigParameters);
+
+        $candidate = $result->candidates->sole();
+        $this->assertSame(0, $result->stats['blocked']);
+        $this->assertTrue($candidate->isSensitive);
+        $this->assertSame("{$related->season->year} Dutch Grand Prix: A marshal was killed. {$blockedElsewhere->season->year} British Grand Prix: Blocked.", $candidate->sensitivityNote);
     }
 
     public function test_skips_a_blocked_round_and_blocks_its_existing_unreviewed_candidates(): void

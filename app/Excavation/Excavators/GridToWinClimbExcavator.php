@@ -2,12 +2,11 @@
 
 namespace App\Excavation\Excavators;
 
-use App\Enums\SessionType;
 use App\Excavation\Candidate;
 use App\Excavation\DigParameters;
 use App\Excavation\Excavator;
+use App\Excavation\Support\RaceResultQuery;
 use App\Excavation\Support\RaceRoundStats;
-use App\Models\Result;
 use Illuminate\Support\Collection;
 
 /**
@@ -35,13 +34,7 @@ class GridToWinClimbExcavator implements Excavator
 
         $races = $this->stats->forParameters($parameters);
 
-        $query = Result::query()
-            ->toBase()
-            ->join('driver_entries', 'driver_entries.id', '=', 'results.driver_entry_id')
-            ->join('race_sessions', 'race_sessions.id', '=', 'driver_entries.race_session_id')
-            ->join('rounds', 'rounds.id', '=', 'race_sessions.round_id')
-            ->join('seasons', 'seasons.id', '=', 'rounds.season_id')
-            ->where('race_sessions.type', SessionType::Race)
+        $query = RaceResultQuery::make()
             ->where('results.position', 1)
             ->whereNotNull('results.grid')
             ->select('rounds.id as round_id', 'driver_entries.driver_id', 'driver_entries.season_team_id', 'results.grid');

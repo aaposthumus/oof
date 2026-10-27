@@ -11,11 +11,14 @@ use RuntimeException;
 /**
  * World Championship weekends on which someone was fatally injured in
  * connection with the event: drivers, marshals, spectators, team members and
- * drivers in support races. All are seeded as sensitive, never blocked.
- * Sensitive is only a review flag, so uncertain entries are included too.
+ * drivers in support races. Also weekends on which someone was seriously
+ * injured (hospitalised or left with a lasting injury), including media. All
+ * are seeded as sensitive, never blocked. Sensitive is only a review flag,
+ * so uncertain fatal entries are included too; uncertain injuries are not.
  *
  * Run with: php artisan db:seed --class=MomentSensitivitySeeder
  * Safe to re-run: it updates notes but keeps a level that was changed by hand.
+ * A weekend in both lists gets one note: the fatal note, then the injury note.
  */
 class MomentSensitivitySeeder extends Seeder
 {
@@ -68,11 +71,57 @@ class MomentSensitivitySeeder extends Seeder
     ];
 
     /**
+     * Serious, non-fatal injuries, keyed like WEEKENDS.
+     *
+     * @var array<string, string>
+     */
+    public const INJURY_WEEKENDS = [
+        '1960|Belgian Grand Prix' => 'Stirling Moss suffered broken legs and back injuries in a practice crash, and Michael Taylor was seriously injured in another practice crash.',
+        '1966|Belgian Grand Prix' => 'Jackie Stewart was trapped in the fuel-soaked car after a first-lap crash and was taken to hospital.',
+        '1966|German Grand Prix' => 'Guy Ligier suffered a broken kneecap in a practice crash; doctors considered amputating the leg.',
+        '1968|Canadian Grand Prix' => 'Jacky Ickx broke a leg in a practice crash after the throttle stuck open.',
+        '1969|United States Grand Prix' => 'Graham Hill broke both legs when thrown from the car in a crash during the race.',
+        '1972|French Grand Prix' => 'Helmut Marko lost the sight of one eye when a stone pierced the visor during the race.',
+        '1973|British Grand Prix' => 'Andrea de Adamich was trapped in the car for a long time after a first-lap pile-up and suffered leg injuries that ended the Formula One career.',
+        '1974|German Grand Prix' => 'Mike Hailwood broke a leg in a crash during the race, which ended the Formula One career.',
+        '1975|Spanish Grand Prix' => 'Rolf Stommelen was seriously injured in the same crash, and other people beside the track were injured.',
+        '1976|German Grand Prix' => 'Niki Lauda suffered severe burns and lung damage in a fiery crash during the race.',
+        '1977|Japanese Grand Prix' => 'Several other people in a prohibited area beside the track were injured in the same crash.',
+        '1978|Italian Grand Prix' => 'Vittorio Brambilla suffered a serious head injury in the same start crash.',
+        '1980|United States Grand Prix West' => 'Clay Regazzoni was left paralysed from the waist down by a crash during the race.',
+        '1980|Canadian Grand Prix' => 'Jean-Pierre Jabouille broke both legs in a crash during the race.',
+        '1981|Belgian Grand Prix' => 'Arrows mechanic Dave Luckett was hit by a car on the grid at the start and suffered two broken legs.',
+        '1982|German Grand Prix' => 'Didier Pironi suffered severe leg injuries in a practice crash, which ended the racing career.',
+        '1984|Dallas Grand Prix' => 'Martin Brundle broke both ankles and feet in a crash during qualifying.',
+        '1986|British Grand Prix' => 'Jacques Laffite broke both legs in a first-lap crash, which ended the Formula One career.',
+        '1989|San Marino Grand Prix' => 'Gerhard Berger suffered burns and a broken rib when the car caught fire after a crash during the race.',
+        '1990|Spanish Grand Prix' => 'Martin Donnelly was critically injured in a practice crash.',
+        '1993|Belgian Grand Prix' => 'Alessandro Zanardi was taken to hospital with concussion after a heavy practice crash.',
+        '1994|San Marino Grand Prix' => 'Rubens Barrichello was taken to hospital after a practice crash. Spectators were injured by debris from a start crash, and mechanics were struck by a loose wheel in the pit lane.',
+        '1994|Monaco Grand Prix' => 'Karl Wendlinger was left in a coma by a practice crash.',
+        '1994|Spanish Grand Prix' => 'Andrea Montermini broke a heel and a foot in a practice crash.',
+        '1995|Australian Grand Prix' => 'Mika Häkkinen suffered a fractured skull in a practice crash and needed an emergency tracheotomy beside the track.',
+        '1999|British Grand Prix' => 'Michael Schumacher broke a leg in a first-lap crash.',
+        '2001|Belgian Grand Prix' => 'Luciano Burti was taken to hospital with a severe concussion after a crash during the race.',
+        '2003|Monaco Grand Prix' => 'Jenson Button was taken to hospital with concussion after a practice crash and did not start the race.',
+        '2004|United States Grand Prix' => 'Ralf Schumacher suffered two cracked vertebrae in a crash during the race.',
+        '2007|Canadian Grand Prix' => 'Robert Kubica was taken to hospital with concussion and a sprained ankle after a heavy crash during the race.',
+        '2009|Hungarian Grand Prix' => 'Felipe Massa suffered a fractured skull when struck by a spring in qualifying.',
+        '2009|Japanese Grand Prix' => 'Timo Glock was taken to hospital with a leg wound after a qualifying crash; a cracked vertebra was found later.',
+        '2011|Monaco Grand Prix' => 'Sergio Pérez was taken to hospital with concussion after a qualifying crash.',
+        '2013|German Grand Prix' => 'Cameraman Paul Allen was hit by a loose wheel in the pit lane and taken to hospital with a broken collarbone and broken ribs.',
+        '2018|Bahrain Grand Prix' => 'Ferrari mechanic Francesco Cigarini broke a leg when struck by a car leaving a pit stop.',
+        '2019|Belgian Grand Prix' => 'Formula 2 driver Juan Manuel Correa was seriously injured in the same crash.',
+        '2020|Bahrain Grand Prix' => 'Romain Grosjean was taken to hospital with burns after the car split and caught fire in a first-lap crash.',
+    ];
+
+    /**
      * Run the database seeds.
      */
     public function run(): void
     {
-        foreach (self::WEEKENDS as $key => $note) {
+        foreach (array_keys([...self::WEEKENDS, ...self::INJURY_WEEKENDS]) as $key) {
+            $note = implode(' ', array_filter([self::WEEKENDS[$key] ?? null, self::INJURY_WEEKENDS[$key] ?? null]));
             [$year, $name] = explode('|', $key);
 
             $round = Round::query()

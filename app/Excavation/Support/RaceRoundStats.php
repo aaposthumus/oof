@@ -2,9 +2,7 @@
 
 namespace App\Excavation\Support;
 
-use App\Enums\SessionType;
 use App\Excavation\DigParameters;
-use App\Models\Result;
 use Illuminate\Support\Collection;
 
 /**
@@ -21,14 +19,7 @@ class RaceRoundStats
      */
     public function forParameters(DigParameters $parameters): Collection
     {
-        $query = Result::query()
-            ->toBase()
-            ->join('driver_entries', 'driver_entries.id', '=', 'results.driver_entry_id')
-            ->join('race_sessions', 'race_sessions.id', '=', 'driver_entries.race_session_id')
-            ->join('rounds', 'rounds.id', '=', 'race_sessions.round_id')
-            ->join('seasons', 'seasons.id', '=', 'rounds.season_id')
-            ->where('race_sessions.type', SessionType::Race)
-            ->whereNotIn('rounds.name', config('excavators.excluded_round_names'))
+        $query = RaceResultQuery::make()
             ->groupBy('rounds.id', 'seasons.year')
             ->select('rounds.id as round_id', 'seasons.year')
             ->selectRaw('count(*) as entries')

@@ -4,9 +4,23 @@ namespace App\Excavation;
 
 use App\Enums\MomentCandidateStatus;
 use App\Enums\SensitivityLevel;
+use App\Excavation\Excavators\AgeRecordExcavator;
+use App\Excavation\Excavators\ClosestFinishExcavator;
+use App\Excavation\Excavators\CuriousRetirementExcavator;
+use App\Excavation\Excavators\DisqualificationExcavator;
+use App\Excavation\Excavators\DominantWinExcavator;
 use App\Excavation\Excavators\FewestFinishersExcavator;
 use App\Excavation\Excavators\FewestStartersExcavator;
+use App\Excavation\Excavators\FirstTimeWinnerExcavator;
 use App\Excavation\Excavators\GridToWinClimbExcavator;
+use App\Excavation\Excavators\MostRetirementsExcavator;
+use App\Excavation\Excavators\PodiumDroughtEndedExcavator;
+use App\Excavation\Excavators\ShortestRaceExcavator;
+use App\Excavation\Excavators\SlowestPitStopExcavator;
+use App\Excavation\Excavators\StartMilestoneExcavator;
+use App\Excavation\Excavators\SurpriseWinnerExcavator;
+use App\Excavation\Excavators\TitleDeciderExcavator;
+use App\Excavation\Excavators\WinDroughtEndedExcavator;
 use App\Excavation\Support\PercentileRank;
 use App\Models\ExcavationRun;
 use App\Models\MomentCandidate;
@@ -22,6 +36,11 @@ use Throwable;
  * the candidates. Re-digging updates existing candidates; a status set by a
  * reviewer (accepted, rejected) is never changed. Candidate scores are
  * percentile ranks within their type, recalculated after every dig.
+ *
+ * A sensitivity blocks the candidates of its round, or only that driver's
+ * when it names one. It flags every candidate it concerns: those of its
+ * round (round-level candidates also by a driver's sensitivity) and those
+ * whose story spans its round.
  */
 class ExcavationRunner
 {
@@ -34,6 +53,20 @@ class ExcavationRunner
         FewestStartersExcavator::class,
         FewestFinishersExcavator::class,
         GridToWinClimbExcavator::class,
+        SurpriseWinnerExcavator::class,
+        FirstTimeWinnerExcavator::class,
+        WinDroughtEndedExcavator::class,
+        PodiumDroughtEndedExcavator::class,
+        MostRetirementsExcavator::class,
+        CuriousRetirementExcavator::class,
+        DisqualificationExcavator::class,
+        ShortestRaceExcavator::class,
+        DominantWinExcavator::class,
+        ClosestFinishExcavator::class,
+        TitleDeciderExcavator::class,
+        AgeRecordExcavator::class,
+        StartMilestoneExcavator::class,
+        SlowestPitStopExcavator::class,
     ];
 
     public function __construct(private Container $container) {}
@@ -57,21 +90,30 @@ class ExcavationRunner
     {
         $startedAt = now();
         $found = $excavator->dig($parameters);
-        $sensitivities = MomentSensitivity::all()->groupBy('round_id');
+        $sensitivities = MomentSensitivity::with('round.season')->get()->groupBy('round_id');
 
         $blocked = 0;
         $candidates = $found
             ->map(function (Candidate $candidate) use ($sensitivities, &$blocked) {
-                $matches = $sensitivities->get($candidate->roundId, collect())
-                    ->filter(fn (MomentSensitivity $sensitivity) => $sensitivity->driver_id === null || $sensitivity->driver_id === $candidate->driverId);
+                $own = $sensitivities->get($candidate->roundId, collect());
 
-                if ($matches->contains('level', SensitivityLevel::Blocked)) {
+                if ($own->contains(fn (MomentSensitivity $sensitivity) => $sensitivity->level === SensitivityLevel::Blocked && ($sensitivity->driver_id === null || $sensitivity->driver_id === $candidate->driverId))) {
                     $blocked++;
 
                     return null;
                 }
 
-                return $matches->isEmpty() ? $candidate : $candidate->markSensitive($matches->pluck('note')->implode(' '));
+                $matches = collect([$candidate->roundId, ...$candidate->relatedRoundIds])
+                    ->unique()
+                    ->flatMap(fn (int $roundId) => $sensitivities->get($roundId, collect()))
+                    ->filter(fn (MomentSensitivity $sensitivity) => $this->flags($sensitivity, $candidate));
+
+                return $matches->isEmpty() ? $candidate : $candidate->markSensitive($matches
+                    ->map(fn (MomentSensitivity $sensitivity) => $sensitivity->round_id === $candidate->roundId
+                        ? $sensitivity->note
+                        : "{$sensitivity->round->season->year} {$sensitivity->round->name}: {$sensitivity->note}")
+                    ->unique()
+                    ->implode(' '));
             })
             ->filter()
             ->sortByDesc('score')
@@ -123,6 +165,15 @@ class ExcavationRunner
             $candidates->map(fn (Candidate $candidate) => $candidate->withRankedScore($scores[$this->candidateKey($candidate->roundId, $candidate->driverId)])),
             $stats,
         );
+    }
+
+    /**
+     * A round-level sensitivity concerns every candidate, a driver's only that
+     * driver's candidates and the round-level ones.
+     */
+    private function flags(MomentSensitivity $sensitivity, Candidate $candidate): bool
+    {
+        return $sensitivity->driver_id === null || $candidate->driverId === null || $sensitivity->driver_id === $candidate->driverId;
     }
 
     private function store(ExcavationRun $run, Excavator $excavator, Candidate $candidate): MomentCandidate

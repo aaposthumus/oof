@@ -75,6 +75,21 @@ class ResultFactory extends Factory
         ]);
     }
 
+    /**
+     * Disqualified after the race; the position is still set, as in the data.
+     */
+    public function disqualified(int $position = 20, string $status = 'Disqualified'): static
+    {
+        return $this->state(fn () => [
+            'position' => $position,
+            'position_text' => 'D',
+            'classification_order' => $position,
+            'is_classified' => false,
+            'status' => $status,
+            'points' => 0,
+        ]);
+    }
+
     public function fromGrid(int $grid): static
     {
         return $this->state(fn () => ['grid' => $grid]);

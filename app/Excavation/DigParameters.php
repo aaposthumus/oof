@@ -30,6 +30,16 @@ final readonly class DigParameters
     }
 
     /**
+     * Whether a season is selected, for excavators that look at the full history.
+     */
+    public function includes(int $year): bool
+    {
+        return ($this->seasons === [] || in_array($year, $this->seasons, true))
+            && ($this->from === null || $year >= $this->from)
+            && ($this->to === null || $year <= $this->to);
+    }
+
+    /**
      * @return array{seasons: list<int>, from: int|null, to: int|null}
      */
     public function toArray(): array
