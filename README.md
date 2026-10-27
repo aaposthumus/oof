@@ -21,6 +21,18 @@ Laravel is a web application framework with expressive, elegant syntax. We belie
 
 Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
+## Pulling the production database
+
+`bin/pull-db.sh` copies the production database into the local Sail MySQL database. Run it on the Mac itself (not inside Sail), with Sail running:
+
+```bash
+./bin/pull-db.sh
+```
+
+It uses the `oof` SSH alias, reads the production credentials from the server's `.env` (nothing is stored in the repo), skips Laravel's housekeeping tables, and asks for confirmation before overwriting local data. It never writes to the server.
+
+`php artisan oof:status` prints an overview of the raw layer and core tables, locally or on the server.
+
 ## Learning Laravel
 
 Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
