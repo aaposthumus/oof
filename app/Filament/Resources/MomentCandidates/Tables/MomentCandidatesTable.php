@@ -61,9 +61,6 @@ class MomentCandidatesTable
             ->filters([
                 SelectFilter::make('type')
                     ->options(EvidenceSummary::typeLabels()),
-                SelectFilter::make('status')
-                    ->options(collect(MomentCandidateStatus::cases())->mapWithKeys(fn (MomentCandidateStatus $status) => [$status->value => ucfirst($status->value)])->all())
-                    ->default(MomentCandidateStatus::New->value),
                 TernaryFilter::make('is_sensitive')
                     ->label('Sensitive')
                     ->trueLabel('Sensitive only')
@@ -120,11 +117,11 @@ class MomentCandidatesTable
     }
 
     /**
-     * Whether the list is filtered on one status, so the bulk action that sets it changes nothing.
+     * Whether the list shows one status tab, so the bulk action that sets it changes nothing.
      */
     private static function filteredOn(object $livewire, MomentCandidateStatus $status): bool
     {
-        return ($livewire->tableFilters['status']['value'] ?? null) === $status->value;
+        return $livewire->activeStatus() === $status;
     }
 
     /**

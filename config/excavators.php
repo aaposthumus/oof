@@ -87,9 +87,13 @@ return [
     | A winner is a hit when their team stood at least min_position and at
     | least min_relative of the way down the constructors' standings before
     | the race (0 = leader, 1 = last), or when it was their only career win.
-    | Constructors' standings exist from 1958; before the first round the
-    | team's final position of the season before counts. Raw score:
-    | 100 × relative position, plus only_win_bonus for an only career win.
+    | Constructors' standings exist from 1958. In the first
+    | early_season_rounds rounds they say little, so the team's final position
+    | of the season before counts instead. A team excluded from a season's
+    | standings has no known position: it is missing although its drivers
+    | scored, or listed in excluded_teams (year and team slug). Then only an
+    | only career win can be a hit. Raw score: 100 × relative position, plus
+    | only_win_bonus for an only career win.
     |
     */
 
@@ -97,6 +101,10 @@ return [
         'min_position' => 5,
         'min_relative' => 0.4,
         'only_win_bonus' => 40,
+        'early_season_rounds' => 3,
+        'excluded_teams' => [
+            ['year' => 2007, 'team' => 'mclaren'],
+        ],
     ],
 
     /*

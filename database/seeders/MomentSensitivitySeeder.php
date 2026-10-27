@@ -122,7 +122,7 @@ class MomentSensitivitySeeder extends Seeder
         ['1994|San Marino Grand Prix', null, 'Spectators were injured by debris from a start crash, and mechanics were struck by a loose wheel in the pit lane.'],
         ['1994|Spanish Grand Prix', 'montermini', 'Andrea Montermini broke a heel and a foot in a practice crash.'],
         ['1995|Australian Grand Prix', 'hakkinen', 'Mika Häkkinen suffered a fractured skull in a practice crash and needed an emergency tracheotomy beside the track.'],
-        ['1996|Monaco Grand Prix', 'montermini', 'Andrea Montermini is recorded as retiring from the race with an injury; the circumstances are unconfirmed.'],
+        ['1996|Monaco Grand Prix', 'montermini', 'Andrea Montermini crashed in the warm-up and did not start the race; no serious injury was reported.', SensitivitySeverity::Minor],
         ['1997|Japanese Grand Prix', 'morbidelli', 'Gianni Morbidelli is recorded as not starting because of an injury; the circumstances are unconfirmed.'],
         ['1999|British Grand Prix', 'michael_schumacher', 'Michael Schumacher broke a leg in a first-lap crash.'],
         ['2001|Belgian Grand Prix', 'burti', 'Luciano Burti was taken to hospital with a severe concussion after a crash during the race.'],

@@ -47,7 +47,7 @@ class MomentSensitivitySeederTest extends TestCase
         $this->assertSame('1976 German Grand Prix', $lauda->round->season->year.' '.$lauda->round->name);
         $this->assertSame(MomentSensitivitySeeder::WEEKENDS['1959|German Grand Prix'], MomentSensitivity::whereRelation('round', 'name', 'German Grand Prix')->whereRelation('round.season', 'year', 1959)->sole()->note);
         $this->assertEqualsCanonicalizing(
-            ['fisichella', 'mcnish', 'alonso', 'max_verstappen', 'zhou', 'albon'],
+            ['fisichella', 'montermini', 'mcnish', 'alonso', 'max_verstappen', 'zhou', 'albon'],
             $injuries->where('severity', SensitivitySeverity::Minor)->map(fn (MomentSensitivity $sensitivity) => $sensitivity->driver->jolpica_driver_id)->values()->all(),
         );
         $this->assertSame(

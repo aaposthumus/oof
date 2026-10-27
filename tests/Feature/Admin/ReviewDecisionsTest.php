@@ -41,7 +41,7 @@ class ReviewDecisionsTest extends TestCase
 
     private function list(): Testable
     {
-        return Livewire::test(ListMomentCandidates::class)->removeTableFilter('status');
+        return Livewire::test(ListMomentCandidates::class)->set('activeTab', 'all');
     }
 
     /**
@@ -120,10 +120,10 @@ class ReviewDecisionsTest extends TestCase
         $this->candidate(MomentCandidateStatus::Blocked);
 
         Livewire::test(ListMomentCandidates::class)
-            ->filterTable('status', 'blocked')
+            ->set('activeTab', 'blocked')
             ->assertTableBulkActionHidden('block')
             ->assertTableBulkActionVisible('reset')
-            ->filterTable('status', 'new')
+            ->set('activeTab', 'new')
             ->assertTableBulkActionHidden('reset')
             ->assertTableBulkActionVisible('block');
     }
@@ -212,6 +212,53 @@ class ReviewDecisionsTest extends TestCase
         $candidate = $this->candidate(MomentCandidateStatus::Rejected);
 
         $this->list()->mountTableAction('reset', $candidate);
+
+        $this->assertSame(MomentCandidateStatus::New, $candidate->fresh()->status);
+    }
+
+    public function test_the_status_tabs_default_to_new_and_count_each_status(): void
+    {
+        $new = $this->candidate();
+        $this->candidate(MomentCandidateStatus::Accepted);
+        $blocked = $this->candidate(MomentCandidateStatus::Blocked);
+        $this->candidate(MomentCandidateStatus::Blocked);
+
+        $list = Livewire::test(ListMomentCandidates::class);
+
+        $this->assertSame(['new', 'accepted', 'rejected', 'blocked', 'all'], array_keys($list->instance()->getCachedTabs()));
+        $this->assertEquals([1, 1, 0, 2, 4], collect($list->instance()->getCachedTabs())->map(fn ($tab) => $tab->getBadge())->values()->all());
+        $list->assertSet('activeTab', 'new')->assertCanSeeTableRecords([$new])->assertCanNotSeeTableRecords([$blocked]);
+        $list->set('activeTab', 'blocked')->assertCanSeeTableRecords([$blocked])->assertCanNotSeeTableRecords([$new]);
+        $list->set('activeTab', 'all')->assertCanSeeTableRecords([$new, $blocked]);
+    }
+
+    public function test_a_blocked_candidate_can_be_found_reset_and_found_under_new(): void
+    {
+        $candidate = $this->candidate();
+
+        $list = Livewire::test(ListMomentCandidates::class)->callTableAction('block', $candidate);
+        $this->assertSame(MomentCandidateStatus::Blocked, $candidate->fresh()->status);
+        $list->assertCanNotSeeTableRecords([$candidate]);
+
+        $list->set('activeTab', 'blocked')->assertCanSeeTableRecords([$candidate])
+            ->callTableAction('reset', $candidate);
+        $this->assertSame(MomentCandidateStatus::New, $candidate->fresh()->status);
+        $list->assertCanNotSeeTableRecords([$candidate]);
+
+        $list->set('activeTab', 'new')->assertCanSeeTableRecords([$candidate]);
+    }
+
+    public function test_the_detail_page_of_a_blocked_candidate_offers_accept_reject_and_reset(): void
+    {
+        $candidate = $this->candidate(MomentCandidateStatus::Blocked);
+
+        $detail = Livewire::test(ViewMomentCandidate::class, ['record' => $candidate->getRouteKey()])
+            ->assertActionVisible('accept')
+            ->assertActionVisible('reject')
+            ->assertActionVisible('reset')
+            ->assertActionHidden('block');
+
+        $detail->callAction('reset');
 
         $this->assertSame(MomentCandidateStatus::New, $candidate->fresh()->status);
     }

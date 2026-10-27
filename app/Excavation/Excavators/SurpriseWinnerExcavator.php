@@ -8,6 +8,7 @@ use App\Excavation\Excavator;
 use App\Excavation\Support\CareerTimeline;
 use App\Models\ConstructorStanding;
 use App\Models\SeasonTeam;
+use App\Models\Team;
 use Illuminate\Support\Collection;
 
 /**
@@ -25,7 +26,7 @@ class SurpriseWinnerExcavator implements Excavator
 
     public function version(): int
     {
-        return 1;
+        return 2;
     }
 
     public function dig(DigParameters $parameters): Collection
@@ -72,14 +73,17 @@ class SurpriseWinnerExcavator implements Excavator
 
     /**
      * Finds the winner's team position before the race: after the previous
-     * round, or in the first round the team's final position the season
-     * before. A team without points stands just below the scoring teams;
-     * standings list only those, so the field is the teams in the race.
+     * round, or in the first early_season_rounds rounds the team's final
+     * position the season before. A team without points stands just below the
+     * scoring teams; standings list only those, so the field is the teams in
+     * the race. The position is unknown (null) for a team excluded from the
+     * standings, and for one that is missing although its drivers scored.
      *
      * @return callable(object): (array{position: int, teams: int, previous_season: bool}|null)
      */
     private function standingsBefore(): callable
     {
+        $earlyRounds = (int) config('excavators.surprise_winner.early_season_rounds');
         $rows = ConstructorStanding::query()
             ->toBase()
             ->join('rounds', 'rounds.id', '=', 'constructor_standings.round_id')
@@ -91,24 +95,36 @@ class SurpriseWinnerExcavator implements Excavator
         $byRound = $rows->groupBy(fn (object $row) => $row->year.':'.$row->round_number);
         $finalRound = $rows->groupBy('year')->map(fn (Collection $season) => $season->max('round_number'));
         $teamOf = SeasonTeam::query()->pluck('team_id', 'id');
+        $slugOf = Team::query()->pluck('slug', 'id');
         $teamsInRace = $this->timeline->byRound()->map(fn (Collection $race) => $race->unique('season_team_id')->count());
+        $excluded = collect(config('excavators.surprise_winner.excluded_teams'))
+            ->map(fn (array $exclusion) => $exclusion['year'].':'.$exclusion['team'])
+            ->flip();
+        $scoringRounds = $this->timeline->rows()
+            ->where('points', '>', 0)
+            ->groupBy(fn (object $row) => $row->year.':'.$teamOf->get($row->season_team_id))
+            ->map(fn (Collection $scored) => $scored->min('round_number'));
 
-        return function (object $win) use ($byRound, $finalRound, $teamOf, $teamsInRace): ?array {
-            $previousSeason = $win->round_number === 1;
-            $standings = $previousSeason
-                ? $byRound->get(($win->year - 1).':'.$finalRound->get($win->year - 1))
-                : $byRound->get($win->year.':'.($win->round_number - 1));
+        return function (object $win) use ($earlyRounds, $byRound, $finalRound, $teamOf, $slugOf, $excluded, $scoringRounds, $teamsInRace): ?array {
+            $previousSeason = $win->round_number <= $earlyRounds;
+            $year = $previousSeason ? $win->year - 1 : $win->year;
+            $standingsRound = $previousSeason ? $finalRound->get($year) : $win->round_number - 1;
+            $standings = $byRound->get($year.':'.$standingsRound);
+            $teamId = $teamOf->get($win->season_team_id);
 
-            if ($standings === null) {
+            if ($standings === null || $excluded->has($year.':'.$slugOf->get($teamId))) {
                 return null;
             }
 
-            $standing = $previousSeason
-                ? $standings->firstWhere('team_id', $teamOf->get($win->season_team_id))
-                : $standings->firstWhere('season_team_id', $win->season_team_id);
+            $standing = $standings->firstWhere('team_id', $teamId);
 
             // A new team, or one renamed, has no position from the season before.
             if ($standing === null && $previousSeason) {
+                return null;
+            }
+
+            // Missing although its drivers had scored by then: excluded, not pointless.
+            if ($standing === null && ($scoringRounds->get($year.':'.$teamId) ?? PHP_INT_MAX) <= $standingsRound) {
                 return null;
             }
 
