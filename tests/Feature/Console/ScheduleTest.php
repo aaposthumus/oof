@@ -18,4 +18,12 @@ class ScheduleTest extends TestCase
         $this->assertTrue($dig->withoutOverlapping);
         $this->assertSame('30 * * * *', $normalize->expression);
     }
+
+    public function test_imports_openf1_hourly_after_the_jolpica_import_and_before_normalizing(): void
+    {
+        $import = collect(app(Schedule::class)->events())->sole(fn (Event $event) => str_contains($event->command, 'oof:import --source=openf1'));
+
+        $this->assertSame('15 * * * *', $import->expression);
+        $this->assertTrue($import->withoutOverlapping);
+    }
 }

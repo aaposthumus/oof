@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['jolpica_circuit_id', 'name', 'locality', 'country', 'latitude', 'longitude', 'wikipedia_url'])]
+#[Fillable(['jolpica_circuit_id', 'openf1_circuit_key', 'name', 'locality', 'country', 'latitude', 'longitude', 'wikipedia_url'])]
 class Circuit extends Model
 {
     /** @use HasFactory<CircuitFactory> */

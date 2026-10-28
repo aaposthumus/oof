@@ -74,4 +74,28 @@ class DriverEntry extends Model
     {
         return $this->hasMany(LapTime::class);
     }
+
+    /**
+     * @return HasMany<SessionLap, $this>
+     */
+    public function sessionLaps(): HasMany
+    {
+        return $this->hasMany(SessionLap::class);
+    }
+
+    /**
+     * @return HasMany<Stint, $this>
+     */
+    public function stints(): HasMany
+    {
+        return $this->hasMany(Stint::class);
+    }
+
+    /**
+     * @return HasMany<PitLaneVisit, $this>
+     */
+    public function pitLaneVisits(): HasMany
+    {
+        return $this->hasMany(PitLaneVisit::class);
+    }
 }

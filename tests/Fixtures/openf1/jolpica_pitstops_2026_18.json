@@ -1,0 +1,261 @@
+{
+ "MRData": {
+  "url": "https://api.jolpi.ca/ergast/f1/2026/18/pitstops.json",
+  "limit": "100",
+  "total": "32",
+  "xmlns": "",
+  "offset": "0",
+  "series": "f1",
+  "RaceTable": {
+   "Races": [
+    {
+     "url": "https://en.wikipedia.org/wiki/2026_United_States_Grand_Prix",
+     "date": "2026-10-25",
+     "time": "20:00:00Z",
+     "round": "18",
+     "season": "2026",
+     "Circuit": {
+      "url": "https://en.wikipedia.org/wiki/Circuit_of_the_Americas",
+      "Location": {
+       "lat": "30.1328",
+       "long": "-97.6411",
+       "country": "USA",
+       "locality": "Austin"
+      },
+      "circuitId": "americas",
+      "circuitName": "Circuit of the Americas"
+     },
+     "PitStops": [
+      {
+       "lap": "13",
+       "stop": "1",
+       "time": "15:25:50",
+       "driverId": "max_verstappen",
+       "duration": "23.960"
+      },
+      {
+       "lap": "13",
+       "stop": "1",
+       "time": "15:26:28",
+       "driverId": "bearman",
+       "duration": "24.217"
+      },
+      {
+       "lap": "14",
+       "stop": "1",
+       "time": "15:27:38",
+       "driverId": "hamilton",
+       "duration": "24.120"
+      },
+      {
+       "lap": "15",
+       "stop": "1",
+       "time": "15:29:15",
+       "driverId": "leclerc",
+       "duration": "24.072"
+      },
+      {
+       "lap": "15",
+       "stop": "1",
+       "time": "15:29:32",
+       "driverId": "piastri",
+       "duration": "23.413"
+      },
+      {
+       "lap": "15",
+       "stop": "1",
+       "time": "15:30:07",
+       "driverId": "stroll",
+       "duration": "24.338"
+      },
+      {
+       "lap": "16",
+       "stop": "1",
+       "time": "15:31:09",
+       "driverId": "norris",
+       "duration": "25.760"
+      },
+      {
+       "lap": "16",
+       "stop": "1",
+       "time": "15:31:47",
+       "driverId": "albon",
+       "duration": "24.425"
+      },
+      {
+       "lap": "17",
+       "stop": "1",
+       "time": "15:33:34",
+       "driverId": "sainz",
+       "duration": "33.692"
+      },
+      {
+       "lap": "18",
+       "stop": "1",
+       "time": "15:35:02",
+       "driverId": "arvid_lindblad",
+       "duration": "23.793"
+      },
+      {
+       "lap": "21",
+       "stop": "1",
+       "time": "15:40:09",
+       "driverId": "ocon",
+       "duration": "24.937"
+      },
+      {
+       "lap": "22",
+       "stop": "1",
+       "time": "15:41:22",
+       "driverId": "russell",
+       "duration": "29.761"
+      },
+      {
+       "lap": "22",
+       "stop": "2",
+       "time": "15:42:21",
+       "driverId": "bearman",
+       "duration": "34.744"
+      },
+      {
+       "lap": "23",
+       "stop": "1",
+       "time": "15:44:05",
+       "driverId": "perez",
+       "duration": "25.184"
+      },
+      {
+       "lap": "24",
+       "stop": "1",
+       "time": "15:44:22",
+       "driverId": "antonelli",
+       "duration": "23.594"
+      },
+      {
+       "lap": "24",
+       "stop": "1",
+       "time": "15:45:10",
+       "driverId": "gasly",
+       "duration": "26.982"
+      },
+      {
+       "lap": "25",
+       "stop": "1",
+       "time": "15:46:18",
+       "driverId": "hadjar",
+       "duration": "24.066"
+      },
+      {
+       "lap": "25",
+       "stop": "1",
+       "time": "15:46:48",
+       "driverId": "lawson",
+       "duration": "24.226"
+      },
+      {
+       "lap": "26",
+       "stop": "1",
+       "time": "15:48:52",
+       "driverId": "bortoleto",
+       "duration": "24.084"
+      },
+      {
+       "lap": "28",
+       "stop": "1",
+       "time": "15:52:12",
+       "driverId": "alonso",
+       "duration": "24.202"
+      },
+      {
+       "lap": "29",
+       "stop": "1",
+       "time": "15:53:50",
+       "driverId": "hulkenberg",
+       "duration": "23.929"
+      },
+      {
+       "lap": "29",
+       "stop": "1",
+       "time": "15:54:38",
+       "driverId": "bottas",
+       "duration": "24.241"
+      },
+      {
+       "lap": "30",
+       "stop": "1",
+       "time": "15:56:07",
+       "driverId": "colapinto",
+       "duration": "25.366"
+      },
+      {
+       "lap": "31",
+       "stop": "2",
+       "time": "15:56:21",
+       "driverId": "max_verstappen",
+       "duration": "25.389"
+      },
+      {
+       "lap": "31",
+       "stop": "2",
+       "time": "15:57:47",
+       "driverId": "albon",
+       "duration": "23.698"
+      },
+      {
+       "lap": "38",
+       "stop": "2",
+       "time": "16:08:13",
+       "driverId": "hamilton",
+       "duration": "23.955"
+      },
+      {
+       "lap": "39",
+       "stop": "2",
+       "time": "16:09:46",
+       "driverId": "leclerc",
+       "duration": "24.227"
+      },
+      {
+       "lap": "38",
+       "stop": "2",
+       "time": "16:10:00",
+       "driverId": "sainz",
+       "duration": "24.380"
+      },
+      {
+       "lap": "40",
+       "stop": "2",
+       "time": "16:12:44",
+       "driverId": "arvid_lindblad",
+       "duration": "24.505"
+      },
+      {
+       "lap": "41",
+       "stop": "2",
+       "time": "16:14:55",
+       "driverId": "stroll",
+       "duration": "23.824"
+      },
+      {
+       "lap": "42",
+       "stop": "2",
+       "time": "16:16:22",
+       "driverId": "alonso",
+       "duration": "40.424"
+      },
+      {
+       "lap": "50",
+       "stop": "2",
+       "time": "16:29:44",
+       "driverId": "bortoleto",
+       "duration": "23.974"
+      }
+     ],
+     "raceName": "United States Grand Prix"
+    }
+   ],
+   "round": "18",
+   "season": "2026"
+  }
+ }
+}

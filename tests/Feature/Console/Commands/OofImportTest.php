@@ -33,4 +33,22 @@ class OofImportTest extends TestCase
             ->expectsOutputToContain('Run the command again to resume')
             ->assertFailed();
     }
+
+    public function test_dry_run_of_openf1_counts_its_season_listings(): void
+    {
+        Http::preventStrayRequests();
+
+        $this->artisan('oof:import', ['--source' => 'openf1', '--season' => [2026], '--dry-run' => true])
+            ->expectsOutputToContain('OpenF1: 2 requests to fetch')
+            ->assertSuccessful();
+
+        Http::assertNothingSent();
+    }
+
+    public function test_rejects_an_unknown_source_and_options_of_the_other_source(): void
+    {
+        $this->artisan('oof:import', ['--source' => 'ergast'])->assertFailed();
+        $this->artisan('oof:import', ['--source' => 'openf1', '--laps' => true])->assertFailed();
+        $this->artisan('oof:import', ['--meeting' => 1297])->assertFailed();
+    }
 }

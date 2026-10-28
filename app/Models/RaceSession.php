@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['round_id', 'type', 'scheduled_date', 'scheduled_time'])]
+#[Fillable(['round_id', 'type', 'openf1_session_key', 'scheduled_date', 'scheduled_time'])]
 class RaceSession extends Model
 {
     /** @use HasFactory<RaceSessionFactory> */
@@ -43,5 +43,29 @@ class RaceSession extends Model
     public function driverEntries(): HasMany
     {
         return $this->hasMany(DriverEntry::class);
+    }
+
+    /**
+     * @return HasMany<OpenF1SessionDriver, $this>
+     */
+    public function openF1SessionDrivers(): HasMany
+    {
+        return $this->hasMany(OpenF1SessionDriver::class);
+    }
+
+    /**
+     * @return HasMany<RaceControlMessage, $this>
+     */
+    public function raceControlMessages(): HasMany
+    {
+        return $this->hasMany(RaceControlMessage::class);
+    }
+
+    /**
+     * @return HasMany<WeatherSample, $this>
+     */
+    public function weatherSamples(): HasMany
+    {
+        return $this->hasMany(WeatherSample::class);
     }
 }

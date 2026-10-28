@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A round of a season. Its name, short name and country are its own and are
  * never derived from the circuit it was held at.
  */
-#[Fillable(['season_id', 'round_number', 'circuit_id', 'name', 'short_name', 'country_name', 'country_code', 'jolpica_race_name', 'date', 'time', 'wikipedia_url'])]
+#[Fillable(['season_id', 'round_number', 'circuit_id', 'name', 'short_name', 'country_name', 'country_code', 'jolpica_race_name', 'openf1_meeting_key', 'date', 'time', 'wikipedia_url'])]
 class Round extends Model
 {
     /** @use HasFactory<RoundFactory> */

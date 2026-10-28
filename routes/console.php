@@ -13,6 +13,12 @@ Schedule::command('oof:import')
     ->withoutOverlapping(720)
     ->appendOutputTo(storage_path('logs/import.log'));
 
+// Session data, fetched again at moments after each session ends (config openf1.refetch_after_minutes).
+Schedule::command('oof:import --source=openf1')
+    ->hourlyAt(15)
+    ->withoutOverlapping(240)
+    ->appendOutputTo(storage_path('logs/import-openf1.log'));
+
 Schedule::command('oof:normalize')
     ->hourlyAt(30)
     ->withoutOverlapping()

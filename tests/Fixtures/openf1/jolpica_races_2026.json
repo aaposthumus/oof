@@ -1,0 +1,120 @@
+{
+ "MRData": {
+  "url": "https://api.jolpi.ca/ergast/f1/2026/races.json",
+  "limit": "100",
+  "total": "3",
+  "xmlns": "",
+  "offset": "0",
+  "series": "f1",
+  "RaceTable": {
+   "Races": [
+    {
+     "url": "https://en.wikipedia.org/wiki/2026_Bahrain_Grand_Prix",
+     "date": "2026-10-04",
+     "time": "07:00:00Z",
+     "round": "16",
+     "season": "2026",
+     "Circuit": {
+      "url": "https://en.wikipedia.org/wiki/Sepang_International_Circuit",
+      "Location": {
+       "lat": "2.76083",
+       "long": "101.738",
+       "country": "Malaysia",
+       "locality": "Kuala Lumpur"
+      },
+      "circuitId": "sepang",
+      "circuitName": "Sepang International Circuit"
+     },
+     "raceName": "Bahrain Grand Prix in Malaysia",
+     "Qualifying": {
+      "date": "2026-10-03",
+      "time": "08:00:00Z"
+     },
+     "FirstPractice": {
+      "date": "2026-10-02",
+      "time": "04:30:00Z"
+     },
+     "ThirdPractice": {
+      "date": "2026-10-03",
+      "time": "04:30:00Z"
+     },
+     "SecondPractice": {
+      "date": "2026-10-02",
+      "time": "08:00:00Z"
+     }
+    },
+    {
+     "url": "https://en.wikipedia.org/wiki/2026_United_States_Grand_Prix",
+     "date": "2026-10-25",
+     "time": "20:00:00Z",
+     "round": "18",
+     "season": "2026",
+     "Circuit": {
+      "url": "https://en.wikipedia.org/wiki/Circuit_of_the_Americas",
+      "Location": {
+       "lat": "30.1328",
+       "long": "-97.6411",
+       "country": "USA",
+       "locality": "Austin"
+      },
+      "circuitId": "americas",
+      "circuitName": "Circuit of the Americas"
+     },
+     "raceName": "United States Grand Prix",
+     "Qualifying": {
+      "date": "2026-10-24",
+      "time": "21:00:00Z"
+     },
+     "FirstPractice": {
+      "date": "2026-10-23",
+      "time": "17:30:00Z"
+     },
+     "ThirdPractice": {
+      "date": "2026-10-24",
+      "time": "17:30:00Z"
+     },
+     "SecondPractice": {
+      "date": "2026-10-23",
+      "time": "21:00:00Z"
+     }
+    },
+    {
+     "url": "https://en.wikipedia.org/wiki/2026_Brazilian_Grand_Prix",
+     "date": "2026-11-08",
+     "time": "17:00:00Z",
+     "round": "20",
+     "season": "2026",
+     "Circuit": {
+      "url": "https://en.wikipedia.org/wiki/Interlagos_Circuit",
+      "Location": {
+       "lat": "-23.7036",
+       "long": "-46.6997",
+       "country": "Brazil",
+       "locality": "São Paulo"
+      },
+      "circuitId": "interlagos",
+      "circuitName": "Autódromo José Carlos Pace"
+     },
+     "raceName": "Brazilian Grand Prix",
+     "Qualifying": {
+      "date": "2026-11-07",
+      "time": "18:00:00Z"
+     },
+     "FirstPractice": {
+      "date": "2026-11-06",
+      "time": "15:30:00Z"
+     },
+     "ThirdPractice": {
+      "date": "2026-11-07",
+      "time": "14:30:00Z"
+     },
+     "SecondPractice": {
+      "date": "2026-11-06",
+      "time": "19:00:00Z"
+     }
+    }
+   ],
+   "season": "2026"
+  }
+ }
+}
