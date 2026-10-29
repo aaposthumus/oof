@@ -32,6 +32,19 @@ final class NameMatcher
     }
 
     /**
+     * Whether an OpenF1 driver's full name is one of these names.
+     *
+     * @param  array{full_name?: ?string}  $row  An OpenF1 driver
+     * @param  list<string>  $names
+     */
+    public static function isAnyOf(array $row, array $names): bool
+    {
+        $fullName = self::tokens($row['full_name'] ?? null);
+
+        return $fullName !== [] && array_any($names, fn (string $name) => self::tokens($name) === $fullName);
+    }
+
+    /**
      * @return list<string>
      */
     private static function tokens(?string $name): array

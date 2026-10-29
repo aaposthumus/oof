@@ -50,6 +50,7 @@ class AppServiceProvider extends ServiceProvider
             $app->make(CoreResolver::class),
             config('openf1.driver_overrides'),
             config('openf1.teams'),
+            config('openf1.practice_only_drivers'),
         ));
     }
 

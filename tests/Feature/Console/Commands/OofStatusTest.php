@@ -43,8 +43,8 @@ class OofStatusTest extends TestCase
         $this->artisan('oof:status')
             ->expectsOutputToContain('OpenF1 matching')
             ->expectsOutputToContain('1 cancelled, 3 matched, 1 not_a_round')
-            ->expectsOutputToContain('43 matched, 1 unmatched')
-            ->expectsOutputToContain('HER Colton HERTA (Cadillac)')
+            ->expectsOutputToContain('43 matched, 1 practice_only')
+            ->doesntExpectOutputToContain('Unmatched or conflicting')
             ->assertSuccessful();
     }
 }

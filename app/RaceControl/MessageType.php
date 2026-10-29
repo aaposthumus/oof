@@ -6,6 +6,8 @@ namespace App\RaceControl;
  * Kinds of race control message, in the order they are tried: the first
  * whose pattern matches wins, so specific kinds come before general ones
  * (a served penalty before a time penalty, a penalty before an incident).
+ * A stewards' message is typed by its stage (noted, under investigation, no
+ * further action, penalty); the offence it names is its Offence.
  */
 enum MessageType: string
 {
@@ -16,12 +18,11 @@ enum MessageType: string
     case GridPenalty = 'grid_penalty';
     case PitLaneStart = 'pit_lane_start';
     case Reprimand = 'reprimand';
+    case Warning = 'warning';
     case Disqualification = 'disqualification';
     case BlackFlag = 'black_flag';
     case BlackAndOrangeFlag = 'black_and_orange_flag';
     case BlackAndWhiteFlag = 'black_and_white_flag';
-    case UnsafeRelease = 'unsafe_release';
-    case FalseStart = 'false_start';
     case NoFurtherAction = 'no_further_action';
     case InvestigatedAfterSession = 'investigated_after_session';
     case UnderInvestigation = 'under_investigation';
@@ -33,6 +34,7 @@ enum MessageType: string
     case SafetyCarDeployed = 'safety_car_deployed';
     case SafetyCarInThisLap = 'safety_car_in_this_lap';
     case SafetyCarEnding = 'safety_car_ending';
+    case SafetyCarProcedure = 'safety_car_procedure';
     case VirtualSafetyCarDeployed = 'vsc_deployed';
     case VirtualSafetyCarEnding = 'vsc_ending';
     case BlueFlag = 'blue_flag';
@@ -51,11 +53,15 @@ enum MessageType: string
     case StartProcedure = 'start_procedure';
     case FirstCarToTakeTheFlag = 'first_car_to_take_the_flag';
     case RiskOfRain = 'risk_of_rain';
+    case WetConditions = 'wet_conditions';
     case GripConditions = 'grip_conditions';
     case SlipperySurface = 'slippery_surface';
+    case Temperature = 'temperature';
     case MarshalsOnTrack = 'marshals_on_track';
+    case OffTrack = 'off_track';
     case CarStopped = 'car_stopped';
     case MedicalCar = 'medical_car';
+    case Notice = 'notice';
 
     public function label(): string
     {
@@ -67,12 +73,11 @@ enum MessageType: string
             self::GridPenalty => 'Grid penalty',
             self::PitLaneStart => 'Pit lane start',
             self::Reprimand => 'Reprimand',
+            self::Warning => 'Warning',
             self::Disqualification => 'Disqualification',
             self::BlackFlag => 'Black flag',
             self::BlackAndOrangeFlag => 'Black-and-orange flag',
             self::BlackAndWhiteFlag => 'Black-and-white flag',
-            self::UnsafeRelease => 'Unsafe release',
-            self::FalseStart => 'False start',
             self::NoFurtherAction => 'No further action',
             self::InvestigatedAfterSession => 'Investigated after the session',
             self::UnderInvestigation => 'Under investigation',
@@ -84,6 +89,7 @@ enum MessageType: string
             self::SafetyCarDeployed => 'Safety car deployed',
             self::SafetyCarInThisLap => 'Safety car in this lap',
             self::SafetyCarEnding => 'Safety car ending',
+            self::SafetyCarProcedure => 'Safety car procedure',
             self::VirtualSafetyCarDeployed => 'VSC deployed',
             self::VirtualSafetyCarEnding => 'VSC ending',
             self::BlueFlag => 'Blue flag',
@@ -102,11 +108,15 @@ enum MessageType: string
             self::StartProcedure => 'Start procedure',
             self::FirstCarToTakeTheFlag => 'First car to take the flag',
             self::RiskOfRain => 'Risk of rain',
+            self::WetConditions => 'Wet conditions',
             self::GripConditions => 'Grip conditions',
             self::SlipperySurface => 'Slippery surface',
+            self::Temperature => 'Temperature',
             self::MarshalsOnTrack => 'Marshals on track',
+            self::OffTrack => 'Off track',
             self::CarStopped => 'Car stopped',
             self::MedicalCar => 'Medical car',
+            self::Notice => 'Notice',
         };
     }
 }

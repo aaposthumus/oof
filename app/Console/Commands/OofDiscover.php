@@ -30,12 +30,22 @@ class OofDiscover extends Command
     private const EXAMPLES = 3;
 
     /**
+     * Stewards' stages shown per offence, in the order an incident goes through them.
+     */
+    private const STAGES = [
+        MessageType::IncidentNoted, MessageType::UnderInvestigation, MessageType::InvestigatedAfterSession,
+        MessageType::NoFurtherAction, MessageType::Warning, MessageType::Reprimand, MessageType::BlackAndWhiteFlag,
+        MessageType::TimePenalty, MessageType::DriveThroughPenalty, MessageType::StopGoPenalty, MessageType::PenaltyServed,
+    ];
+
+    /**
      * Execute the console command.
      */
     public function handle(MessageClassifier $classifier): int
     {
         $types = [];
         $reasons = [];
+        $offences = [];
         $unmatched = [];
         $seasons = [];
         $total = 0;
@@ -74,7 +84,11 @@ class OofDiscover extends Command
             $this->collectExample($types[$label]['examples'], "{$row->message} ({$where})", MessageClassifier::template($row->message), $year);
 
             if ($classification->reason !== null) {
-                $reasons[$classification->reason] = ($reasons[$classification->reason] ?? 0) + 1;
+                $reasons[$classification->reason] ??= ['offence' => $classification->offence?->label() ?? '–', 'count' => 0];
+                $reasons[$classification->reason]['count']++;
+                $offence = $classification->offence?->label() ?? 'Other';
+                $offences[$offence]['total'] = ($offences[$offence]['total'] ?? 0) + 1;
+                $offences[$offence][$classification->type->value] = ($offences[$offence][$classification->type->value] ?? 0) + 1;
             }
         }
 
@@ -83,13 +97,14 @@ class OofDiscover extends Command
         // In the classifier's order, sizes of one type by frequency.
         uasort($types, fn (array $a, array $b) => [array_search($a['type'], MessageType::cases(), true), $b['count']] <=> [array_search($b['type'], MessageType::cases(), true), $a['count']]);
         uasort($unmatched, fn (array $a, array $b) => $b['count'] <=> $a['count']);
-        arsort($reasons);
+        uasort($reasons, fn (array $a, array $b) => $b['count'] <=> $a['count']);
+        uasort($offences, fn (array $a, array $b) => $b['total'] <=> $a['total']);
 
         $matchedTotal = array_sum(array_column($types, 'count'));
         $unmatchedTotal = $total - $matchedTotal;
         $path = 'reports/race-control-discovery-'.now()->toDateString().'.md';
 
-        Storage::disk('local')->put($path, $this->report($types, $reasons, $unmatched, $seasons, $total, $unmatchedTotal));
+        Storage::disk('local')->put($path, $this->report($types, $reasons, $offences, $unmatched, $seasons, $total, $unmatchedTotal));
 
         $this->table(
             ['Type', 'Messages', ...$seasons],
@@ -145,11 +160,12 @@ class OofDiscover extends Command
 
     /**
      * @param  array<string, array{type: MessageType, count: int, seasons: array<int, int>, groups: array<string, int>, examples: array{wordings: array<string, string>, seasons: array<int, string>}}>  $types
-     * @param  array<string, int>  $reasons
+     * @param  array<string, array{offence: string, count: int}>  $reasons
+     * @param  array<string, array<string, int>>  $offences  Counts per offence label: the total and per type value
      * @param  array<string, array{count: int, seasons: array<int, true>, example: string}>  $unmatched
      * @param  list<int>  $seasons
      */
-    private function report(array $types, array $reasons, array $unmatched, array $seasons, int $total, int $unmatchedTotal): string
+    private function report(array $types, array $reasons, array $offences, array $unmatched, array $seasons, int $total, int $unmatchedTotal): string
     {
         $cell = fn (string $text) => str_replace('|', '\|', $text);
         $lines = [
@@ -186,13 +202,23 @@ class OofDiscover extends Command
         }
 
         $lines[] = '';
+        $lines[] = '## Offences by stage';
+        $lines[] = '';
+        $lines[] = '| Offence | Total | '.implode(' | ', array_map(fn (MessageType $stage) => $stage->label(), self::STAGES)).' |';
+        $lines[] = '|---|---:|'.str_repeat('---:|', count(self::STAGES));
+
+        foreach ($offences as $offence => $counts) {
+            $lines[] = "| {$cell($offence)} | {$counts['total']} | ".implode(' | ', array_map(fn (MessageType $stage) => $counts[$stage->value] ?? 0, self::STAGES)).' |';
+        }
+
+        $lines[] = '';
         $lines[] = '## Offences named in stewards\' messages';
         $lines[] = '';
-        $lines[] = '| Offence | Messages |';
-        $lines[] = '|---|---:|';
+        $lines[] = '| Wording | Offence | Messages |';
+        $lines[] = '|---|---|---:|';
 
-        foreach ($reasons as $reason => $count) {
-            $lines[] = "| {$cell($reason)} | {$count} |";
+        foreach ($reasons as $reason => $group) {
+            $lines[] = "| {$cell($reason)} | {$cell($group['offence'])} | {$group['count']} |";
         }
 
         $lines[] = '';

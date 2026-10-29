@@ -84,6 +84,8 @@ class DriverMatcherTest extends TestCase
 
     public function test_leaves_a_stand_in_unknown_to_jolpica_unmatched(): void
     {
+        config(['openf1.practice_only_drivers' => []]);
+
         $match = $this->match('HIR');
 
         $this->assertSame(OpenF1MatchStatus::Unmatched, $match->status);
@@ -91,8 +93,40 @@ class DriverMatcherTest extends TestCase
         $this->assertStringContainsString('Ryo HIRAKAWA', $match->note);
     }
 
+    public function test_marks_a_known_practice_only_driver(): void
+    {
+        $match = $this->match('HIR');
+
+        $this->assertSame(OpenF1MatchStatus::PracticeOnly, $match->status);
+        $this->assertFalse($match->status->needsAttention());
+        $this->assertNull($match->entry);
+    }
+
+    public function test_leaves_a_practice_only_driver_in_a_race_session_unmatched(): void
+    {
+        $race = RaceSession::factory()->for($this->practice->round)->create(['type' => SessionType::Race]);
+        DriverEntry::factory()->for($race)->create(['car_number' => 99]);
+
+        $match = app(DriverMatcher::class)->match($race->load('round.season'), $this->row('drivers_abu_dhabi_2024_fp1', 'HIR'));
+
+        $this->assertSame(OpenF1MatchStatus::Unmatched, $match->status);
+    }
+
+    public function test_marks_a_car_without_team_or_name_as_not_in_the_session(): void
+    {
+        // 2023 Hungary FP1: OpenF1 lists the F3 field too, as "BOR Gabriel BORTOLETO" with no team or name.
+        $row = ['driver_number' => 5, 'name_acronym' => 'BOR', 'full_name' => 'Gabriel BORTOLETO', 'first_name' => null, 'last_name' => null, 'team_name' => null];
+
+        $match = app(DriverMatcher::class)->match($this->practice->load('round.season'), $row);
+
+        $this->assertSame(OpenF1MatchStatus::NotInSession, $match->status);
+        $this->assertNull($match->driver);
+    }
+
     public function test_never_matches_on_surname_alone(): void
     {
+        config(['openf1.practice_only_drivers' => []]);
+
         $match = $this->match('CRA', 'drivers_crawford_2025_fp1');
 
         $this->assertSame(OpenF1MatchStatus::Unmatched, $match->status);
@@ -140,8 +174,32 @@ class DriverMatcherTest extends TestCase
         $herta = OpenF1SessionDriver::where('race_session_id', $practice->id)->where('driver_number', 25)->sole();
 
         $this->assertSame(21, DriverEntry::where('race_session_id', $practice->id)->count());
-        $this->assertSame(OpenF1MatchStatus::Unmatched, $herta->match_status);
+        $this->assertSame(OpenF1MatchStatus::PracticeOnly, $herta->match_status);
         $this->assertSame('Colton HERTA', $herta->full_name);
         $this->assertSame('Cadillac', $herta->team_name);
+    }
+
+    public function test_creates_a_qualifying_entry_jolpica_lacks_with_the_team_of_the_race_entry(): void
+    {
+        $race = $this->austinRace();
+        $qualifying = RaceSession::firstWhere('openf1_session_key', 11392)->load('round.season');
+        DriverEntry::factory()->for($qualifying)->create();
+        $verstappen = collect($this->openF1Fixture('drivers_11396'))->firstWhere('driver_number', 3);
+        $raceEntry = DriverEntry::where('race_session_id', $race->id)->where('car_number', 3)->sole();
+
+        $match = app(DriverMatcher::class)->match($qualifying, $verstappen);
+
+        $this->assertSame(OpenF1MatchStatus::Created, $match->status);
+        $this->assertFalse($match->status->needsAttention());
+        $this->assertSame($qualifying->id, $match->entry->race_session_id);
+        $this->assertSame(3, $match->entry->car_number);
+        $this->assertSame($raceEntry->season_team_id, $match->entry->season_team_id);
+        $this->assertSame($raceEntry->driver_id, $match->entry->driver_id);
+
+        $again = app(DriverMatcher::class)->match($qualifying, $verstappen);
+
+        $this->assertSame(OpenF1MatchStatus::Created, $again->status);
+        $this->assertSame($match->entry->id, $again->entry->id);
+        $this->assertSame($match->note, $again->note);
     }
 }

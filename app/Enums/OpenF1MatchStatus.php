@@ -11,6 +11,8 @@ enum OpenF1MatchStatus: string
     case Created = 'created';
     case Cancelled = 'cancelled';
     case NotARound = 'not_a_round';
+    case PracticeOnly = 'practice_only';
+    case NotInSession = 'not_in_session';
     case Unmatched = 'unmatched';
     case Conflict = 'conflict';
 

@@ -48,6 +48,31 @@ class SessionDataNormalizersTest extends TestCase
         $this->assertSame($blueFlag->driver_number, $blueFlag->driverEntry->car_number);
     }
 
+    public function test_parses_the_cars_a_message_names(): void
+    {
+        $this->assertSame([87, 10], RaceControlNormalizer::carNumbers('FIA STEWARDS: TURN 13 INCIDENT INVOLVING CARS 87 (BEA) AND 10 (GAS) UNDER INVESTIGATION - CAUSING A COLLISION (15:06:57)'));
+        $this->assertSame([23, 31, 27], RaceControlNormalizer::carNumbers('FIA STEWARDS: Q1 INCIDENT INVOLVING CARS 23 (ALB), 31 (OCO), 27 (HUL) REVIEWED NO FURTHER INVESTIGATION'));
+        $this->assertSame([14], RaceControlNormalizer::carNumbers('CAR 14 (ALO) LAP DELETED - TRACK LIMITS AT TURN 4 LAP 34 18:58:59 (PIT)'));
+        $this->assertSame([16], RaceControlNormalizer::carNumbers('CAR LEC TIME 1:36.518 DELETED - TRACK LIMITS AT TURN 14 (NEXT LAP) (Q1)', ['LEC' => 16]));
+        $this->assertSame([], RaceControlNormalizer::carNumbers('CAR LEC TIME 1:36.518 DELETED - TRACK LIMITS AT TURN 14 (NEXT LAP) (Q1)'));
+    }
+
+    public function test_drops_race_control_of_the_support_series_session_that_follows(): void
+    {
+        $race = $this->austinRace();
+        $messages = $this->openF1Fixture('race_control_11396');
+        // 2023 British GP FP1: after the flag, OpenF1's feed ran on into F3 qualifying and its red flag.
+        $spillover = [
+            ['message' => 'RISK OF RAIN FOR F3 QUALIFYING SESSION IS 0%', 'date' => '2026-10-25T22:05:12+00:00', 'category' => 'Other', 'flag' => null],
+            ['message' => 'RED FLAG', 'date' => '2026-10-25T22:06:47+00:00', 'category' => 'Flag', 'flag' => 'RED'],
+        ];
+
+        app(RaceControlNormalizer::class)->normalize([...$messages, ...array_map(fn (array $message) => [...$messages[0], 'driver_number' => null, ...$message], $spillover)]);
+
+        $this->assertSame(count($messages), $race->raceControlMessages()->count());
+        $this->assertFalse($race->raceControlMessages()->where('flag', 'RED')->exists());
+    }
+
     public function test_renormalizing_race_control_leaves_the_same_rows(): void
     {
         $this->austinRace();

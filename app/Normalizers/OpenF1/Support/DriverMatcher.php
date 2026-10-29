@@ -22,17 +22,25 @@ use Illuminate\Support\Collection;
  *
  * Race, qualifying and sprint entries are Jolpica's and are only linked;
  * entries of the other sessions are created, with the team OpenF1 names.
+ * A qualifying car Jolpica has no entry for (a driver who set no time) gets
+ * one, with the team of the driver's race entry in the round.
+ *
+ * Practice drivers who never raced are practice_only rather than unmatched,
+ * and a car OpenF1 lists with neither a team nor a name is not_in_session:
+ * a support series car that leaked into the session's drivers.
  */
 class DriverMatcher
 {
     /**
      * @param  array<string, string|null>  $overrides  Jolpica driver IDs keyed by "year:driver_number"
      * @param  list<array{name: string, constructor: string, from?: int, to?: int}>  $teams  OpenF1 team names mapped to Jolpica constructor IDs
+     * @param  list<string>  $practiceOnlyDrivers  Names of drivers who drove in practice but never raced
      */
     public function __construct(
         private CoreResolver $core,
         private array $overrides,
         private array $teams,
+        private array $practiceOnlyDrivers = [],
     ) {}
 
     /**
@@ -42,16 +50,25 @@ class DriverMatcher
     {
         $year = $session->round->season->year;
         $number = (int) $row['driver_number'];
+
+        if (($row['team_name'] ?? null) === null && ($row['first_name'] ?? null) === null && ($row['last_name'] ?? null) === null) {
+            return new DriverMatch(OpenF1MatchStatus::NotInSession, note: 'OpenF1 lists this car without a team or name: not an F1 entry.');
+        }
+
         $roundEntries = $this->roundEntries($session);
 
         [$driver, $problem] = $this->driver($year, $number, $row, $roundEntries);
 
         if ($driver === null) {
+            if ($problem[0] === OpenF1MatchStatus::Unmatched && $session->type->isPractice() && NameMatcher::isAnyOf($row, $this->practiceOnlyDrivers)) {
+                return new DriverMatch(OpenF1MatchStatus::PracticeOnly, note: "{$row['full_name']} is in openf1.practice_only_drivers.");
+            }
+
             return new DriverMatch($problem[0], note: $problem[1]);
         }
 
         if ($session->type->hasJolpicaEntries()) {
-            return $this->jolpicaEntry($session, $driver, $number);
+            return $this->jolpicaEntry($session, $driver, $number, $roundEntries);
         }
 
         $seasonTeam = $this->seasonTeam($session, $row['team_name'] ?? null)
@@ -118,7 +135,10 @@ class DriverMatcher
         return ($acronym !== null && $acronym === $driver->code) || NameMatcher::sameDriver($driver, $row);
     }
 
-    private function jolpicaEntry(RaceSession $session, Driver $driver, int $number): DriverMatch
+    /**
+     * @param  Collection<int, DriverEntry>  $roundEntries
+     */
+    private function jolpicaEntry(RaceSession $session, Driver $driver, int $number, Collection $roundEntries): DriverMatch
     {
         $entries = DriverEntry::query()
             ->with('seasonTeam')
@@ -127,11 +147,28 @@ class DriverMatcher
             ->get();
         $entry = $entries->firstWhere('car_number', $number) ?? ($entries->count() === 1 ? $entries->first() : null);
 
-        if ($entry === null) {
-            return new DriverMatch(OpenF1MatchStatus::Unmatched, $driver, note: "Jolpica has no {$session->type->value} entry for {$driver->jolpica_driver_id} in car {$number}.");
+        $missing = "Jolpica has no {$session->type->value} entry for {$driver->jolpica_driver_id} in car {$number}";
+        $created = "{$missing}; created with the team of the driver's race entry.";
+
+        if ($entry !== null) {
+            // Jolpica's qualifying entries come with a result; one without was created here.
+            return $session->type === SessionType::Qualifying && ! $entry->qualifyingResult()->exists()
+                ? new DriverMatch(OpenF1MatchStatus::Created, $driver, $entry->seasonTeam, $entry, $created)
+                : new DriverMatch(OpenF1MatchStatus::Matched, $driver, $entry->seasonTeam, $entry);
         }
 
-        return new DriverMatch(OpenF1MatchStatus::Matched, $driver, $entry->seasonTeam, $entry);
+        $raceEntry = $roundEntries
+            ->where('driver_id', $driver->id)
+            ->sortBy(fn (DriverEntry $entry) => $entry->raceSession->type === SessionType::Race ? 0 : 1)
+            ->first();
+
+        if ($session->type !== SessionType::Qualifying || $raceEntry === null) {
+            return new DriverMatch(OpenF1MatchStatus::Unmatched, $driver, note: "{$missing}.");
+        }
+
+        $entry = $this->core->driverEntry($session, $driver, $raceEntry->seasonTeam, $number);
+
+        return new DriverMatch(OpenF1MatchStatus::Created, $driver, $raceEntry->seasonTeam, $entry, $created);
     }
 
     private function seasonTeam(RaceSession $session, ?string $teamName): ?SeasonTeam
@@ -158,7 +195,7 @@ class DriverMatcher
     private function roundEntries(RaceSession $session): Collection
     {
         return DriverEntry::query()
-            ->with(['driver', 'seasonTeam'])
+            ->with(['driver', 'seasonTeam', 'raceSession'])
             ->whereHas('raceSession', fn ($sessions) => $sessions
                 ->where('round_id', $session->round_id)
                 ->whereIn('type', [SessionType::Race, SessionType::Qualifying, SessionType::Sprint]))

@@ -158,6 +158,20 @@ return [
     ],
 
     /*
+    | Reserve and young drivers who drove in a practice session but never in a
+    | Grand Prix, so Jolpica does not know them. Their practice cars are kept
+    | as practice_only instead of unmatched. Names as OpenF1 writes them,
+    | compared ignoring case and accents. Once such a driver races, Jolpica
+    | has them and they match as usual.
+    */
+    'practice_only_drivers' => [
+        'Alexander Dunne', 'Antonio Fuoco', 'Arthur Leclerc', 'Ayumu Iwasa', 'Cian Shields',
+        'Colton Herta', 'Dino Beganovic', 'Felipe Drugovich', 'Frederik Vesti', 'Jak Crawford',
+        'Jake Dennis', 'Leonardo Fornaroli', 'Luke Browning', 'Patricio O\'Ward', 'Paul Aron',
+        'Robert Shwartzman', 'Ryo Hirakawa', 'Theo Pourchaire', 'Victor Martins', 'Zak O\'Sullivan',
+    ],
+
+    /*
     | Credit line for the website and posts.
     */
     'attribution' => 'Data: OpenF1',
