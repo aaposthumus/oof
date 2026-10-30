@@ -30,9 +30,14 @@ trait BuildsSessions
 {
     private ?CarbonImmutable $clock = null;
 
+    /**
+     * Seed the catalogue. Sessions in the test years count as current, so
+     * awards that need review wait for it, as they do from the launch season.
+     */
     protected function catalogue(): void
     {
         $this->seed(AchievementSeeder::class);
+        config(['achievements.review_from' => '2000-01-01']);
     }
 
     protected function round(int $year = 2024, int $roundNumber = 5, array $attributes = []): Round

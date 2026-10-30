@@ -139,6 +139,21 @@ class AchievementAwardsTest extends TestCase
         $this->assertFalse($award->fresh()->isDecided());
     }
 
+    public function test_a_historic_suppression_can_be_handed_back(): void
+    {
+        $award = $this->award();
+        $award->update(['status' => AwardStatus::Suppressed, 'decided_at' => now(), 'decision_note' => AchievementAward::HISTORIC_NOTE]);
+
+        Livewire::test(ViewAchievementAward::class, ['record' => $award->getRouteKey()])
+            ->assertSee('by the engine')
+            ->assertActionVisible('restore')
+            ->callAction('restore');
+
+        $award->refresh();
+        $this->assertSame(AwardStatus::Pending, $award->status);
+        $this->assertNotNull($award->handed_back_at);
+    }
+
     public function test_the_catalogue_is_editable_but_never_created_or_deleted(): void
     {
         $achievement = Achievement::firstWhere('key', 'lapped_dog');

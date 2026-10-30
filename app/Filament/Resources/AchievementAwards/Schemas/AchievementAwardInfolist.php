@@ -47,8 +47,8 @@ class AchievementAwardInfolist
                         TextEntry::make('achievement.description')
                             ->label('Trigger'),
                         TextEntry::make('decision')
-                            ->state(fn (AchievementAward $record): ?string => $record->isDecided()
-                                ? "{$record->status->label()} by {$record->decider?->name} on {$record->decided_at->format('j M Y H:i')}"
+                            ->state(fn (AchievementAward $record): ?string => $record->decided_at !== null
+                                ? "{$record->status->label()} by ".($record->decider?->name ?? 'the engine')." on {$record->decided_at->format('j M Y H:i')}"
                                 : null)
                             ->placeholder('Not decided by a person')
                             ->helperText(fn (AchievementAward $record): ?string => $record->decision_note),

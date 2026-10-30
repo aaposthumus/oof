@@ -11,6 +11,12 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class SeasonFactory extends Factory
 {
     /**
+     * The next year handed out, counting up from a year far after any real
+     * season, so a generated season never clashes with a year a test names.
+     */
+    private static int $nextYear = 3000;
+
+    /**
      * Define the model's default state.
      *
      * @return array<string, mixed>
@@ -18,7 +24,7 @@ class SeasonFactory extends Factory
     public function definition(): array
     {
         return [
-            'year' => fake()->unique()->numberBetween(1950, 2049),
+            'year' => self::$nextYear++,
         ];
     }
 }

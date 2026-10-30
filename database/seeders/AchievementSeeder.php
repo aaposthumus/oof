@@ -87,7 +87,7 @@ class AchievementSeeder extends Seeder
         ['failed_the_driving_test', 'Failed the Driving Test', AchievementSection::Offence, AchievementTier::Gold, self::COMPETITIVE, 'Erratic or dangerous driving, with a penalty.', self::OFFENCE_SUPERSEDES],
         ['released_into_the_wild', 'Released Into the Wild', AchievementSection::Offence, AchievementTier::Gold, self::COMPETITIVE, 'Unsafe release, with a penalty.', self::OFFENCE_SUPERSEDES],
         // Any session
-        ['whole_class_detention', 'Whole Class Detention', AchievementSection::AnySession, AchievementTier::Bronze, self::ALL, 'Caused a red flag (practice, qualifying or race).'],
+        ['whole_class_detention', 'Whole Class Detention', AchievementSection::AnySession, AchievementTier::Silver, self::ALL, 'Caused a red flag (practice, qualifying or race).'],
         // Penalties
         ['high_five', 'High Five', AchievementSection::Penalty, AchievementTier::Silver, self::RACES, '5-second time penalty.', self::PENALTY_SUPERSEDES, true],
         ['perfect_ten', 'Perfect Ten', AchievementSection::Penalty, AchievementTier::Gold, self::RACES, '10-second time penalty.', self::PENALTY_SUPERSEDES, true],

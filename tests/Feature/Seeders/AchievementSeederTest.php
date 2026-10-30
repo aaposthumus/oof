@@ -31,6 +31,16 @@ class AchievementSeederTest extends TestCase
         }
     }
 
+    public function test_whole_class_detention_is_silver_and_nothing_to_see_here_earns_nothing(): void
+    {
+        $this->seed(AchievementSeeder::class);
+
+        $achievement = Achievement::firstWhere('key', 'whole_class_detention');
+
+        $this->assertSame(['silver', 25], [$achievement->tier->value, $achievement->points]);
+        $this->assertSame(0, Achievement::firstWhere('key', 'nothing_to_see_here')->points);
+    }
+
     public function test_keeps_what_was_edited_in_the_cms(): void
     {
         $this->seed(AchievementSeeder::class);

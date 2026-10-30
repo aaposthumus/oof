@@ -18,11 +18,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property array{source: string, messages?: list<array<string, mixed>>, rows?: list<array<string, mixed>>, note?: string} $evidence
  */
-#[Fillable(['race_session_id', 'driver_entry_id', 'driver_id', 'achievement_id', 'instance_key', 'event_key', 'detail', 'subtitle', 'variant_name', 'evidence', 'confidence', 'status', 'review_reason', 'decided_by', 'decided_at', 'decision_note'])]
+#[Fillable(['race_session_id', 'driver_entry_id', 'driver_id', 'achievement_id', 'instance_key', 'event_key', 'detail', 'subtitle', 'variant_name', 'evidence', 'confidence', 'status', 'review_reason', 'decided_by', 'decided_at', 'decision_note', 'handed_back_at'])]
 class AchievementAward extends Model
 {
     /** @use HasFactory<AchievementAwardFactory> */
     use HasFactory;
+
+    /**
+     * The note on awards the engine suppressed itself in a historic session.
+     */
+    public const HISTORIC_NOTE = 'Historic, not reviewed';
 
     /**
      * Get the attributes that should be cast.
@@ -37,12 +42,22 @@ class AchievementAward extends Model
             'status' => AwardStatus::class,
             'review_reason' => AwardReviewReason::class,
             'decided_at' => 'datetime',
+            'handed_back_at' => 'datetime',
         ];
     }
 
+    /**
+     * Whether a person decided on it. The engine's own suppression of a
+     * historic award does not count: it judges that award again on each run.
+     */
     public function isDecided(): bool
     {
-        return $this->decided_at !== null;
+        return $this->decided_at !== null && ! $this->isSuppressedAsHistoric();
+    }
+
+    public function isSuppressedAsHistoric(): bool
+    {
+        return $this->status === AwardStatus::Suppressed && $this->decided_by === null && $this->decision_note === self::HISTORIC_NOTE;
     }
 
     /**
@@ -74,10 +89,11 @@ class AchievementAward extends Model
 
     /**
      * Hand the award back to the engine, which re-evaluates it on its next run.
+     * A historic award handed back stays in the review queue.
      */
     public function restore(): void
     {
-        $this->update(['status' => AwardStatus::Pending, 'decided_by' => null, 'decided_at' => null, 'decision_note' => null]);
+        $this->update(['status' => AwardStatus::Pending, 'decided_by' => null, 'decided_at' => null, 'decision_note' => null, 'handed_back_at' => now()]);
     }
 
     /**

@@ -186,6 +186,7 @@ class AchievementEngine
             ->where('race_session_id', $data->session->id)
             ->get()
             ->keyBy(fn (AchievementAward $award) => "{$award->achievement_id}|{$award->instance_key}");
+        $isHistoric = $data->session->round->date->lt(CarbonImmutable::parse(config('achievements.review_from')));
         $stats = [];
         $kept = [];
 
@@ -218,11 +219,16 @@ class AchievementEngine
 
             // A person's decision stands: the car they picked, the status and their note.
             if (! $award->isDecided()) {
+                // In a historic session nobody reviews what would wait for review, unless it was handed back.
+                $suppressAsHistoric = $isHistoric && $status === AwardStatus::Pending && $reviewReason !== null && $award->handed_back_at === null;
+
                 $award->fill([
                     'driver_entry_id' => $detection->driverEntryId,
                     'driver_id' => $driverId,
-                    'status' => $status,
+                    'status' => $suppressAsHistoric ? AwardStatus::Suppressed : $status,
                     'review_reason' => $reviewReason,
+                    'decided_at' => $suppressAsHistoric ? $award->decided_at ?? now() : null,
+                    'decision_note' => $suppressAsHistoric ? AchievementAward::HISTORIC_NOTE : null,
                 ]);
             }
 

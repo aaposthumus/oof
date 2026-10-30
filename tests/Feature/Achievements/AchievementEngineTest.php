@@ -286,6 +286,102 @@ class AchievementEngineTest extends TestCase
         $this->assertCount(0, $this->awards('high_five'));
     }
 
+    private function lowConfidenceCase(): array
+    {
+        $race = $this->raceSession();
+        $this->car($race, 16);
+        $this->message($race, 'CAR 16 (LEC) STOPPED AT TURN 7');
+        $this->message($race, 'RED FLAG', ['flag' => 'RED']);
+
+        return [$race, 'whole_class_detention'];
+    }
+
+    public function test_a_historic_award_that_would_wait_for_review_is_suppressed_by_the_engine(): void
+    {
+        config(['achievements.review_from' => '2027-01-01']);
+        [$race, $key] = $this->lowConfidenceCase();
+        $this->resultFor($this->car($race, 44), ['status' => '+1 Lap', 'position' => 9, 'position_text' => '9']);
+
+        $this->runEngine($race);
+
+        $award = $this->awards($key)->sole();
+        $this->assertSame(AwardStatus::Suppressed, $award->status);
+        $this->assertSame('Historic, not reviewed', $award->decision_note);
+        $this->assertSame(AwardReviewReason::LowConfidence, $award->review_reason);
+        $this->assertNull($award->decided_by);
+        $this->assertTrue($award->isSuppressedAsHistoric());
+        $this->assertFalse($award->isDecided());
+        $this->assertSame(AwardStatus::Final, $this->awards('lapped_dog')->sole()->status);
+    }
+
+    public function test_re_running_a_historic_session_neither_duplicates_nor_changes_the_suppression(): void
+    {
+        config(['achievements.review_from' => '2027-01-01']);
+        [$race, $key] = $this->lowConfidenceCase();
+        $this->runEngine($race);
+        $award = $this->awards($key)->sole();
+        $decidedAt = $award->decided_at;
+
+        $this->travel(2)->hours();
+        $stats = $this->runEngine($race);
+
+        $this->assertCount(1, $this->awards($key));
+        $this->assertEquals($decidedAt, $award->fresh()->decided_at);
+        $this->assertSame(['found' => 1, 'created' => 0, 'updated' => 0, 'removed' => 0, 'pending' => 0], $stats[$key]);
+    }
+
+    public function test_a_historic_award_handed_back_stays_in_the_review_queue(): void
+    {
+        config(['achievements.review_from' => '2027-01-01']);
+        [$race, $key] = $this->lowConfidenceCase();
+        $this->runEngine($race);
+
+        $this->awards($key)->sole()->restore();
+        $this->assertSame(AwardStatus::Pending, $this->awards($key)->sole()->status);
+        $this->runEngine($race);
+
+        $award = $this->awards($key)->sole();
+        $this->assertSame(AwardStatus::Pending, $award->status);
+        $this->assertSame(AwardReviewReason::LowConfidence, $award->review_reason);
+        $this->assertCount(1, $this->awards($key));
+    }
+
+    public function test_a_historic_award_suppressed_by_a_person_keeps_their_reason(): void
+    {
+        config(['achievements.review_from' => '2027-01-01']);
+        [$race, $key] = $this->lowConfidenceCase();
+        $this->runEngine($race);
+
+        $this->awards($key)->sole()->suppress(User::factory()->create(), 'Not funny.');
+        $this->runEngine($race);
+
+        $award = $this->awards($key)->sole();
+        $this->assertSame('Not funny.', $award->decision_note);
+        $this->assertFalse($award->isSuppressedAsHistoric());
+    }
+
+    public function test_an_automatically_suppressed_award_is_removed_when_no_longer_found(): void
+    {
+        config(['achievements.review_from' => '2027-01-01']);
+        [$race, $key] = $this->lowConfidenceCase();
+        $this->runEngine($race);
+
+        $race->raceControlMessages()->where('message', 'RED FLAG')->delete();
+        $this->runEngine($race);
+
+        $this->assertCount(0, $this->awards($key));
+    }
+
+    public function test_sessions_from_the_review_date_onwards_behave_as_before(): void
+    {
+        config(['achievements.review_from' => '2024-05-05']);
+        [$race, $key] = $this->lowConfidenceCase();
+
+        $this->runEngine($race);
+
+        $this->assertSame(AwardStatus::Pending, $this->awards($key)->sole()->status);
+    }
+
     public function test_a_dry_run_stores_nothing(): void
     {
         $race = $this->raceSession();

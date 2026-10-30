@@ -29,6 +29,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Review
+    |--------------------------------------------------------------------------
+    |
+    | Sessions before this date will never be posted as current race weekends,
+    | so awards in them that would wait for review are suppressed with the
+    | reason "Historic, not reviewed" instead. "Hand back to engine" in the CMS
+    | undoes it for one award, and later runs leave it handed back.
+    |
+    */
+
+    'review_from' => '2027-01-01',
+
+    /*
+    |--------------------------------------------------------------------------
     | Thresholds
     |--------------------------------------------------------------------------
     |

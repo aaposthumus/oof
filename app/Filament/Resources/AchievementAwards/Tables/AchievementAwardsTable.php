@@ -169,9 +169,9 @@ class AchievementAwardsTable
                 ->label('Hand back to the engine')
                 ->icon('heroicon-o-arrow-uturn-left')
                 ->color('gray')
-                ->visible(fn (AchievementAward $record): bool => $record->isDecided())
+                ->visible(fn (AchievementAward $record): bool => $record->isDecided() || $record->isSuppressedAsHistoric())
                 ->requiresConfirmation()
-                ->modalDescription('The decision is removed and the next run of oof:achievements judges the award again.')
+                ->modalDescription('The decision is removed and the award goes back to the review queue. The next run of oof:achievements judges it again.')
                 ->action(fn (AchievementAward $record) => $record->restore()),
             Action::make('subtitle')
                 ->label('Subtitle')
