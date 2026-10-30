@@ -12,7 +12,8 @@ use Illuminate\Support\Collection;
 
 /**
  * The slowest pit stop of the weekend (race and sprint), by measured
- * stationary time. Awarded in the session the stop was made in.
+ * stationary time. Awarded in the session the stop was made in, unless the
+ * slowest time is shared.
  */
 class FineDiningDetector implements Detector
 {
@@ -23,14 +24,15 @@ class FineDiningDetector implements Detector
 
     public function detect(SessionData $data): Collection
     {
-        $slowest = collect([SessionType::Race, SessionType::Sprint])
+        $stops = collect([SessionType::Race, SessionType::Sprint])
             ->map(fn (SessionType $type) => $data->roundSession($type))
             ->filter()
             ->flatMap(fn (SessionData $session) => PitStops::countable($session))
             ->sortByDesc('stop_duration_millis')
-            ->first();
+            ->values();
+        $slowest = $stops->first();
 
-        if ($slowest === null || $slowest->race_session_id !== $data->session->id) {
+        if ($slowest === null || $slowest->race_session_id !== $data->session->id || $stops->get(1)?->stop_duration_millis === $slowest->stop_duration_millis) {
             return collect();
         }
 

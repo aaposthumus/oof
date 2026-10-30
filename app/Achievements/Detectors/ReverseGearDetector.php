@@ -8,7 +8,8 @@ use App\Models\DriverEntry;
 
 /**
  * Lost the most places from the grid to the flag, among classified
- * finishers. Pit lane starts (grid 0) are left out.
+ * finishers. Pit lane starts (grid 0) are left out; a shared top spot gives
+ * no award.
  */
 class ReverseGearDetector extends ResultDetector
 {
@@ -22,8 +23,9 @@ class ReverseGearDetector extends ResultDetector
         $lost = fn (DriverEntry $other) => Finish::isClassifiedFinisher($other->result) && $other->result->grid > 0
             ? $other->result->position - $other->result->grid
             : null;
-        $most = $data->resultEntries()->map($lost)->filter()->max();
+        $losses = $data->resultEntries()->map($lost)->filter();
+        $most = $losses->max();
 
-        return $most > 0 && $lost($entry) === $most ? "P{$entry->result->grid} → P{$entry->result->position}" : false;
+        return $most > 0 && $losses->filter(fn (int $places) => $places === $most)->count() === 1 && $lost($entry) === $most ? "P{$entry->result->grid} → P{$entry->result->position}" : false;
     }
 }

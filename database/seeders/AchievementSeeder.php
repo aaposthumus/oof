@@ -36,6 +36,12 @@ class AchievementSeeder extends Seeder
     private const PENALTY_SUPERSEDES = ['it_was_like_that_when_i_got_there', ...self::TRACK_LIMITS];
 
     /**
+     * OOF shelf achievements that earn no points: Nothing to See Here is a
+     * slide feature ("The quiet ones"), not an OOF.
+     */
+    private const NO_POINTS = ['nothing_to_see_here'];
+
+    /**
      * Offences absorb the incident note and their own penalty.
      */
     private const OFFENCE_SUPERSEDES = ['it_was_like_that_when_i_got_there', ...self::PENALTIES];
@@ -63,34 +69,34 @@ class AchievementSeeder extends Seeder
         ['sent_to_your_room', 'Sent to Your Room', AchievementSection::Race, AchievementTier::Gold, self::RACES, 'Disqualified after the race (DSQ).'],
         ['expelled', 'Expelled', AchievementSection::Race, AchievementTier::Platinum, self::RACES, 'Black flag during the race.', ['sent_to_your_room']],
         ['reverse_gear', 'Reverse Gear', AchievementSection::Race, AchievementTier::Bronze, self::RACES, 'Most places lost compared with the grid.'],
-        ['all_dressed_up_nowhere_to_go', 'All Dressed Up, Nowhere to Go', AchievementSection::Race, AchievementTier::Silver, self::RACES, 'Fastest lap but finished outside the points.'],
+        ['all_dressed_up_nowhere_to_go', 'All Dressed Up, Nowhere to Go', AchievementSection::Race, AchievementTier::Gold, self::RACES, 'Fastest lap but finished outside the points.'],
         ['turned_off_the_lights', 'Turned Off the Lights', AchievementSection::Race, AchievementTier::Bronze, self::RACES, 'Last classified finisher.'],
         ['nothing_to_see_here', 'Nothing to See Here', AchievementSection::Race, AchievementTier::Bronze, self::RACE, 'Unlocked nothing all weekend ("The quiet ones").'],
         // Offences, with a penalty
         ['bumper_cars', 'Bumper Cars', AchievementSection::Offence, AchievementTier::Silver, self::COMPETITIVE, 'Penalty for causing a collision.', self::OFFENCE_SUPERSEDES],
         ['early_bird', 'Early Bird', AchievementSection::Offence, AchievementTier::Gold, self::COMPETITIVE, 'False start (offence) with a penalty.', self::OFFENCE_SUPERSEDES],
-        ['selective_hearing', 'Selective Hearing', AchievementSection::Offence, AchievementTier::Silver, self::COMPETITIVE, "Failing to follow race director's instructions, with a penalty.", self::OFFENCE_SUPERSEDES],
-        ['recalculating', 'Recalculating', AchievementSection::Offence, AchievementTier::Bronze, self::COMPETITIVE, 'Leaving the track and gaining an advantage, with a penalty.', self::OFFENCE_SUPERSEDES],
-        ['lane_discipline', 'Lane Discipline', AchievementSection::Offence, AchievementTier::Silver, self::COMPETITIVE, 'Crossing the pit entry or exit line, with a penalty.', self::OFFENCE_SUPERSEDES],
-        ['smile_for_the_camera', 'Smile for the Camera', AchievementSection::Offence, AchievementTier::Bronze, self::COMPETITIVE, 'Speeding in the pit lane, with a penalty.', self::OFFENCE_SUPERSEDES],
-        ['road_hog', 'Road Hog', AchievementSection::Offence, AchievementTier::Silver, self::COMPETITIVE, 'Forcing another driver off the track, with a penalty.', self::OFFENCE_SUPERSEDES],
+        ['selective_hearing', 'Selective Hearing', AchievementSection::Offence, AchievementTier::Platinum, self::COMPETITIVE, "Failing to follow race director's instructions, with a penalty.", self::OFFENCE_SUPERSEDES],
+        ['recalculating', 'Recalculating', AchievementSection::Offence, AchievementTier::Gold, self::COMPETITIVE, 'Leaving the track and gaining an advantage, with a penalty.', self::OFFENCE_SUPERSEDES],
+        ['lane_discipline', 'Lane Discipline', AchievementSection::Offence, AchievementTier::Platinum, self::COMPETITIVE, 'Crossing the pit entry or exit line, with a penalty.', self::OFFENCE_SUPERSEDES],
+        ['smile_for_the_camera', 'Smile for the Camera', AchievementSection::Offence, AchievementTier::Silver, self::COMPETITIVE, 'Speeding in the pit lane, with a penalty.', self::OFFENCE_SUPERSEDES],
+        ['road_hog', 'Road Hog', AchievementSection::Offence, AchievementTier::Gold, self::COMPETITIVE, 'Forcing another driver off the track, with a penalty.', self::OFFENCE_SUPERSEDES],
         ['forgot_to_indicate', 'Forgot to Indicate', AchievementSection::Offence, AchievementTier::Silver, self::COMPETITIVE, 'Moving under braking, with a penalty.', self::OFFENCE_SUPERSEDES],
-        ['didnt_see_the_sign', "Didn't See the Sign", AchievementSection::Offence, AchievementTier::Silver, self::COMPETITIVE, 'Ignoring a flag (yellow, blue, red), with a penalty.', self::OFFENCE_SUPERSEDES],
-        ['queue_jumper', 'Queue Jumper', AchievementSection::Offence, AchievementTier::Silver, self::COMPETITIVE, 'Overtaking or going too fast under SC/VSC, with a penalty.', self::OFFENCE_SUPERSEDES],
+        ['didnt_see_the_sign', "Didn't See the Sign", AchievementSection::Offence, AchievementTier::Gold, self::COMPETITIVE, 'Ignoring a flag (yellow, blue, red), with a penalty.', self::OFFENCE_SUPERSEDES],
+        ['queue_jumper', 'Queue Jumper', AchievementSection::Offence, AchievementTier::Gold, self::COMPETITIVE, 'Overtaking or going too fast under SC/VSC, with a penalty.', self::OFFENCE_SUPERSEDES],
         ['sunday_driver', 'Sunday Driver', AchievementSection::Offence, AchievementTier::Silver, self::COMPETITIVE, 'Maximum delta time offence noted (too slow, e.g. under SC or on a qualifying in-lap).', self::OFFENCE_SUPERSEDES],
         ['failed_the_driving_test', 'Failed the Driving Test', AchievementSection::Offence, AchievementTier::Gold, self::COMPETITIVE, 'Erratic or dangerous driving, with a penalty.', self::OFFENCE_SUPERSEDES],
         ['released_into_the_wild', 'Released Into the Wild', AchievementSection::Offence, AchievementTier::Gold, self::COMPETITIVE, 'Unsafe release, with a penalty.', self::OFFENCE_SUPERSEDES],
         // Any session
-        ['whole_class_detention', 'Whole Class Detention', AchievementSection::AnySession, AchievementTier::Gold, self::ALL, 'Caused a red flag (practice, qualifying or race).'],
+        ['whole_class_detention', 'Whole Class Detention', AchievementSection::AnySession, AchievementTier::Bronze, self::ALL, 'Caused a red flag (practice, qualifying or race).'],
         // Penalties
-        ['high_five', 'High Five', AchievementSection::Penalty, AchievementTier::Bronze, self::RACES, '5-second time penalty.', self::PENALTY_SUPERSEDES, true],
-        ['perfect_ten', 'Perfect Ten', AchievementSection::Penalty, AchievementTier::Silver, self::RACES, '10-second time penalty.', self::PENALTY_SUPERSEDES, true],
-        ['drive_thru', 'Drive-Thru', AchievementSection::Penalty, AchievementTier::Gold, self::RACES, 'Drive-through penalty.', self::PENALTY_SUPERSEDES, true],
+        ['high_five', 'High Five', AchievementSection::Penalty, AchievementTier::Silver, self::RACES, '5-second time penalty.', self::PENALTY_SUPERSEDES, true],
+        ['perfect_ten', 'Perfect Ten', AchievementSection::Penalty, AchievementTier::Gold, self::RACES, '10-second time penalty.', self::PENALTY_SUPERSEDES, true],
+        ['drive_thru', 'Drive-Thru', AchievementSection::Penalty, AchievementTier::Platinum, self::RACES, 'Drive-through penalty.', self::PENALTY_SUPERSEDES, true],
         ['red_light_green_light', 'Red Light, Green Light', AchievementSection::Penalty, AchievementTier::Platinum, self::RACES, 'Stop-go penalty.', self::PENALTY_SUPERSEDES, true],
         // Qualifying
-        ['family_feud', 'Family Feud', AchievementSection::Qualifying, AchievementTier::Bronze, self::QUALIFYING, 'Knocked out by your own teammate.'],
+        ['family_feud', 'Family Feud', AchievementSection::Qualifying, AchievementTier::Gold, self::QUALIFYING, 'Knocked out by your own teammate.'],
         ['by_a_whisker', 'By a Whisker', AchievementSection::Qualifying, AchievementTier::Silver, self::QUALIFYING, 'Knocked out by less than 0.05 s.'],
-        ['so_close', 'So Close', AchievementSection::Qualifying, AchievementTier::Silver, self::QUALIFYING, 'Best Q3 lap deleted.'],
+        ['so_close', 'So Close', AchievementSection::Qualifying, AchievementTier::Gold, self::QUALIFYING, 'Best Q3 lap deleted.'],
         ['holding_the_door', 'Holding the Door', AchievementSection::Qualifying, AchievementTier::Bronze, self::QUALIFYING, 'Slowest in Q1 (unlocks every weekend).'],
         // Practice
         ['overtime', 'Overtime', AchievementSection::Practice, AchievementTier::Bronze, self::PRACTICE, 'Most laps driven.'],
@@ -98,11 +104,11 @@ class AchievementSeeder extends Seeder
         // Glory
         ['did_the_thing', 'Did the Thing', AchievementSection::Glory, AchievementTier::Bronze, self::RACES, 'Win.', ['standing_room_only']],
         ['standing_room_only', 'Standing Room Only', AchievementSection::Glory, AchievementTier::Bronze, self::RACES, 'Podium.'],
-        ['plot_twist', 'Plot Twist', AchievementSection::Glory, AchievementTier::Gold, ['qualifying'], 'Surprise pole.'],
+        ['plot_twist', 'Plot Twist', AchievementSection::Glory, AchievementTier::Platinum, ['qualifying'], 'Surprise pole.'],
         ['lottery_ticket', 'Lottery Ticket', AchievementSection::Glory, AchievementTier::Platinum, self::RACE, 'Surprise win.', ['did_the_thing', 'standing_room_only']],
-        ['took_the_scenic_route', 'Took the Scenic Route', AchievementSection::Glory, AchievementTier::Gold, self::RACE, 'Win from P10 or lower on the grid.', ['did_the_thing', 'standing_room_only']],
+        ['took_the_scenic_route', 'Took the Scenic Route', AchievementSection::Glory, AchievementTier::Platinum, self::RACE, 'Win from P10 or lower on the grid.', ['did_the_thing', 'standing_room_only']],
         ['hogged_the_lot', 'Hogged the Lot', AchievementSection::Glory, AchievementTier::Platinum, self::RACE, 'Grand Chelem: pole, win, fastest lap, led every lap.', ['did_the_thing', 'standing_room_only']],
-        ['maths_is_over', 'Maths Is Over', AchievementSection::Glory, AchievementTier::Gold, self::RACES, 'Championship clinched.'],
+        ['maths_is_over', 'Maths Is Over', AchievementSection::Glory, AchievementTier::Platinum, self::RACES, 'Championship clinched.'],
         ['spare_tyre', 'Spare Tyre', AchievementSection::Glory, AchievementTier::Gold, self::RACE, 'Called up to race as a replacement driver.'],
         // Safety Car
         ['took_the_lead', 'Took the Lead', AchievementSection::SafetyCar, null, self::RACES, 'The safety car ran many laps in one race.'],
@@ -126,7 +132,7 @@ class AchievementSeeder extends Seeder
                 'section' => $section,
                 'shelf' => $shelf,
                 'tier' => $tier,
-                'points' => $shelf === AchievementShelf::Oof ? $tier->points() : 0,
+                'points' => $shelf === AchievementShelf::Oof && ! in_array($key, self::NO_POINTS, true) ? $tier->points() : 0,
                 'session_types' => $sessionTypes,
                 'stacks' => $row[7] ?? false,
                 'supersedes' => $row[6] ?? [],

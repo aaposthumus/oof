@@ -68,23 +68,23 @@ class SessionDetectorsTest extends TestCase
     public function test_by_a_whisker_counts_from_the_last_car_through_and_never_below_it(): void
     {
         $qualifying = $this->raceSession(SessionType::Qualifying);
-        $field = $this->qualifyingField($qualifying, [11 => ['q2' => 90_030], 12 => ['q2' => 89_990]]);
+        $field = $this->qualifyingField($qualifying, [11 => ['q2' => 90_012], 12 => ['q2' => 89_990], 13 => ['q2' => 90_015]]);
 
         $detection = $this->detect(ByAWhiskerDetector::class, $qualifying)->sole();
 
         $this->assertSame($field[11]->id, $detection->driverEntryId);
-        $this->assertSame('Q2 · +0.030 s', $detection->detail);
+        $this->assertSame('Q2 · +0.012 s', $detection->detail);
     }
 
     public function test_a_car_through_without_a_time_still_took_the_last_place_through(): void
     {
         $qualifying = $this->raceSession(SessionType::Qualifying);
-        $field = $this->qualifyingField($qualifying, [10 => ['q3' => null], 11 => ['q2' => 90_020]]);
+        $field = $this->qualifyingField($qualifying, [10 => ['q3' => null], 11 => ['q2' => 90_010]]);
 
         $detection = $this->detect(ByAWhiskerDetector::class, $qualifying)->sole();
 
         $this->assertSame($field[11]->id, $detection->driverEntryId);
-        $this->assertSame('Q2 · +0.020 s', $detection->detail);
+        $this->assertSame('Q2 · +0.010 s', $detection->detail);
     }
 
     public function test_holding_the_door_is_the_slowest_q1_time(): void
@@ -123,12 +123,45 @@ class SessionDetectorsTest extends TestCase
             }
         }
 
-        $this->message($practice, 'CAR 16 (LEC) TIME 1:30.000 DELETED - TRACK LIMITS AT TURN 4 LAP 3 13:10:00');
-        $this->message($practice, 'CAR 38 (BEA) TIME 1:30.500 DELETED - TRACK LIMITS AT TURN 4 LAP 4 13:11:00');
-        $this->message($practice, 'CAR 38 (BEA) TIME 1:30.600 DELETED - TRACK LIMITS AT TURN 4 LAP 5 13:12:00');
+        foreach (['1:30.000', '1:30.100', '1:30.200'] as $time) {
+            $this->message($practice, "CAR 16 (LEC) TIME {$time} DELETED - TRACK LIMITS AT TURN 4 LAP 3 13:10:00");
+        }
+
+        foreach (['1:30.500', '1:30.600', '1:30.700', '1:30.800'] as $time) {
+            $this->message($practice, "CAR 38 (BEA) TIME {$time} DELETED - TRACK LIMITS AT TURN 4 LAP 4 13:11:00");
+        }
 
         $this->assertSame('25 laps', $this->detect(OvertimeDetector::class, $practice)->sole()->detail);
-        $this->assertSame($regular->id, $this->detect(PracticeMakesImperfectDetector::class, $practice)->sole()->driverEntryId);
+        $this->assertSame('3 deleted laps', $this->detect(PracticeMakesImperfectDetector::class, $practice)->sole()->detail);
+    }
+
+    public function test_a_shared_top_spot_or_too_few_deleted_laps_gives_no_practice_award(): void
+    {
+        $race = $this->raceSession();
+        $practice = $this->raceSession(SessionType::Practice2, $race->round);
+
+        foreach ([16, 55] as $number) {
+            $entry = $this->car($practice, $number);
+            $this->car($race, $number, null, $entry->driver);
+
+            foreach (range(1, 20) as $lap) {
+                SessionLap::factory()->create(['race_session_id' => $practice->id, 'driver_number' => $number, 'driver_entry_id' => $entry->id, 'lap_number' => $lap]);
+            }
+        }
+
+        $this->message($practice, 'CAR 16 (LEC) TIME 1:30.000 DELETED - TRACK LIMITS AT TURN 4 LAP 3 13:10:00');
+        $this->message($practice, 'CAR 16 (LEC) TIME 1:30.100 DELETED - TRACK LIMITS AT TURN 4 LAP 5 13:12:00');
+
+        $this->assertCount(0, $this->detect(OvertimeDetector::class, $practice));
+        $this->assertCount(0, $this->detect(PracticeMakesImperfectDetector::class, $practice));
+    }
+
+    public function test_a_shared_slowest_q1_time_gives_no_award(): void
+    {
+        $qualifying = $this->raceSession(SessionType::Qualifying);
+        $this->qualifyingField($qualifying, [19 => ['q1' => 92_000], 20 => ['q1' => 92_000]]);
+
+        $this->assertCount(0, $this->detect(HoldingTheDoorDetector::class, $qualifying));
     }
 
     public function test_slow_stops_by_measured_stationary_time_only(): void

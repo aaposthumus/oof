@@ -11,7 +11,7 @@ use App\Models\DriverEntry;
 use Illuminate\Support\Collection;
 
 /**
- * The slowest time in Q1. Unlocks every weekend.
+ * The slowest time in Q1. Unlocks every weekend, unless that time is shared.
  */
 class HoldingTheDoorDetector implements Detector
 {
@@ -25,8 +25,9 @@ class HoldingTheDoorDetector implements Detector
         $timed = $data->entries->filter(fn (DriverEntry $entry) => $entry->qualifyingResult?->q1_millis !== null);
         $slowest = $timed->max(fn (DriverEntry $entry) => $entry->qualifyingResult->q1_millis);
 
-        return $timed
-            ->filter(fn (DriverEntry $entry) => $entry->qualifyingResult->q1_millis === $slowest)
+        $holders = $timed->filter(fn (DriverEntry $entry) => $entry->qualifyingResult->q1_millis === $slowest);
+
+        return $holders->count() !== 1 ? collect() : $holders
             ->map(fn (DriverEntry $entry) => new Detection(
                 achievementKey: $this->key(),
                 driverEntryId: $entry->id,

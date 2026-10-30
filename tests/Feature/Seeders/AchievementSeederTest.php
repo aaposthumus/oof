@@ -20,14 +20,14 @@ class AchievementSeederTest extends TestCase
         $this->assertEqualsCanonicalizing(array_keys(app(AchievementEngine::class)->detectors()), Achievement::pluck('key')->all());
     }
 
-    public function test_every_superseded_key_exists_and_only_the_oof_shelf_earns_points(): void
+    public function test_every_superseded_key_exists_and_only_oofs_earn_points(): void
     {
         $this->seed(AchievementSeeder::class);
         $keys = Achievement::pluck('key');
 
         foreach (Achievement::all() as $achievement) {
             $this->assertEmpty(array_diff($achievement->supersedes, $keys->all()), $achievement->key);
-            $this->assertSame($achievement->shelf === AchievementShelf::Oof, $achievement->points > 0, $achievement->key);
+            $this->assertSame($achievement->shelf === AchievementShelf::Oof && $achievement->key !== 'nothing_to_see_here', $achievement->points > 0, $achievement->key);
         }
     }
 

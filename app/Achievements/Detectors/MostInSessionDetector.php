@@ -9,8 +9,9 @@ use App\Achievements\Support\Evidence;
 use Illuminate\Support\Collection;
 
 /**
- * The race driver with the most of something in a practice session; ties
- * share it. Practice-only drivers and FP1 rookies do not count.
+ * The race driver with the most of something in a practice session, with at
+ * least the minimum. A shared top spot gives no award. Practice-only drivers
+ * and FP1 rookies do not count.
  */
 abstract class MostInSessionDetector implements Detector
 {
@@ -23,14 +24,18 @@ abstract class MostInSessionDetector implements Detector
 
     abstract protected function detail(int $count): string;
 
+    protected function minimum(): int
+    {
+        return 1;
+    }
+
     public function detect(SessionData $data): Collection
     {
         $raceDrivers = $data->raceDriverEntries();
-        $counts = $this->counts($data)->filter(fn (int $count, int $entryId) => $raceDrivers->has($entryId) && $count > 0);
-        $most = $counts->max();
+        $counts = $this->counts($data)->filter(fn (int $count, int $entryId) => $raceDrivers->has($entryId));
+        $top = $counts->filter(fn (int $count) => $count === $counts->max() && $count >= $this->minimum());
 
-        return $counts
-            ->filter(fn (int $count) => $count === $most)
+        return $top->count() !== 1 ? collect() : $top
             ->map(fn (int $count, int $entryId) => new Detection(
                 achievementKey: $this->key(),
                 driverEntryId: $entryId,

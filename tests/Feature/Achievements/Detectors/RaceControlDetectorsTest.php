@@ -254,6 +254,14 @@ class RaceControlDetectorsTest extends TestCase
         $this->assertSame(AwardReviewReason::NoClearCause, $detection->reviewReason);
     }
 
+    public function test_practice_and_qualifying_give_nothing_without_one_car_to_blame(): void
+    {
+        $practice = $this->raceSession(SessionType::Practice2);
+        $this->message($practice, 'RED FLAG', ['flag' => 'RED']);
+
+        $this->assertCount(0, $this->detect(WholeClassDetentionDetector::class, $practice));
+    }
+
     public function test_a_red_flag_just_after_the_chequered_flag_does_not_count(): void
     {
         $qualifying = $this->raceSession(SessionType::Qualifying);

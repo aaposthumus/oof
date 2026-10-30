@@ -102,13 +102,22 @@ class ResultDetectorsTest extends TestCase
 
     public function test_most_places_lost_last_finisher_and_fastest_lap_without_points(): void
     {
-        $this->finisher(1, 1, ['points' => 25]);
-        $dropped = $this->finisher(2, 2, ['grid' => 1, 'points' => 18]);
-        $last = $this->finisher(3, 3, ['grid' => 2, 'points' => 0, 'fastest_lap_rank' => 1]);
+        $this->finisher(1, 1, ['grid' => 2, 'points' => 25]);
+        $this->finisher(2, 2, ['grid' => 3, 'points' => 18]);
+        $last = $this->finisher(3, 3, ['grid' => 1, 'points' => 0, 'fastest_lap_rank' => 1]);
 
-        $this->assertSame([$dropped->id, $last->id], $this->detect(ReverseGearDetector::class, $this->race)->pluck('driverEntryId')->all());
+        $this->assertSame([$last->id], $this->detect(ReverseGearDetector::class, $this->race)->pluck('driverEntryId')->all());
         $this->assertSame($last->id, $this->detect(TurnedOffTheLightsDetector::class, $this->race)->sole()->driverEntryId);
         $this->assertSame($last->id, $this->detect(AllDressedUpDetector::class, $this->race)->sole()->driverEntryId);
+    }
+
+    public function test_a_shared_top_spot_for_most_places_lost_gives_no_award(): void
+    {
+        $this->finisher(1, 1, ['grid' => 3]);
+        $this->finisher(2, 2, ['grid' => 1]);
+        $this->finisher(3, 3, ['grid' => 2]);
+
+        $this->assertCount(0, $this->detect(ReverseGearDetector::class, $this->race));
     }
 
     public function test_win_podium_and_win_from_far_back(): void

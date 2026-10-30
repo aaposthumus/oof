@@ -8,8 +8,8 @@ use App\Achievements\Support\TrackLimitDeletions;
 use Illuminate\Support\Collection;
 
 /**
- * Most lap times deleted in a practice session. Race control only publishes
- * practice deletions from 2026.
+ * Most lap times deleted in a practice session, at least the threshold.
+ * Race control only publishes practice deletions from 2026.
  */
 class PracticeMakesImperfectDetector extends MostInSessionDetector
 {
@@ -21,6 +21,11 @@ class PracticeMakesImperfectDetector extends MostInSessionDetector
     protected function counts(SessionData $data): Collection
     {
         return TrackLimitDeletions::of($data)->countBy('entry_id');
+    }
+
+    protected function minimum(): int
+    {
+        return (int) config('achievements.practice_deleted_laps');
     }
 
     protected function detail(int $count): string
