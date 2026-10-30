@@ -4,8 +4,10 @@ namespace App\Normalizers\OpenF1;
 
 use App\Models\OpenF1SessionDriver;
 use App\Models\RaceControlMessage;
+use App\Normalizers\OpenF1\Support\OpenF1Resolver;
 use App\Normalizers\OpenF1\Support\OpenF1Time;
 use App\Normalizers\OpenF1\Support\SessionContext;
+use App\Normalizers\OpenF1\Support\SessionEntryLinker;
 
 /**
  * Keeps race control messages with their original text. Many messages name
@@ -17,9 +19,16 @@ use App\Normalizers\OpenF1\Support\SessionContext;
  * OpenF1 sometimes runs a practice session's feed on into the F2 or F3
  * session after it, whose cars share F1's numbers. Once a message after the
  * chequered flag names another series, it and everything after are dropped.
+ *
+ * Every car a message names is linked through race_control_message_driver_entry.
  */
 class RaceControlNormalizer extends SessionDataNormalizer
 {
+    public function __construct(OpenF1Resolver $openF1, private SessionEntryLinker $linker)
+    {
+        parent::__construct($openF1);
+    }
+
     public function endpoint(): string
     {
         return 'race_control';
@@ -33,6 +42,11 @@ class RaceControlNormalizer extends SessionDataNormalizer
     protected function uniqueBy(): array
     {
         return ['fingerprint'];
+    }
+
+    protected function stored(SessionContext $context): void
+    {
+        $this->linker->linkMessageEntries($context->session);
     }
 
     protected function rows(array $payload, SessionContext $context): array

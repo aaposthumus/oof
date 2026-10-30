@@ -9,8 +9,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['round_id', 'type', 'openf1_session_key', 'scheduled_date', 'scheduled_time'])]
+#[Fillable(['round_id', 'type', 'openf1_session_key', 'scheduled_date', 'scheduled_time', 'achievements_checked_at'])]
 class RaceSession extends Model
 {
     /** @use HasFactory<RaceSessionFactory> */
@@ -26,6 +27,7 @@ class RaceSession extends Model
         return [
             'type' => SessionType::class,
             'scheduled_date' => 'date',
+            'achievements_checked_at' => 'datetime',
         ];
     }
 
@@ -67,5 +69,29 @@ class RaceSession extends Model
     public function weatherSamples(): HasMany
     {
         return $this->hasMany(WeatherSample::class);
+    }
+
+    /**
+     * @return HasMany<Position, $this>
+     */
+    public function positions(): HasMany
+    {
+        return $this->hasMany(Position::class);
+    }
+
+    /**
+     * @return HasMany<AchievementAward, $this>
+     */
+    public function achievementAwards(): HasMany
+    {
+        return $this->hasMany(AchievementAward::class);
+    }
+
+    /**
+     * @return HasOne<OpenF1Session, $this>
+     */
+    public function openF1Session(): HasOne
+    {
+        return $this->hasOne(OpenF1Session::class);
     }
 }

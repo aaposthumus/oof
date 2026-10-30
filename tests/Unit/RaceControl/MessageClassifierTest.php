@@ -141,6 +141,8 @@ class MessageClassifierTest extends TestCase
             'maximum delta' => ['FIA STEWARDS: Q1 INCIDENT INVOLVING CARS 6 (HAD), 77 (BOT) NO FURTHER ACTION - FAILING TO FOLLOW RACE DIRECTORS INSTRUCTIONS - MAXIMUM DELTA TIME', Offence::MaximumTime],
             'escape road' => ['FIA STEWARDS: REPRIMAND (DRIVING) FOR CAR 55 (SAI) - FAILING TO FOLLOW RACE DIRECTORS INSTRUCTIONS – ESCAPE ROAD INSTRUCTIONS', Offence::RaceDirectorsInstructions],
             'black and white' => ['BLACK AND WHITE FLAG FOR CAR 10 (GAS) - DRIVING UNNECESSARILY SLOWLY', Offence::DrivingSlowly],
+            'moving under braking' => ['BLACK AND WHITE FLAG FOR CAR 20 (MAG) - MOVING UNDER BRAKING', Offence::MovingUnderBraking],
+            'change of direction' => ['FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 1 (VER) - MORE THAN ONE CHANGE OF DIRECTION', Offence::ErraticDriving],
         ];
     }
 

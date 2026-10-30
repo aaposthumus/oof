@@ -16,6 +16,7 @@ enum Offence: string
     case CausingACollision = 'causing_a_collision';
     case ForcingOffTheTrack = 'forcing_off_the_track';
     case Impeding = 'impeding';
+    case MovingUnderBraking = 'moving_under_braking';
     case ErraticDriving = 'erratic_driving';
     case DrivingSlowly = 'driving_slowly';
     case UnsafeRejoin = 'unsafe_rejoin';
@@ -46,7 +47,8 @@ enum Offence: string
         'causing_a_collision' => '/CAUSING A COLLISION/',
         'forcing_off_the_track' => '/FORCING ANOTHER (?:DRIVER|CAR) OFF THE TRACK/',
         'impeding' => '/IMPEDING/',
-        'erratic_driving' => '/DRIVING ERRATICALLY|DANGEROUS DRIVING|MOVING UNDER BRAKING|CHANGE OF DIRECTION|WEAVING/',
+        'moving_under_braking' => '/MOVING UNDER BRAKING/',
+        'erratic_driving' => '/DRIVING ERRATICALLY|DANGEROUS DRIVING|CHANGE OF DIRECTION|WEAVING/',
         'driving_slowly' => '/DRIVING UNNECESSARILY SLOWLY/',
         'unsafe_rejoin' => '/REJOIN/',
         'unsafe_condition' => '/UNSAFE CONDITION|LOOSE/',
@@ -91,6 +93,7 @@ enum Offence: string
             self::CausingACollision => 'Causing a collision',
             self::ForcingOffTheTrack => 'Forcing another driver off the track',
             self::Impeding => 'Impeding',
+            self::MovingUnderBraking => 'Moving under braking',
             self::ErraticDriving => 'Erratic driving',
             self::DrivingSlowly => 'Driving unnecessarily slowly',
             self::UnsafeRejoin => 'Unsafe rejoin',

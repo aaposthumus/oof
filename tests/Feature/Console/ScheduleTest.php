@@ -26,4 +26,12 @@ class ScheduleTest extends TestCase
         $this->assertSame('15 * * * *', $import->expression);
         $this->assertTrue($import->withoutOverlapping);
     }
+
+    public function test_unlocks_achievements_hourly_after_normalizing(): void
+    {
+        $achievements = collect(app(Schedule::class)->events())->sole(fn (Event $event) => str_contains($event->command, 'oof:achievements --changed'));
+
+        $this->assertSame('50 * * * *', $achievements->expression);
+        $this->assertTrue($achievements->withoutOverlapping);
+    }
 }

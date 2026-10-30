@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * A race control message as OpenF1 has it. car_number is the car it is about:
  * OpenF1's driver_number, or else the only car named in the text.
+ * involvedEntries are all the cars it names, for messages about several.
  */
 #[Fillable(['race_session_id', 'fingerprint', 'issued_at', 'lap_number', 'category', 'flag', 'scope', 'sector', 'qualifying_phase', 'driver_number', 'car_number', 'driver_entry_id', 'car_numbers', 'message'])]
 class RaceControlMessage extends Model
@@ -45,5 +47,13 @@ class RaceControlMessage extends Model
     public function driverEntry(): BelongsTo
     {
         return $this->belongsTo(DriverEntry::class);
+    }
+
+    /**
+     * @return BelongsToMany<DriverEntry, $this>
+     */
+    public function involvedEntries(): BelongsToMany
+    {
+        return $this->belongsToMany(DriverEntry::class, 'race_control_message_driver_entry')->withPivot('car_number');
     }
 }

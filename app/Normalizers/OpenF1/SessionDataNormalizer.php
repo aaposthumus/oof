@@ -56,7 +56,13 @@ abstract class SessionDataNormalizer implements Normalizer
         }
 
         $this->deleteRowsNotIn($model, $sessionId, $rows);
+        $this->stored($context);
     }
+
+    /**
+     * Called once the session holds exactly the rows OpenF1 lists.
+     */
+    protected function stored(SessionContext $context): void {}
 
     /**
      * Remove the session's rows that OpenF1 no longer lists.

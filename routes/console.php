@@ -29,3 +29,9 @@ Schedule::command('oof:dig')
     ->dailyAt('04:50')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/dig.log'));
+
+// After normalize at :30: sessions with new data, and pending awards that have become final.
+Schedule::command('oof:achievements --changed')
+    ->hourlyAt(50)
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/achievements.log'));

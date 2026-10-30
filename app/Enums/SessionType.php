@@ -25,4 +25,17 @@ enum SessionType: string
     {
         return in_array($this, [self::Practice1, self::Practice2, self::Practice3], true);
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Race => 'Race',
+            self::Qualifying => 'Qualifying',
+            self::Sprint => 'Sprint',
+            self::SprintQualifying => 'Sprint qualifying',
+            self::Practice1 => 'FP1',
+            self::Practice2 => 'FP2',
+            self::Practice3 => 'FP3',
+        };
+    }
 }

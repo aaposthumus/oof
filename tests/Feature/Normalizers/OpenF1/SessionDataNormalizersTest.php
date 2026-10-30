@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Normalizers\OpenF1;
 
+use App\Enums\SessionType;
 use App\Models\Driver;
+use App\Models\DriverEntry;
 use App\Models\OpenF1SessionDriver;
 use App\Models\PitLaneVisit;
+use App\Models\QualifyingResult;
 use App\Models\RaceControlMessage;
 use App\Models\RaceSession;
 use App\Models\SessionLap;
@@ -17,7 +20,9 @@ use App\Normalizers\OpenF1\DriversNormalizer;
 use App\Normalizers\OpenF1\LapsNormalizer;
 use App\Normalizers\OpenF1\MeetingsNormalizer;
 use App\Normalizers\OpenF1\PitNormalizer;
+use App\Normalizers\OpenF1\PositionNormalizer;
 use App\Normalizers\OpenF1\RaceControlNormalizer;
+use App\Normalizers\OpenF1\SessionResultNormalizer;
 use App\Normalizers\OpenF1\SessionsNormalizer;
 use App\Normalizers\OpenF1\StintsNormalizer;
 use App\Normalizers\OpenF1\TeamRadioNormalizer;
@@ -45,7 +50,60 @@ class SessionDataNormalizersTest extends TestCase
         $this->assertSame('bortoleto', $deletion->driverEntry->driver->jolpica_driver_id);
         $this->assertSame([87, 10], $incident->car_numbers);
         $this->assertNull($incident->driver_entry_id);
+        $this->assertEqualsCanonicalizing([87, 10], $incident->involvedEntries->pluck('car_number')->all());
+        $this->assertSame([5], $deletion->involvedEntries->pluck('car_number')->all());
         $this->assertSame($blueFlag->driver_number, $blueFlag->driverEntry->car_number);
+    }
+
+    public function test_links_a_message_to_a_car_named_in_it_once_that_car_is_matched(): void
+    {
+        $this->austinRace();
+        OpenF1SessionDriver::where('driver_number', 87)->update(['driver_entry_id' => null]);
+        $this->normalizeOpenF1(RaceControlNormalizer::class, 'race_control_11396');
+        $incident = RaceControlMessage::where('message', 'like', 'TURN 13 INCIDENT INVOLVING CARS 87 (BEA) AND 10 (GAS) NOTED%')->sole();
+        $this->assertSame([10], $incident->involvedEntries->pluck('car_number')->all());
+
+        $this->normalizeOpenF1(DriversNormalizer::class, 'drivers_11396');
+
+        $this->assertEqualsCanonicalizing([87, 10], $incident->fresh()->involvedEntries->pluck('car_number')->all());
+    }
+
+    public function test_stores_running_positions_once_per_change(): void
+    {
+        $race = $this->austinRace();
+        $position = ['session_key' => 11396, 'meeting_key' => 1297, 'driver_number' => 12, 'date' => '2026-10-25T20:03:49.706000+00:00', 'position' => 1];
+
+        app(PositionNormalizer::class)->normalize([$position, $position, [...$position, 'date' => '2026-10-25T20:20:01.100000+00:00', 'position' => 2]]);
+
+        $positions = $race->positions()->orderBy('recorded_at')->get();
+        $this->assertSame([1, 2], $positions->pluck('position')->all());
+        $this->assertSame('antonelli', $positions->first()->driverEntry->driver->jolpica_driver_id);
+    }
+
+    public function test_stores_sprint_qualifying_results_with_their_phase_times(): void
+    {
+        $session = RaceSession::factory()->create(['type' => SessionType::SprintQualifying, 'openf1_session_key' => 9278]);
+        $entry = DriverEntry::factory()->for($session)->create(['car_number' => 16]);
+        $outInSq1 = DriverEntry::factory()->for($session)->create(['car_number' => 2]);
+        OpenF1SessionDriver::factory()->for($session)->create(['driver_number' => 16, 'driver_entry_id' => $entry->id]);
+        OpenF1SessionDriver::factory()->for($session)->create(['driver_number' => 2, 'driver_entry_id' => $outInSq1->id]);
+
+        app(SessionResultNormalizer::class)->normalize([
+            ['session_key' => 9278, 'driver_number' => 16, 'position' => 1, 'duration' => [102.82, 102.5, 101.697], 'dnf' => false, 'dns' => false, 'dsq' => false],
+            ['session_key' => 9278, 'driver_number' => 2, 'position' => 20, 'duration' => [104.1, null, null], 'dnf' => false, 'dns' => false, 'dsq' => false],
+        ]);
+
+        $this->assertSame([1, 102_820, 102_500, 101_697], [$entry->qualifyingResult->position, $entry->qualifyingResult->q1_millis, $entry->qualifyingResult->q2_millis, $entry->qualifyingResult->q3_millis]);
+        $this->assertNull($outInSq1->qualifyingResult->q2_millis);
+    }
+
+    public function test_leaves_results_of_other_sessions_to_jolpica(): void
+    {
+        $this->austinRace();
+
+        app(SessionResultNormalizer::class)->normalize([['session_key' => 11396, 'driver_number' => 12, 'position' => 1, 'duration' => 5_600.1]]);
+
+        $this->assertSame(0, QualifyingResult::count());
     }
 
     public function test_parses_the_cars_a_message_names(): void

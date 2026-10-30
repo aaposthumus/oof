@@ -18,7 +18,9 @@ use App\Normalizers\OpenF1\DriversNormalizer;
 use App\Normalizers\OpenF1\LapsNormalizer as OpenF1LapsNormalizer;
 use App\Normalizers\OpenF1\MeetingsNormalizer;
 use App\Normalizers\OpenF1\PitNormalizer;
+use App\Normalizers\OpenF1\PositionNormalizer;
 use App\Normalizers\OpenF1\RaceControlNormalizer;
+use App\Normalizers\OpenF1\SessionResultNormalizer;
 use App\Normalizers\OpenF1\SessionsNormalizer;
 use App\Normalizers\OpenF1\StintsNormalizer;
 use App\Normalizers\OpenF1\TeamRadioNormalizer;
@@ -61,6 +63,8 @@ class NormalizationRunner
             StintsNormalizer::class,
             OpenF1LapsNormalizer::class,
             PitNormalizer::class,
+            PositionNormalizer::class,
+            SessionResultNormalizer::class,
             WeatherNormalizer::class,
             TeamRadioNormalizer::class,
         ],

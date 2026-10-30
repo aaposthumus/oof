@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\SessionType;
+use App\Models\AchievementAward;
 use App\Models\ConstructorStanding;
 use App\Models\Driver;
 use App\Models\DriverEntry;
@@ -10,6 +11,7 @@ use App\Models\DriverStanding;
 use App\Models\LapTime;
 use App\Models\PitLaneVisit;
 use App\Models\PitStop;
+use App\Models\Position;
 use App\Models\QualifyingResult;
 use App\Models\RaceControlMessage;
 use App\Models\RaceSession;
@@ -105,8 +107,10 @@ class OofStatus extends Command
             'session_laps' => SessionLap::class,
             'stints' => Stint::class,
             'pit_lane_visits' => PitLaneVisit::class,
+            'positions' => Position::class,
             'weather_samples' => WeatherSample::class,
             'team_radio_messages' => TeamRadioMessage::class,
+            'achievement_awards' => AchievementAward::class,
         ];
 
         foreach ($models as $table => $model) {

@@ -64,7 +64,7 @@ return [
     /*
     | Endpoints stored in the raw layer only, with no normalizer (yet).
     */
-    'raw_only_endpoints' => ['session_result', 'starting_grid', 'position'],
+    'raw_only_endpoints' => ['starting_grid'],
 
     /*
     |--------------------------------------------------------------------------
