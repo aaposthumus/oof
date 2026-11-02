@@ -2,17 +2,22 @@
 
 namespace Tests\Feature\Normalizers;
 
+use App\Enums\OpenF1MatchStatus;
 use App\Models\DriverStanding;
+use App\Models\OpenF1SessionDriver;
+use App\Models\RawResponse;
 use App\Models\Result;
 use App\Models\SeasonDriver;
 use App\Normalizers\NormalizationRunner;
+use App\Normalizers\OpenF1\DriversNormalizer;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\Concerns\NormalizesJolpicaFixtures;
+use Tests\Concerns\NormalizesOpenF1Fixtures;
 use Tests\TestCase;
 
 class NormalizationRunnerTest extends TestCase
 {
-    use LazilyRefreshDatabase, NormalizesJolpicaFixtures;
+    use LazilyRefreshDatabase, NormalizesJolpicaFixtures, NormalizesOpenF1Fixtures;
 
     public function test_normalizes_pending_responses_and_skips_them_on_rerun(): void
     {
@@ -65,5 +70,26 @@ class NormalizationRunnerTest extends TestCase
 
         $this->assertArrayNotHasKey('laps', $stats);
         $this->assertNull($laps->fresh()->normalized_at);
+    }
+
+    public function test_matches_unmatched_openf1_cars_again_on_every_run(): void
+    {
+        $this->matchSeason2026();
+        RawResponse::create([
+            'source' => 'openf1', 'endpoint' => 'drivers', 'request_key' => 'openf1:drivers:11389', 'url' => 'https://api.openf1.org/v1/drivers',
+            'parameters' => ['session_key' => 11389], 'season' => 2026, 'http_status' => 200, 'payload' => $this->openF1Fixture('drivers_11389'),
+            'fetched_at' => now()->subMinute(), 'normalized_at' => now(),
+        ]);
+        OpenF1SessionDriver::query()->delete();
+
+        $this->assertSame(['normalized' => 0, 'deferred' => 0], app(NormalizationRunner::class)->run(source: 'openf1')['openf1:drivers']);
+
+        $this->normalizeOpenF1(DriversNormalizer::class, 'drivers_11389');
+        OpenF1SessionDriver::query()->update(['driver_id' => null, 'driver_entry_id' => null, 'match_status' => OpenF1MatchStatus::Unmatched]);
+
+        $stats = app(NormalizationRunner::class)->run(source: 'openf1');
+
+        $this->assertSame(1, $stats['openf1:drivers']['normalized']);
+        $this->assertSame(0, OpenF1SessionDriver::where('match_status', OpenF1MatchStatus::Unmatched)->count());
     }
 }

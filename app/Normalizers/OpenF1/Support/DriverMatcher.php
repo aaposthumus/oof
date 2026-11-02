@@ -25,8 +25,11 @@ use Illuminate\Support\Collection;
  * A qualifying car Jolpica has no entry for (a driver who set no time) gets
  * one, with the team of the driver's race entry in the round.
  *
- * Practice drivers who never raced are practice_only rather than unmatched,
- * and a car OpenF1 lists with neither a team nor a name is not_in_session:
+ * A car in a practice session whose driver Jolpica does not have is
+ * practice_only rather than unmatched: a reserve or young driver who never
+ * raced. Once he races Jolpica has him and he matches as usual. Names in
+ * openf1.practice_only_drivers are practice_only in practice whatever the
+ * problem. A car OpenF1 lists with neither a team nor a name is not_in_session:
  * a support series car that leaked into the session's drivers.
  */
 class DriverMatcher
@@ -34,7 +37,7 @@ class DriverMatcher
     /**
      * @param  array<string, string|null>  $overrides  Jolpica driver IDs keyed by "year:driver_number"
      * @param  list<array{name: string, constructor: string, from?: int, to?: int}>  $teams  OpenF1 team names mapped to Jolpica constructor IDs
-     * @param  list<string>  $practiceOnlyDrivers  Names of drivers who drove in practice but never raced
+     * @param  list<string>  $practiceOnlyDrivers  Optional override: names of drivers to keep as practice_only in practice sessions
      */
     public function __construct(
         private CoreResolver $core,
@@ -60,8 +63,14 @@ class DriverMatcher
         [$driver, $problem] = $this->driver($year, $number, $row, $roundEntries);
 
         if ($driver === null) {
-            if ($problem[0] === OpenF1MatchStatus::Unmatched && $session->type->isPractice() && NameMatcher::isAnyOf($row, $this->practiceOnlyDrivers)) {
-                return new DriverMatch(OpenF1MatchStatus::PracticeOnly, note: "{$row['full_name']} is in openf1.practice_only_drivers.");
+            if ($session->type->isPractice()) {
+                if ($problem[2]) {
+                    return new DriverMatch(OpenF1MatchStatus::PracticeOnly, note: "{$row['full_name']} is not in Jolpica: a practice-only driver.");
+                }
+
+                if (NameMatcher::isAnyOf($row, $this->practiceOnlyDrivers)) {
+                    return new DriverMatch(OpenF1MatchStatus::PracticeOnly, note: "{$row['full_name']} is in openf1.practice_only_drivers.");
+                }
             }
 
             return new DriverMatch($problem[0], note: $problem[1]);
@@ -86,7 +95,7 @@ class DriverMatcher
     /**
      * @param  array<string, mixed>  $row
      * @param  Collection<int, DriverEntry>  $roundEntries
-     * @return array{0: ?Driver, 1: array{0: OpenF1MatchStatus, 1: string}|null}
+     * @return array{0: ?Driver, 1: array{0: OpenF1MatchStatus, 1: string, 2: bool}|null} The problem's third item is whether Jolpica has no such driver at all
      */
     private function driver(int $year, int $number, array $row, Collection $roundEntries): array
     {
@@ -96,7 +105,7 @@ class DriverMatcher
             $driverId = $this->overrides[$overrideKey];
             $driver = $driverId === null ? null : Driver::firstWhere('jolpica_driver_id', $driverId);
 
-            return $driver !== null ? [$driver, null] : [null, [OpenF1MatchStatus::Unmatched, "Override {$overrideKey} names no known driver."]];
+            return $driver !== null ? [$driver, null] : [null, [OpenF1MatchStatus::Unmatched, "Override {$overrideKey} names no known driver.", false]];
         }
 
         $label = trim(($row['name_acronym'] ?? '?').' '.($row['full_name'] ?? ''));
@@ -109,7 +118,7 @@ class DriverMatcher
                 return [$driver, null];
             }
 
-            return [null, [OpenF1MatchStatus::Conflict, "Car {$number} is {$driver->jolpica_driver_id} in this round in Jolpica, but OpenF1 lists {$label}."]];
+            return [null, [OpenF1MatchStatus::Conflict, "Car {$number} is {$driver->jolpica_driver_id} in this round in Jolpica, but OpenF1 lists {$label}.", false]];
         }
 
         $byAcronym = Driver::query()
@@ -120,8 +129,8 @@ class DriverMatcher
 
         return match ($byAcronym->count()) {
             1 => [$byAcronym->first(), null],
-            0 => [null, [OpenF1MatchStatus::Unmatched, "No driver {$label} (car {$number}) in Jolpica."]],
-            default => [null, [OpenF1MatchStatus::Conflict, "More than one driver matches {$label}: ".$byAcronym->pluck('jolpica_driver_id')->implode(', ').'.']],
+            0 => [null, [OpenF1MatchStatus::Unmatched, "No driver {$label} (car {$number}) in Jolpica.", true]],
+            default => [null, [OpenF1MatchStatus::Conflict, "More than one driver matches {$label}: ".$byAcronym->pluck('jolpica_driver_id')->implode(', ').'.', false]],
         };
     }
 

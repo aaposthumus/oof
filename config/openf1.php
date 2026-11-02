@@ -158,17 +158,14 @@ return [
     ],
 
     /*
-    | Reserve and young drivers who drove in a practice session but never in a
-    | Grand Prix, so Jolpica does not know them. Their practice cars are kept
-    | as practice_only instead of unmatched. Names as OpenF1 writes them,
-    | compared ignoring case and accents. Once such a driver races, Jolpica
-    | has them and they match as usual.
+    | A car in a practice session whose driver Jolpica does not have is
+    | practice_only automatically: a reserve or young driver who never raced.
+    | Once he races Jolpica has him and he matches as usual. Names listed here
+    | (as OpenF1 writes them, ignoring case and accents) are practice_only in
+    | practice sessions whatever the problem, e.g. a clash of car numbers.
     */
     'practice_only_drivers' => [
-        'Alexander Dunne', 'Antonio Fuoco', 'Arthur Leclerc', 'Ayumu Iwasa', 'Cian Shields',
-        'Colton Herta', 'Dino Beganovic', 'Felipe Drugovich', 'Frederik Vesti', 'Jak Crawford',
-        'Jake Dennis', 'Leonardo Fornaroli', 'Luke Browning', 'Patricio O\'Ward', 'Paul Aron',
-        'Robert Shwartzman', 'Ryo Hirakawa', 'Theo Pourchaire', 'Victor Martins', 'Zak O\'Sullivan',
+        // 'Jak Crawford',
     ],
 
     /*

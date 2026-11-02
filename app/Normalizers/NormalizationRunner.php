@@ -2,6 +2,8 @@
 
 namespace App\Normalizers;
 
+use App\Enums\OpenF1MatchStatus;
+use App\Models\RaceSession;
 use App\Models\RawResponse;
 use App\Models\Season;
 use App\Normalizers\Jolpica\ConstructorStandingsNormalizer;
@@ -34,6 +36,7 @@ use Throwable;
 /**
  * Feeds pending raw responses to their normalizers, one transaction per
  * response, and marks each one normalized. Safe to interrupt and re-run.
+ * OpenF1 cars that did not match are matched again on every run.
  */
 class NormalizationRunner
 {
@@ -136,7 +139,9 @@ class NormalizationRunner
             ->when($years !== [], fn (Builder $query) => $query->where(
                 fn (Builder $query) => $query->whereIn('season', $years)->orWhereNull('season'),
             ))
-            ->unless($all, fn (Builder $query) => $query->pendingNormalization())
+            ->unless($all, fn (Builder $query) => $query->where(fn (Builder $query) => $query
+                ->pendingNormalization()
+                ->when($source === 'openf1' && $endpoint === 'drivers', fn (Builder $query) => $query->orWhereIn('parameters->session_key', $this->sessionKeysNeedingAttention()))))
             ->orderBy('id')
             ->pluck('id');
 
@@ -157,6 +162,23 @@ class NormalizationRunner
         if ($onEndpointDone !== null) {
             $onEndpointDone($label, $this->stats[$label]['normalized'], $this->stats[$label]['deferred']);
         }
+    }
+
+    /**
+     * OpenF1 sessions with unmatched or conflicting cars. Their cars are matched
+     * again on every run: Jolpica or the matching rules may know more by now.
+     *
+     * @return list<int>
+     */
+    private function sessionKeysNeedingAttention(): array
+    {
+        $statuses = array_filter(OpenF1MatchStatus::cases(), fn (OpenF1MatchStatus $status) => $status->needsAttention());
+
+        return RaceSession::query()
+            ->whereHas('openF1SessionDrivers', fn (Builder $query) => $query->whereIn('match_status', $statuses))
+            ->pluck('openf1_session_key')
+            ->map(fn ($key) => (int) $key)
+            ->all();
     }
 
     /**

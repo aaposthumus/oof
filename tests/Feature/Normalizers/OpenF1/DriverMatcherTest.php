@@ -82,24 +82,36 @@ class DriverMatcherTest extends TestCase
         $this->assertSame('sauber', $this->match('ZHO')->seasonTeam->jolpica_constructor_id);
     }
 
-    public function test_leaves_a_stand_in_unknown_to_jolpica_unmatched(): void
-    {
-        config(['openf1.practice_only_drivers' => []]);
-
-        $match = $this->match('HIR');
-
-        $this->assertSame(OpenF1MatchStatus::Unmatched, $match->status);
-        $this->assertNull($match->entry);
-        $this->assertStringContainsString('Ryo HIRAKAWA', $match->note);
-    }
-
-    public function test_marks_a_known_practice_only_driver(): void
+    public function test_marks_a_practice_driver_unknown_to_jolpica_as_practice_only(): void
     {
         $match = $this->match('HIR');
 
         $this->assertSame(OpenF1MatchStatus::PracticeOnly, $match->status);
         $this->assertFalse($match->status->needsAttention());
         $this->assertNull($match->entry);
+        $this->assertNull($match->driver);
+    }
+
+    public function test_matches_a_practice_only_driver_normally_once_jolpica_has_him(): void
+    {
+        Driver::factory()->create(['jolpica_driver_id' => 'hirakawa', 'given_name' => 'Ryo', 'family_name' => 'Hirakawa', 'code' => 'HIR']);
+
+        $match = $this->match('HIR');
+
+        $this->assertSame(OpenF1MatchStatus::Matched, $match->status);
+        $this->assertSame('hirakawa', $match->driver->jolpica_driver_id);
+    }
+
+    public function test_the_configured_list_keeps_a_driver_practice_only_whatever_the_problem(): void
+    {
+        $race = RaceSession::factory()->for($this->practice->round)->create(['type' => SessionType::Race]);
+        DriverEntry::factory()->for($race)->for(Driver::factory()->state(['jolpica_driver_id' => 'other', 'code' => 'OTH']))->create(['car_number' => 4]);
+
+        $this->assertSame(OpenF1MatchStatus::Conflict, $this->match('NOR')->status);
+
+        config(['openf1.practice_only_drivers' => ['Lando Norris']]);
+
+        $this->assertSame(OpenF1MatchStatus::PracticeOnly, $this->match('NOR')->status);
     }
 
     public function test_leaves_a_practice_only_driver_in_a_race_session_unmatched(): void
@@ -125,11 +137,9 @@ class DriverMatcherTest extends TestCase
 
     public function test_never_matches_on_surname_alone(): void
     {
-        config(['openf1.practice_only_drivers' => []]);
-
         $match = $this->match('CRA', 'drivers_crawford_2025_fp1');
 
-        $this->assertSame(OpenF1MatchStatus::Unmatched, $match->status);
+        $this->assertSame(OpenF1MatchStatus::PracticeOnly, $match->status);
         $this->assertNull($match->driver);
     }
 
