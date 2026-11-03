@@ -85,6 +85,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Heavy crashes
+    |--------------------------------------------------------------------------
+    |
+    | A driver who retires with a red flag, the medical car or a stopped car
+    | not cleared for this many seconds has had a heavy crash. Their OOF
+    | awards for the session wait for review.
+    |
+    */
+
+    'heavy_crash_stopped_seconds' => 180,
+
+    /*
+    |--------------------------------------------------------------------------
     | Surprises
     |--------------------------------------------------------------------------
     |

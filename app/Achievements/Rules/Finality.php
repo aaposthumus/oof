@@ -4,20 +4,24 @@ namespace App\Achievements\Rules;
 
 use App\Achievements\Detection;
 use App\Achievements\SessionData;
+use App\Enums\AchievementShelf;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
 use App\Enums\AwardStatus;
+use App\Models\Achievement;
 use App\Models\MomentSensitivity;
 use Carbon\CarbonImmutable;
 
 /**
  * Whether an award is final or waits. It waits while its investigation is
  * open or the session is not final yet, and always when it is inferred
- * (low confidence), disputed, or on a sensitive weekend, until a person
- * confirms it.
+ * (low confidence), disputed, on a sensitive weekend, or an OOF award for
+ * a driver who retired in a heavy crash, until a person confirms it.
  */
 class Finality
 {
+    public function __construct(private HeavyCrash $heavyCrash) {}
+
     /**
      * Driver IDs with a sensitivity per round; 0 for the whole round.
      *
@@ -28,10 +32,11 @@ class Finality
     /**
      * @return array{0: AwardStatus, 1: AwardReviewReason|null}
      */
-    public function judge(Detection $detection, SessionData $data, bool $sessionIsFinal, ?int $driverId): array
+    public function judge(Detection $detection, SessionData $data, bool $sessionIsFinal, ?int $driverId, Achievement $achievement): array
     {
         $reason = $detection->reviewReason
             ?? ($detection->confidence === AwardConfidence::Low ? AwardReviewReason::LowConfidence : null)
+            ?? ($achievement->shelf === AchievementShelf::Oof && $this->heavyCrash->involves($data, $detection->driverEntryId) ? AwardReviewReason::HeavyCrash : null)
             ?? ($this->isSensitive($data, $driverId) ? AwardReviewReason::SensitiveWeekend : null)
             ?? ($detection->isOpen && ! $sessionIsFinal ? AwardReviewReason::OpenInvestigation : null);
 

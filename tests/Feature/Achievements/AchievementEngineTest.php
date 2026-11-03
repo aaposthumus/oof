@@ -3,6 +3,8 @@
 namespace Tests\Feature\Achievements;
 
 use App\Achievements\AchievementEngine;
+use App\Achievements\Detection;
+use App\Achievements\Rules\Finality;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
 use App\Enums\AwardStatus;
@@ -10,7 +12,9 @@ use App\Enums\SessionType;
 use App\Models\Achievement;
 use App\Models\AchievementAward;
 use App\Models\AchievementVariant;
+use App\Models\DriverEntry;
 use App\Models\MomentSensitivity;
+use App\Models\RaceSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -452,5 +456,91 @@ class AchievementEngineTest extends TestCase
         $this->runEngine($race);
 
         $this->assertCount(0, $this->awards('nothing_to_see_here'));
+    }
+
+    /**
+     * A race with one retirement (car 16) and one clean finisher (car 44).
+     *
+     * @return array{0: RaceSession, 1: DriverEntry, 2: DriverEntry}
+     */
+    private function raceWithARetirement(): array
+    {
+        $race = $this->raceSession();
+        $retired = $this->car($race, 16);
+        $clean = $this->car($race, 44);
+        $this->resultFor($retired, ['status' => 'Accident', 'position' => null, 'position_text' => 'R', 'is_classified' => false, 'laps_completed' => 10]);
+        $this->resultFor($clean, ['position' => 8, 'position_text' => '8']);
+
+        return [$race, $retired, $clean];
+    }
+
+    public function test_a_retirement_with_a_red_flag_sends_the_oof_awards_to_review(): void
+    {
+        [$race, $retired] = $this->raceWithARetirement();
+        $this->message($race, 'CAR 16 (BOT) STOPPED AT TURN 7');
+        $this->message($race, 'RED FLAG', ['category' => 'Flag', 'flag' => 'RED']);
+
+        $this->runEngine($race);
+
+        $award = $this->awards('home_before_dinner')->sole();
+        $this->assertSame($retired->id, $award->driver_entry_id);
+        $this->assertSame(AwardStatus::Pending, $award->status);
+        $this->assertSame(AwardReviewReason::HeavyCrash, $award->review_reason);
+    }
+
+    public function test_the_medical_car_is_a_heavy_crash(): void
+    {
+        [$race] = $this->raceWithARetirement();
+        $this->message($race, 'CAR 16 (BOT) STOPPED AT TURN 7');
+        $this->message($race, 'MEDICAL CAR DEPLOYED');
+
+        $this->runEngine($race);
+
+        $this->assertSame(AwardReviewReason::HeavyCrash, $this->awards('home_before_dinner')->sole()->review_reason);
+    }
+
+    public function test_a_car_stopped_for_a_long_time_is_a_heavy_crash(): void
+    {
+        [$race] = $this->raceWithARetirement();
+        $this->message($race, 'CAR 16 (BOT) STOPPED AT TURN 7');
+        $this->message($race, 'CLEAR IN TRACK SECTOR 7', ['category' => 'Flag', 'flag' => 'CLEAR']);
+        config(['achievements.heavy_crash_stopped_seconds' => 50]);
+
+        $this->runEngine($race);
+
+        $this->assertSame(AwardReviewReason::HeavyCrash, $this->awards('home_before_dinner')->sole()->review_reason);
+    }
+
+    public function test_an_ordinary_retirement_and_other_drivers_stay_final(): void
+    {
+        [$race] = $this->raceWithARetirement();
+        $this->message($race, 'CAR 16 (BOT) STOPPED AT TURN 7');
+        $this->message($race, 'CLEAR IN TRACK SECTOR 7', ['category' => 'Flag', 'flag' => 'CLEAR']);
+
+        $this->runEngine($race);
+
+        $award = $this->awards('home_before_dinner')->sole();
+        $this->assertSame(AwardStatus::Final, $award->status);
+        $this->assertNull($award->review_reason);
+    }
+
+    public function test_a_heavy_crash_only_reviews_the_retired_drivers_oof_awards(): void
+    {
+        [$race, $retired, $clean] = $this->raceWithARetirement();
+        $this->message($race, 'CAR 16 (BOT) STOPPED AT TURN 7');
+        $this->message($race, 'RED FLAG', ['category' => 'Flag', 'flag' => 'RED']);
+        $finality = app(Finality::class);
+        $judge = fn (string $key, $entry) => $finality->judge(
+            new Detection($key, $entry->id, 'x', 'x', ['source' => 'results']),
+            $this->data($race),
+            true,
+            $entry->driver_id,
+            Achievement::firstWhere('key', $key),
+        );
+
+        $this->assertSame(AwardReviewReason::HeavyCrash, $judge('home_before_dinner', $retired)[1]);
+        $this->assertSame(AwardReviewReason::HeavyCrash, $judge('bumper_cars', $retired)[1]);
+        $this->assertNull($judge('spare_tyre', $retired)[1]);
+        $this->assertNull($judge('home_before_dinner', $clean)[1]);
     }
 }

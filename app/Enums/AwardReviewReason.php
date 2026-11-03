@@ -12,6 +12,7 @@ enum AwardReviewReason: string
     case OpenInvestigation = 'open_investigation';
     case SourceDisagreement = 'source_disagreement';
     case SensitiveWeekend = 'sensitive_weekend';
+    case HeavyCrash = 'heavy_crash';
 
     public function label(): string
     {
@@ -21,6 +22,7 @@ enum AwardReviewReason: string
             self::OpenInvestigation => 'Open investigation',
             self::SourceDisagreement => 'Sources disagree',
             self::SensitiveWeekend => 'Sensitive weekend',
+            self::HeavyCrash => 'Heavy crash',
         };
     }
 }

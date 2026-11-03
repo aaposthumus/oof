@@ -197,7 +197,7 @@ class AchievementEngine
             $stat['found']++;
 
             $driverId = $data->entry($detection->driverEntryId)?->driver_id;
-            [$status, $reviewReason] = $this->finality->judge($detection, $data, $sessionIsFinal, $driverId);
+            [$status, $reviewReason] = $this->finality->judge($detection, $data, $sessionIsFinal, $driverId, $achievement);
             $key = "{$achievement->id}|{$detection->awardInstanceKey()}";
             $award = $existing->get($key) ?? new AchievementAward([
                 'race_session_id' => $data->session->id,
