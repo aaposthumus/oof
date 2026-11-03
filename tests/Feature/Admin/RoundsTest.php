@@ -85,8 +85,11 @@ class RoundsTest extends TestCase
             'status' => AwardStatus::Pending,
         ]);
 
+        $award->achievement->update(['description' => 'Retired from the race.']);
+
         Livewire::test(ViewRound::class, ['record' => $round->getRouteKey()])
             ->assertSee('Mexico City Grand Prix')
+            ->assertSeeText('Retired from the race.')
             ->assertSeeInOrder(['FP1', 'Qualifying', 'Race', 'Awards'])
             ->assertSeeText('1:35:01.234')
             ->assertSeeText('1:18.901 (fastest)')

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\AchievementAwards\Schemas;
 
+use App\Enums\AchievementShelf;
+use App\Enums\AchievementTier;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
 use App\Enums\AwardStatus;
@@ -25,7 +27,8 @@ class AchievementAwardInfolist
                     ->schema([
                         TextEntry::make('title')
                             ->label('Achievement')
-                            ->state(fn (AchievementAward $record): string => $record->title()),
+                            ->state(fn (AchievementAward $record): string => $record->title())
+                            ->helperText(fn (AchievementAward $record): ?string => $record->achievement->description),
                         TextEntry::make('session')
                             ->state(fn (AchievementAward $record): string => AchievementAwardsTable::sessionTitle($record)),
                         TextEntry::make('driver_name')
@@ -44,8 +47,15 @@ class AchievementAwardInfolist
                             ->placeholder('–'),
                         TextEntry::make('subtitle')
                             ->placeholder('–'),
-                        TextEntry::make('achievement.description')
-                            ->label('Trigger'),
+                        TextEntry::make('achievement.tier')
+                            ->label('Tier')
+                            ->badge()
+                            ->formatStateUsing(fn (?AchievementTier $state): ?string => $state?->label())
+                            ->placeholder('–'),
+                        TextEntry::make('achievement.shelf')
+                            ->label('Shelf')
+                            ->badge()
+                            ->formatStateUsing(fn (AchievementShelf $state): string => $state->label()),
                         TextEntry::make('decision')
                             ->state(fn (AchievementAward $record): ?string => $record->decided_at !== null
                                 ? "{$record->status->label()} by ".($record->decider?->name ?? 'the engine')." on {$record->decided_at->format('j M Y H:i')}"

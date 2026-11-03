@@ -48,7 +48,7 @@ class AchievementAwardsTable
                 TextColumn::make('achievement.name')
                     ->label('Achievement')
                     ->state(fn (AchievementAward $record): string => $record->title())
-                    ->description(fn (AchievementAward $record): ?string => $record->subtitle),
+                    ->description(fn (AchievementAward $record): ?string => $record->descriptionLine()),
                 TextColumn::make('driver_name')
                     ->label('Driver')
                     ->state(fn (AchievementAward $record): ?string => $record->driver ? "{$record->driver->given_name} {$record->driver->family_name}" : null)

@@ -225,7 +225,7 @@ class RoundInfolist
     }
 
     /**
-     * @return list<array{session: string, driver: string, title: string, status: string, url: string}>
+     * @return list<array{session: string, driver: string, title: string, description: string|null, status: string, url: string}>
      */
     private static function awards(Round $round): array
     {
@@ -239,6 +239,7 @@ class RoundInfolist
                 'session' => $award->raceSession->type->label(),
                 'driver' => $award->driver === null ? '' : "{$award->driver->given_name} {$award->driver->family_name}",
                 'title' => $award->title(),
+                'description' => $award->descriptionLine(),
                 'status' => $award->status->label(),
                 'url' => AchievementAwardResource::getUrl('view', ['record' => $award]),
             ])->all();

@@ -69,6 +69,21 @@ class AchievementAwardsTest extends TestCase
             ->assertSee('FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 44 (HAM) - SPEEDING IN THE PIT LANE');
     }
 
+    public function test_shows_the_catalogue_description_with_tier_and_shelf(): void
+    {
+        $award = $this->award();
+        $award->achievement->update(['description' => 'Edited in the CMS: speeding in the pits.']);
+
+        Livewire::test(ListAchievementAwards::class)
+            ->set('activeTab', 'all')
+            ->assertSeeText('Edited in the CMS: speeding in the pits.');
+
+        Livewire::test(ViewAchievementAward::class, ['record' => $award->getRouteKey()])
+            ->assertSeeText('Edited in the CMS: speeding in the pits.')
+            ->assertSeeText($award->achievement->tier->label())
+            ->assertSeeText($award->achievement->shelf->label());
+    }
+
     public function test_filters_on_achievement_status_and_session(): void
     {
         $award = $this->award();

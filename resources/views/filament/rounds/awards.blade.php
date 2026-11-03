@@ -13,7 +13,11 @@
                     @foreach ($awards as $award)
                         <tr>
                             <td>{{ $award['session'] }}</td>
-                            <td><a href="{{ $award['url'] }}" class="underline">{{ $award['title'] }}</a></td>
+                            <td><a href="{{ $award['url'] }}" class="underline">{{ $award['title'] }}</a>
+                                @if ($award['description'])
+                                    <div class="oof-muted" style="font-size: 0.75rem;">{{ $award['description'] }}</div>
+                                @endif
+                            </td>
                             <td>{{ $award['driver'] }}</td>
                             <td>{{ $award['status'] }}</td>
                         </tr>

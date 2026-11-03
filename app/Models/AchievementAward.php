@@ -70,6 +70,14 @@ class AchievementAward extends Model
         return $this->detail === null ? $name : "{$name} · {$this->detail}";
     }
 
+    /**
+     * The achievement's description from the catalogue, then the award's own subtitle.
+     */
+    public function descriptionLine(): ?string
+    {
+        return collect([$this->achievement->description, $this->subtitle])->filter()->implode(' · ') ?: null;
+    }
+
     public function suppress(User $user, string $reason): void
     {
         $this->update(['status' => AwardStatus::Suppressed, 'decided_by' => $user->id, 'decided_at' => now(), 'decision_note' => $reason]);
