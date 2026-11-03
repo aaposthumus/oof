@@ -15,6 +15,14 @@ class Season extends Model
     use HasFactory;
 
     /**
+     * The ID of the season of the current year, or else the latest one.
+     */
+    public static function currentId(): ?int
+    {
+        return self::query()->where('year', now()->year)->value('id') ?? self::query()->orderByDesc('year')->value('id');
+    }
+
+    /**
      * @return HasMany<Round, $this>
      */
     public function rounds(): HasMany

@@ -6,11 +6,12 @@ use App\Enums\MomentCandidateStatus;
 use App\Excavation\Support\EvidenceSummary;
 use App\Filament\Resources\HistoricMoments\HistoricMomentResource;
 use App\Models\MomentCandidate;
+use App\Models\Season;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
-use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -67,8 +68,8 @@ class MomentCandidatesTable
                     ->falseLabel('Not sensitive'),
                 Filter::make('season_range')
                     ->schema([
-                        TextInput::make('from_year')->label('From season')->numeric()->minValue(1950),
-                        TextInput::make('to_year')->label('To season')->numeric()->minValue(1950),
+                        Select::make('from_year')->label('From season')->placeholder('Any')->options(fn (): array => self::seasonYears()),
+                        Select::make('to_year')->label('To season')->placeholder('Any')->options(fn (): array => self::seasonYears()),
                     ])
                     ->columns(2)
                     ->query(fn (Builder $query, array $data): Builder => $query->whereHas('round.season', function (Builder $season) use ($data): void {
@@ -76,12 +77,11 @@ class MomentCandidatesTable
                             ->when($data['from_year'] ?? null, fn (Builder $q, $year) => $q->where('year', '>=', $year))
                             ->when($data['to_year'] ?? null, fn (Builder $q, $year) => $q->where('year', '<=', $year));
                     })),
-                Filter::make('minimum_score')
-                    ->schema([
-                        TextInput::make('minimum_score')->numeric()->minValue(0)->maxValue(100),
-                    ])
+                SelectFilter::make('minimum_score')
+                    ->label('Minimum score')
+                    ->options(collect([90, 80, 70, 60, 50, 40])->mapWithKeys(fn (int $score) => [$score => "{$score}+"])->all())
                     ->query(fn (Builder $query, array $data): Builder => $query->when(
-                        $data['minimum_score'] ?? null,
+                        $data['value'] ?? null,
                         fn (Builder $q, $score) => $q->where('score', '>=', $score),
                     )),
             ])
@@ -162,5 +162,13 @@ class MomentCandidatesTable
                 ? 'The historic moment of this candidate has been edited or published, so it will remain after this change. Delete it from the historic moments if you no longer want it.'
                 : null)
             ->action(fn (MomentCandidate $record) => $record->changeStatus($status));
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private static function seasonYears(): array
+    {
+        return Season::query()->orderByDesc('year')->pluck('year', 'year')->all();
     }
 }

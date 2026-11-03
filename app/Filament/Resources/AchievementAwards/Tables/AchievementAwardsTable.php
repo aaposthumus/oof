@@ -10,6 +10,8 @@ use App\Enums\SessionType;
 use App\Models\AchievementAward;
 use App\Models\Driver;
 use App\Models\DriverEntry;
+use App\Models\RaceSession;
+use App\Models\Round;
 use App\Models\Season;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -18,6 +20,8 @@ use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -79,20 +83,7 @@ class AchievementAwardsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('season')
-                    ->options(fn (): array => Season::query()->where('year', '>=', config('achievements.first_season'))->orderByDesc('year')->pluck('year', 'year')->all())
-                    ->query(fn (Builder $query, array $data): Builder => $query->when($data['value'] ?? null, fn (Builder $query, $year) => $query->whereHas('raceSession.round.season', fn (Builder $season) => $season->where('year', $year)))),
-                Filter::make('round')
-                    ->schema([TextInput::make('round_number')->label('Round')->numeric()->minValue(1)])
-                    ->query(fn (Builder $query, array $data): Builder => $query->when($data['round_number'] ?? null, fn (Builder $query, $round) => $query->whereHas('raceSession.round', fn (Builder $q) => $q->where('round_number', $round)))),
-                SelectFilter::make('session')
-                    ->options(collect(SessionType::cases())->mapWithKeys(fn (SessionType $type) => [$type->value => $type->label()])->all())
-                    ->query(fn (Builder $query, array $data): Builder => $query->when($data['value'] ?? null, fn (Builder $query, $type) => $query->whereHas('raceSession', fn (Builder $q) => $q->where('type', $type)))),
-                SelectFilter::make('driver_id')
-                    ->label('Driver')
-                    ->relationship('driver', 'family_name')
-                    ->getOptionLabelFromRecordUsing(fn (Driver $record): string => "{$record->given_name} {$record->family_name}")
-                    ->searchable(['given_name', 'family_name']),
+                self::sessionFilter(),
                 SelectFilter::make('achievement_id')
                     ->label('Achievement')
                     ->relationship('achievement', 'name')
@@ -185,6 +176,110 @@ class AchievementAwardsTable
                 ])
                 ->action(fn (AchievementAward $record, array $data) => $record->update(['subtitle' => $data['subtitle'] ?: null])),
         ];
+    }
+
+    /**
+     * Season, round, session and driver as dropdowns that narrow each other:
+     * the rounds of the season, the sessions of the round, and the drivers
+     * who raced in the season.
+     */
+    private static function sessionFilter(): Filter
+    {
+        return Filter::make('scope')
+            ->label('Season, round, session and driver')
+            ->columns(2)
+            ->schema([
+                Select::make('season')
+                    ->placeholder('All seasons')
+                    ->default(fn (): ?int => Season::currentId())
+                    ->options(fn (): array => Season::query()->where('year', '>=', config('achievements.first_season'))->orderByDesc('year')->pluck('year', 'id')->all())
+                    ->live()
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('round', null);
+                        $set('session', null);
+                        $set('driver', null);
+                    }),
+                Select::make('round')
+                    ->placeholder('All rounds')
+                    ->options(fn (Get $get): array => self::roundsOf($get('season')))
+                    ->disabled(fn (Get $get): bool => $get('season') === null)
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set) => $set('session', null)),
+                Select::make('session')
+                    ->placeholder('All sessions')
+                    ->options(fn (Get $get): array => collect($get('round') === null
+                        ? SessionType::cases()
+                        : RaceSession::query()->where('round_id', $get('round'))->pluck('type')->all())
+                        ->mapWithKeys(fn (SessionType $type) => [$type->value => $type->label()])
+                        ->all()),
+                Select::make('driver')
+                    ->placeholder('All drivers')
+                    ->searchable()
+                    ->options(fn (Get $get): array => self::driversWhoRaced($get('season')))
+                    ->getSearchResultsUsing(fn (string $search, Get $get): array => self::driversWhoRaced($get('season'), $search))
+                    ->getOptionLabelUsing(fn ($value): ?string => ($driver = Driver::find($value)) === null ? null : "{$driver->given_name} {$driver->family_name}"),
+            ])
+            ->query(fn (Builder $query, array $data): Builder => $query
+                ->when($data['season'] ?? null, fn (Builder $query, $season) => $query->whereHas('raceSession.round', fn (Builder $round) => $round->where('season_id', $season)))
+                // A round left over from another season is ignored.
+                ->when(self::roundInSeason($data['round'] ?? null, $data['season'] ?? null), fn (Builder $query, $round) => $query->whereHas('raceSession', fn (Builder $session) => $session->where('round_id', $round)))
+                ->when($data['session'] ?? null, fn (Builder $query, $type) => $query->whereHas('raceSession', fn (Builder $session) => $session->where('type', $type)))
+                ->when($data['driver'] ?? null, fn (Builder $query, $driver) => $query->where('driver_id', $driver)))
+            ->indicateUsing(function (array $data): array {
+                $season = isset($data['season']) ? Season::find($data['season'])?->year : null;
+                $round = isset($data['round']) ? Round::find($data['round']) : null;
+
+                return array_values(array_filter([
+                    $season === null ? null : "Season {$season}",
+                    $round === null ? null : "Round {$round->round_number} · {$round->name}",
+                    isset($data['session']) ? SessionType::from($data['session'])->label() : null,
+                    isset($data['driver']) && ($driver = Driver::find($data['driver'])) !== null ? "{$driver->given_name} {$driver->family_name}" : null,
+                ]));
+            });
+    }
+
+    private static function roundInSeason(mixed $roundId, mixed $seasonId): ?int
+    {
+        if ($roundId === null) {
+            return null;
+        }
+
+        return Round::query()->whereKey($roundId)->when($seasonId, fn (Builder $query) => $query->where('season_id', $seasonId))->value('id');
+    }
+
+    /**
+     * The season's rounds, newest first: "19 · Mexico City Grand Prix".
+     *
+     * @return array<int, string>
+     */
+    public static function roundsOf(?int $seasonId): array
+    {
+        return $seasonId === null ? [] : Round::query()
+            ->where('season_id', $seasonId)
+            ->orderByDesc('round_number')
+            ->get()
+            ->mapWithKeys(fn (Round $round) => [$round->id => "{$round->round_number} · {$round->name}"])
+            ->all();
+    }
+
+    /**
+     * Drivers with a car in a race or sprint of the season (any season without one), by name.
+     *
+     * @return array<int, string>
+     */
+    public static function driversWhoRaced(?int $seasonId, ?string $search = null): array
+    {
+        return Driver::query()
+            ->whereHas('driverEntries.raceSession', fn (Builder $session) => $session
+                ->whereIn('type', [SessionType::Race, SessionType::Sprint])
+                ->when($seasonId, fn (Builder $query) => $query->whereHas('round', fn (Builder $round) => $round->where('season_id', $seasonId))))
+            ->when($search, fn (Builder $query, string $term) => $query->where(fn (Builder $query) => $query->where('given_name', 'like', "%{$term}%")->orWhere('family_name', 'like', "%{$term}%")))
+            ->orderBy('family_name')
+            ->orderBy('given_name')
+            ->limit(50)
+            ->get()
+            ->mapWithKeys(fn (Driver $driver) => [$driver->id => "{$driver->given_name} {$driver->family_name}"])
+            ->all();
     }
 
     public static function sessionTitle(AchievementAward $record): string

@@ -39,19 +39,11 @@ class RoundsTable
             ->filters([
                 SelectFilter::make('season')
                     ->relationship('season', 'year', fn (Builder $query) => $query->orderByDesc('year'))
-                    ->default(fn (): ?int => self::currentSeasonId()),
+                    ->default(fn (): ?int => Season::currentId()),
             ])
             ->recordActions([
                 ViewAction::make(),
             ])
             ->recordUrl(fn (Round $record): string => RoundResource::getUrl('view', ['record' => $record]));
-    }
-
-    /**
-     * The season of the current year, or else the latest one.
-     */
-    public static function currentSeasonId(): ?int
-    {
-        return Season::query()->where('year', now()->year)->value('id') ?? Season::query()->orderByDesc('year')->value('id');
     }
 }

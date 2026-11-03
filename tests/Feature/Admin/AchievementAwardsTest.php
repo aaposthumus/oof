@@ -6,12 +6,15 @@ use App\Enums\AwardStatus;
 use App\Enums\SessionType;
 use App\Filament\Resources\AchievementAwards\Pages\ListAchievementAwards;
 use App\Filament\Resources\AchievementAwards\Pages\ViewAchievementAward;
+use App\Filament\Resources\AchievementAwards\Tables\AchievementAwardsTable;
 use App\Filament\Resources\Achievements\AchievementResource;
 use App\Filament\Resources\Achievements\Pages\EditAchievement;
 use App\Filament\Resources\Achievements\Pages\ListAchievements;
 use App\Models\Achievement;
 use App\Models\AchievementAward;
 use App\Models\RaceSession;
+use App\Models\Round;
+use App\Models\Season;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -81,8 +84,58 @@ class AchievementAwardsTest extends TestCase
             ->assertCanSeeTableRecords([$other])
             ->assertCanNotSeeTableRecords([$award])
             ->resetTableFilters()
-            ->filterTable('session', SessionType::Qualifying->value)
+            ->filterTable('scope', ['season' => Season::firstWhere('year', 2024)->id, 'session' => SessionType::Qualifying->value])
             ->assertCanNotSeeTableRecords([$award, $other]);
+    }
+
+    public function test_season_round_session_and_driver_are_dropdowns_that_narrow_each_other(): void
+    {
+        $award = $this->award();
+        $race = $award->raceSession;
+        $qualifying = $this->raceSession(SessionType::Qualifying, $race->round);
+        $laterRound = $this->round(2024, 19, ['name' => 'Mexico City Grand Prix']);
+        $oldSeasonAward = AchievementAward::factory()->create([
+            'race_session_id' => $this->raceSession(SessionType::Race, $this->round(2023, 3))->id,
+            'achievement_id' => $award->achievement_id,
+        ]);
+        $season = Season::firstWhere('year', 2024);
+
+        $component = Livewire::test(ListAchievementAwards::class)->set('activeTab', 'all');
+
+        // The current (here: latest) season is the default.
+        $component->assertCanSeeTableRecords([$award])->assertCanNotSeeTableRecords([$oldSeasonAward]);
+
+        $component
+            ->set('tableFilters.scope.season', Season::firstWhere('year', 2023)->id)
+            ->assertCanSeeTableRecords([$oldSeasonAward])
+            ->assertCanNotSeeTableRecords([$award])
+            ->set('tableFilters.scope.season', $season->id)
+            ->set('tableFilters.scope.round', $laterRound->id)
+            ->assertCanNotSeeTableRecords([$award])
+            ->set('tableFilters.scope.round', $race->round_id)
+            ->assertCanSeeTableRecords([$award])
+            ->set('tableFilters.scope.session', SessionType::Qualifying->value)
+            ->assertCanNotSeeTableRecords([$award])
+            ->set('tableFilters.scope.session', SessionType::Race->value)
+            ->assertCanSeeTableRecords([$award]);
+
+        // A round left over from another season does not hide the new season's awards.
+        $component->set('tableFilters.scope.session', null)
+            ->set('tableFilters.scope.season', Season::firstWhere('year', 2023)->id)
+            ->assertCanSeeTableRecords([$oldSeasonAward]);
+
+        $this->assertSame([$laterRound->id => '19 · Mexico City Grand Prix', $race->round_id => '5 · Miami Grand Prix'], AchievementAwardsTable::roundsOf($season->id));
+        $this->assertNotNull($qualifying);
+    }
+
+    public function test_the_driver_dropdown_only_lists_drivers_who_raced_in_the_season(): void
+    {
+        $racer = $this->award()->driver;
+        $other = $this->car($this->raceSession(SessionType::Race, $this->round(2023, 3)), 7)->driver;
+
+        $this->assertSame([$racer->id], array_keys(AchievementAwardsTable::driversWhoRaced(Season::firstWhere('year', 2024)->id)));
+        $this->assertSame([$other->id], array_keys(AchievementAwardsTable::driversWhoRaced(Season::firstWhere('year', 2023)->id)));
+        $this->assertCount(2, AchievementAwardsTable::driversWhoRaced(null));
     }
 
     public function test_suppressing_needs_a_reason_and_records_who_did_it(): void
