@@ -8,6 +8,7 @@ use App\Enums\AwardReviewReason;
 use App\Enums\AwardStatus;
 use App\Enums\SessionType;
 use App\Models\Achievement;
+use App\Models\AchievementAward;
 use App\Models\AchievementVariant;
 use App\Models\MomentSensitivity;
 use App\Models\User;
@@ -393,5 +394,63 @@ class AchievementEngineTest extends TestCase
         $this->assertSame(1, $stats['lapped_dog']['created']);
         $this->assertCount(0, $this->awards());
         $this->assertNull($race->fresh()->achievements_checked_at);
+    }
+
+    public function test_nothing_to_see_here_counts_every_award_unless_a_person_suppressed_it(): void
+    {
+        $race = $this->raceSession();
+        $qualifying = $this->raceSession(SessionType::Qualifying, $race->round);
+        $earlier = $this->raceSession(SessionType::Race, $this->round(2024, 4));
+        $this->resultFor($this->car($race, 99), ['position' => 20, 'position_text' => '20', 'classification_order' => 20]);
+        $cars = collect([1, 2, 3, 4, 5])->mapWithKeys(function (int $number) use ($race, $earlier) {
+            $entry = $this->car($race, $number);
+            $this->resultFor($entry, ['position' => $number + 5, 'position_text' => (string) ($number + 5), 'classification_order' => $number + 5]);
+            $this->resultFor($this->car($earlier, $number, null, $entry->driver), ['position' => $number, 'position_text' => (string) $number]);
+
+            return [$number => $entry];
+        });
+        $award = fn (int $number, array $attributes) => AchievementAward::factory()->create([
+            'race_session_id' => $qualifying->id,
+            'achievement_id' => Achievement::firstWhere('key', 'spare_tyre')->id,
+            'driver_id' => $cars[$number]->driver_id,
+            ...$attributes,
+        ]);
+        $award(2, ['status' => AwardStatus::Pending]);
+        $award(3, ['status' => AwardStatus::Suppressed, 'decided_at' => now(), 'decision_note' => AchievementAward::HISTORIC_NOTE]);
+        $award(4, ['status' => AwardStatus::Suppressed, 'decided_by' => User::factory()->create()->id, 'decided_at' => now(), 'decision_note' => 'No.']);
+
+        $this->runEngine($race);
+
+        $quiet = $this->awards('nothing_to_see_here')->pluck('driver_entry_id')->sort()->values()->all();
+        $this->assertSame([$cars[1]->id, $cars[4]->id, $cars[5]->id], $quiet);
+    }
+
+    public function test_nothing_to_see_here_ignores_a_suppression_by_a_person_in_the_same_session(): void
+    {
+        $race = $this->raceSession();
+        $earlier = $this->raceSession(SessionType::Race, $this->round(2024, 4));
+        $this->resultFor($this->car($race, 99), ['position' => 20, 'position_text' => '20', 'status' => '+1 Lap']);
+        $entry = $this->car($race, 44);
+        $this->resultFor($entry, ['position' => 9, 'position_text' => '9', 'status' => '+1 Lap']);
+        $this->resultFor($this->car($earlier, 44, null, $entry->driver), ['position' => 5, 'position_text' => '5']);
+
+        $this->runEngine($race);
+        $this->assertCount(0, $this->awards('nothing_to_see_here'));
+
+        $this->awards('lapped_dog')->firstWhere('driver_entry_id', $entry->id)->suppress(User::factory()->create(), 'Not this time.');
+        $this->runEngine($race);
+
+        $this->assertCount(1, $this->awards('nothing_to_see_here'));
+    }
+
+    public function test_nothing_to_see_here_never_goes_to_a_first_ever_start(): void
+    {
+        $race = $this->raceSession();
+        $debutant = $this->car($race, 38);
+        $this->resultFor($debutant, ['position' => 10, 'position_text' => '10', 'points' => 1]);
+
+        $this->runEngine($race);
+
+        $this->assertCount(0, $this->awards('nothing_to_see_here'));
     }
 }

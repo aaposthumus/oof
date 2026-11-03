@@ -180,7 +180,7 @@ class ResultDetectorsTest extends TestCase
         $this->assertSame($champion->id, $this->detect(MathsIsOverDetector::class, $this->race)->sole()->driverEntryId);
     }
 
-    public function test_a_first_race_for_a_team_that_raced_before_is_a_low_confidence_call_up(): void
+    public function test_a_driver_without_an_earlier_start_that_season_is_a_genuine_call_up(): void
     {
         $earlier = $this->raceSession(SessionType::Race, $this->round(2024, 2));
         $team = SeasonTeam::factory()->create(['season_id' => $earlier->round->season_id]);
@@ -191,6 +191,22 @@ class ResultDetectorsTest extends TestCase
         $detection = $this->detect(SpareTyreDetector::class, $this->race)->sole();
 
         $this->assertSame($standIn->id, $detection->driverEntryId);
+        $this->assertSame(AwardConfidence::High, $detection->confidence);
+    }
+
+    public function test_a_seat_swap_stays_low_confidence(): void
+    {
+        $earlier = $this->raceSession(SessionType::Race, $this->round(2024, 2));
+        $team = SeasonTeam::factory()->create(['season_id' => $earlier->round->season_id]);
+        $this->resultFor($this->car($earlier, 55, $team), ['position' => 3, 'position_text' => '3']);
+        $swapper = $this->finisher(38, 7, ['team' => $team]);
+        $otherTeamEntry = $this->car($earlier, 40);
+        $this->resultFor($otherTeamEntry, ['position' => 9, 'position_text' => '9']);
+        $otherTeamEntry->update(['driver_id' => $swapper->driver_id]);
+
+        $detection = $this->detect(SpareTyreDetector::class, $this->race)->sole();
+
+        $this->assertSame($swapper->id, $detection->driverEntryId);
         $this->assertSame(AwardConfidence::Low, $detection->confidence);
     }
 }

@@ -25,19 +25,23 @@ class OofAchievementsTest extends TestCase
     {
         $race = $this->raceSession();
         $qualifying = $this->raceSession(SessionType::Qualifying, $race->round);
+        $earlier = $this->raceSession(SessionType::Race, $this->round(2024, 4));
         $quiet = $this->car($race, 44);
         $penalised = $this->car($race, 16);
-        $this->resultFor($quiet, ['position' => 1, 'position_text' => '1']);
-        $this->resultFor($penalised, ['position' => 2, 'position_text' => '2', 'grid' => 2]);
+        $this->resultFor($this->car($earlier, 44, null, $quiet->driver), ['position' => 5, 'position_text' => '5']);
+        $this->resultFor($this->car($earlier, 16, null, $penalised->driver), ['position' => 6, 'position_text' => '6']);
+        $this->resultFor($quiet, ['position' => 8, 'position_text' => '8']);
+        $this->resultFor($penalised, ['position' => 9, 'position_text' => '9', 'grid' => 2]);
+        $this->resultFor($this->car($race, 99), ['position' => 20, 'position_text' => '20']);
         $this->car($qualifying, 16, null, $penalised->driver);
         $this->message($qualifying, 'FIA STEWARDS: 3 PLACE GRID PENALTY FOR CAR 16 (LEC) - CAUSING A COLLISION');
 
         $this->artisan('oof:achievements', ['--season' => [2024]])
-            ->expectsOutputToContain('2 sessions')
+            ->expectsOutputToContain('3 sessions')
             ->expectsOutputToContain('bumper_cars')
             ->assertSuccessful();
 
-        // Bumper Cars in qualifying counts for the weekend, so only the winner stayed quiet.
+        // Bumper Cars in qualifying counts for the weekend, so only the car in P8 stayed quiet.
         $this->assertSame([$quiet->id], AchievementAward::whereRelation('achievement', 'key', 'nothing_to_see_here')->pluck('driver_entry_id')->all());
     }
 
