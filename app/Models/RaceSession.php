@@ -64,6 +64,14 @@ class RaceSession extends Model
     }
 
     /**
+     * @return HasMany<SessionLap, $this>
+     */
+    public function sessionLaps(): HasMany
+    {
+        return $this->hasMany(SessionLap::class);
+    }
+
+    /**
      * @return HasMany<WeatherSample, $this>
      */
     public function weatherSamples(): HasMany
