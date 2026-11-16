@@ -327,6 +327,21 @@ class AchievementEngineTest extends TestCase
         $this->assertCount(0, $this->awards('high_five'));
     }
 
+    public function test_teachers_stare_counts_in_qualifying_but_not_in_practice(): void
+    {
+        $qualifying = $this->raceSession(SessionType::Qualifying);
+        $practice = $this->raceSession(SessionType::Practice2, $qualifying->round);
+        $slowInQualifying = $this->car($qualifying, 44);
+        $this->car($practice, 22);
+        $this->message($qualifying, 'BLACK AND WHITE FLAG FOR CAR 44 (HAM) - DRIVING UNNECESSARILY SLOWLY');
+        $this->message($practice, 'BLACK AND WHITE FLAG FOR CAR 22 (TSU) - CROSSING THE WHITE LINE AT PIT ENTRY');
+
+        $this->runEngine($qualifying);
+        $this->runEngine($practice);
+
+        $this->assertSame([$slowInQualifying->id], $this->awards('teachers_stare')->pluck('driver_entry_id')->all());
+    }
+
     private function lowConfidenceCase(): array
     {
         $race = $this->raceSession();

@@ -491,10 +491,11 @@ younger than its final-after wait changes from pending to final by itself.
   achievements), and against the Phase 0 golden master, after mapping the renames and
   the podium split, nothing is missing or changed. The only additions are 16 Teacher's
   Stare awards for reasons other than track limits, all in races. The golden master
-  was re-exported: 4,142 awards in 450 sessions.
-- Open: Teacher's Stare runs in races and sprints only, as the concept lists it under
-  Race. Black-and-white flags in qualifying (14 in 2023 to 2026, 9 of them for driving
-  slowly) and practice (39) give nothing.
+  was re-exported.
+- Decided by the owner afterwards: Teacher's Stare also counts in qualifying and sprint
+  qualifying, not in practice. That added 15 awards, all in qualifying, and took one
+  Nothing to See Here away (Leclerc, 2023 round 8, who now has a stare that weekend).
+  The golden master was re-exported again: 4,156 awards in 450 sessions.
 - Timing note: Jolpica's qualifying results for the 2026 Mexico City round were in the
   database about 1.5 hours after the session ended, so qualifying awards can be final
   on Saturday evening. That is one observation, not a guarantee.

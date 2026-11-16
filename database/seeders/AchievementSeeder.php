@@ -54,7 +54,7 @@ class AchievementSeeder extends Seeder
         ['fine_dining', 'Fine Dining', AchievementSection::Race, AchievementTier::Bronze, self::RACE, 'Slowest pit stop of the weekend.', ['table_for_one']],
         ['meatball_sub', 'Meatball Sub', AchievementSection::Race, AchievementTier::Platinum, self::RACES, 'Black flag with orange circle ("meatball flag").', [], true],
         ['outside_the_lines', 'Outside the Lines', AchievementSection::Race, AchievementTier::Bronze, self::RACES, 'Lap time deleted for track limits.'],
-        ['teachers_stare', "Teacher's Stare", AchievementSection::Race, AchievementTier::Silver, self::RACES, 'Black-and-white warning flag, for any reason (track limits, driving slowly, etc.).', ['outside_the_lines']],
+        ['teachers_stare', "Teacher's Stare", AchievementSection::Race, AchievementTier::Silver, self::COMPETITIVE, 'Black-and-white warning flag in a race or qualifying, for any reason (track limits, driving slowly, etc.).', ['outside_the_lines']],
         ['it_was_like_that_when_i_got_there', 'It Was Like That When I Got There', AchievementSection::Race, AchievementTier::Bronze, self::RACES, 'Involved in an incident noted by race control (never implies blame).'],
         ['called_the_tow_truck', 'Called the Tow Truck', AchievementSection::Race, AchievementTier::Silver, self::RACES, 'Caused a safety car.'],
         ['forgot_the_keys', 'Forgot the Keys', AchievementSection::Race, AchievementTier::Gold, self::RACES, 'Did not start (DNS).'],

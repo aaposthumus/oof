@@ -34,7 +34,7 @@ awarded once per instance; otherwise once per driver per session.
 | Fine Dining | Slowest pit stop of the weekend | Bronze |
 | Meatball Sub | Black flag with orange circle ("meatball flag"); stacks | Platinum |
 | Outside the Lines | Lap time deleted for track limits | Bronze |
-| Teacher's Stare | Black-and-white warning flag, for any reason (track limits, driving slowly, etc.) | Silver |
+| Teacher's Stare | Black-and-white warning flag in a race or qualifying, for any reason (track limits, driving slowly, etc.) | Silver |
 | It Was Like That When I Got There | Involved in an incident noted by race control (never implies blame) | Bronze |
 | Bumper Cars | Penalty for causing a collision | Silver |
 | Early Bird | False start, with a penalty | Gold |
@@ -61,8 +61,8 @@ awarded once per instance; otherwise once per driver per session.
 | Nothing to See Here | Unlocked nothing all weekend ("The quiet ones"); 0 points | Bronze |
 
 The offence achievements (Bumper Cars to Released Into the Wild, with a
-penalty, and Sunday Driver) also run in qualifying and sprint qualifying.
-Teacher's Stare runs in races and sprints only.
+penalty, and Sunday Driver) and Teacher's Stare also run in qualifying and
+sprint qualifying. A black-and-white flag in practice gives nothing.
 
 Sent to Your Room can carry a reason subtitle (Skipped Breakfast =
 underweight, Scraped the Bottom = plank wear, Running on Fumes = fuel
