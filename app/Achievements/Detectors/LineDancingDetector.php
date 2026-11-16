@@ -7,11 +7,11 @@ use App\RaceControl\Offence;
 /**
  * Penalised for: crossing the pit entry or exit line.
  */
-class LaneDisciplineDetector extends OffencePenaltyDetector
+class LineDancingDetector extends OffencePenaltyDetector
 {
     public function key(): string
     {
-        return 'lane_discipline';
+        return 'line_dancing';
     }
 
     protected function offences(): array

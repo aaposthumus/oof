@@ -27,7 +27,6 @@ class AchievementFactory extends Factory
             'section' => AchievementSection::Race,
             'shelf' => AchievementShelf::Oof,
             'tier' => AchievementTier::Bronze,
-            'points' => AchievementTier::Bronze->points(),
             'session_types' => [SessionType::Race->value],
             'stacks' => false,
             'supersedes' => [],

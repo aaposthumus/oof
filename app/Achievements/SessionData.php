@@ -212,6 +212,14 @@ class SessionData
             default => true,
         };
 
-        return $hasResults && $this->endsAt()->addHours((int) config('achievements.final_after_hours'))->lessThanOrEqualTo($now);
+        return $hasResults && $this->finalAt()->lessThanOrEqualTo($now);
+    }
+
+    /**
+     * When the wait for late stewards' decisions is over, which differs per session type.
+     */
+    public function finalAt(): CarbonImmutable
+    {
+        return $this->endsAt()->addHours((int) config("achievements.final_after_hours.{$this->type()->value}"));
     }
 }

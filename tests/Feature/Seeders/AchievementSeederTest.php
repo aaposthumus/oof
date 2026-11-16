@@ -27,7 +27,7 @@ class AchievementSeederTest extends TestCase
 
         foreach (Achievement::all() as $achievement) {
             $this->assertEmpty(array_diff($achievement->supersedes, $keys->all()), $achievement->key);
-            $this->assertSame($achievement->shelf === AchievementShelf::Oof && $achievement->key !== 'nothing_to_see_here', $achievement->points > 0, $achievement->key);
+            $this->assertSame($achievement->shelf === AchievementShelf::Oof && $achievement->key !== 'nothing_to_see_here', $achievement->points() > 0, $achievement->key);
         }
     }
 
@@ -37,18 +37,18 @@ class AchievementSeederTest extends TestCase
 
         $achievement = Achievement::firstWhere('key', 'whole_class_detention');
 
-        $this->assertSame(['silver', 25], [$achievement->tier->value, $achievement->points]);
-        $this->assertSame(0, Achievement::firstWhere('key', 'nothing_to_see_here')->points);
+        $this->assertSame(['silver', 25], [$achievement->tier->value, $achievement->points()]);
+        $this->assertSame(0, Achievement::firstWhere('key', 'nothing_to_see_here')->points());
     }
 
     public function test_keeps_what_was_edited_in_the_cms(): void
     {
         $this->seed(AchievementSeeder::class);
-        Achievement::where('key', 'lapped_dog')->update(['name' => 'Lapped Pup', 'points' => 5]);
+        Achievement::where('key', 'lapped_dog')->update(['name' => 'Lapped Pup', 'tier' => 'gold']);
 
         $this->seed(AchievementSeeder::class);
 
-        $this->assertSame(['Lapped Pup', 5], Achievement::where('key', 'lapped_dog')->get(['name', 'points'])->map(fn ($row) => [$row->name, $row->points])->sole());
+        $this->assertSame(['Lapped Pup', 'gold'], Achievement::where('key', 'lapped_dog')->get()->map(fn (Achievement $row) => [$row->name, $row->tier->value])->sole());
         $this->assertSame(count(AchievementSeeder::keys()), Achievement::count());
     }
 }

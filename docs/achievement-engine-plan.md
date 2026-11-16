@@ -14,7 +14,7 @@ and 4 for the design, and "Working notes" at the end.
 | Phase | What | Status |
 |---|---|---|
 | 0 | Safety net: golden master and comparison command | Done, 16 November 2026 |
-| 1 | Catalogue alignment, points in config, final-after wait per session type | Not started |
+| 1 | Catalogue alignment, points in config, final-after wait per session type | Done, 16 November 2026 |
 | 2 | Surprise rule (rolling team form) and team lineage table | Not started |
 | 3 | Award schema | Not started |
 | 4 | Sensitivity | Not started |
@@ -46,7 +46,7 @@ decision. 55 detectors, 4,126 awards over 450 sessions of 2023 to 2026.
 | Sensitive weekends | Awards wait for review; a heavy crash sends OOF awards to review | A reviewer can still confirm a crash award; `blocked` is ignored; historic sensitive wins get auto-suppressed |
 | Data source and year per achievement | One global `first_season` | Not recorded per achievement |
 
-Catalogue drift, code -> concept (keys and names to rename in Phase 1):
+Catalogue drift, code -> concept (renamed in Phase 1):
 `mirror_signal_manoeuvre` -> Blue Carpet, `colouring_outside_the_lines` -> Outside the Lines,
 `note_sent_home_to_parents` -> Teacher's Stare (now any reason, not only track limits),
 `recalculating` -> Shortcut Tax, `lane_discipline` -> Line Dancing, `road_hog` -> Extra Wide,
@@ -54,8 +54,8 @@ Catalogue drift, code -> concept (keys and names to rename in Phase 1):
 `standing_room_only` -> split into Silver Lining (P2) and Solid Bronze (P3),
 `lottery_ticket` -> Giant Slayer, `hogged_the_lot` -> Clean Sweep, `maths_is_over` -> Class Dismissed,
 `spare_tyre` -> To the Rescue, `called_in_again` -> Second Helping.
-Tier drift: Meatball Sub and Forgot to Indicate are Silver in code, Platinum in the concept;
-Did the Thing is Bronze in code, Gold in the concept.
+Tier drift (fixed in Phase 1): Meatball Sub and Forgot to Indicate were Silver in code,
+Platinum in the concept; Did the Thing was Bronze in code, Gold in the concept.
 
 ## 1. Decisions
 
@@ -454,7 +454,7 @@ come from general knowledge of the Ergast data, not from this database.
   was added or changed, per achievement. `--season=2025` limits it; `--limit=0` lists
   every difference.
 - Exported on 16 November 2026 from the local database: 4,126 awards in 450 sessions
-  (2023 to 2026 round 19). Two re-runs showed no differences.
+  (2023 to 2026 round 19). Two re-runs showed no differences. Re-exported after Phase 1.
 - Fixed on the way: Overtime listed drivers with equal lap counts in an arbitrary
   order in its evidence, so 124 awards counted as "updated" on every run. Equal counts
   now go by entry ID. Stored awards keep the old order until their session next runs.
@@ -470,13 +470,34 @@ It belongs to the database it was exported from: instance keys carry that databa
 IDs. Sessions first run after the export are reported and not compared. A session
 younger than its final-after wait changes from pending to final by itself.
 
-**Phase 1: catalogue alignment and points in config.**
-Rename the 15 keys and names, apply the tier changes, split the podium (convert existing
-rows by P2/P3), widen Teacher's Stare to any reason. Move points to config, drop the
-enum method and the column. Make the final-after wait a map per session type. Update
-`docs/achievements.md`.
-Done when the catalogue matches the concept tables and the golden master differs only
-by the intended changes, after which it is re-exported.
+**Phase 1: catalogue alignment and points in config. Done.**
+
+- 15 keys and names renamed, with their detector classes, in code, seeder, tests and
+  (by migration) the stored catalogue and every `supersedes` list.
+- Tiers: Meatball Sub and Forgot to Indicate to Platinum, Did the Thing to Gold.
+- The podium is split: Silver Lining (second, Silver) and Solid Bronze (third, Bronze).
+  The stored podium awards moved by place and lost their "P2"/"P3" detail; a person's
+  decisions stay on the rows.
+- Teacher's Stare counts a black-and-white flag for any reason. One for track limits
+  still shares the car's track-limits event; any other stands on its own.
+- Descriptions follow the concept. The migration replaces a description only where it
+  still equals the seeded text, so a CMS edit is kept.
+- Points: `achievements.points` in config (tiers, overrides, scoring shelves), read by
+  `Achievement::points()`. `AchievementTier::points()` and the `achievements.points`
+  column are gone; the CMS shows the points and no longer asks for them.
+- `achievements.final_after_hours` is a map per session type (practice and qualifying
+  2, sprint 6, race 24), read through `SessionData::finalAt()`.
+- Checked on the local database: the migrated catalogue equals a fresh seed (56
+  achievements), and against the Phase 0 golden master, after mapping the renames and
+  the podium split, nothing is missing or changed. The only additions are 16 Teacher's
+  Stare awards for reasons other than track limits, all in races. The golden master
+  was re-exported: 4,142 awards in 450 sessions.
+- Open: Teacher's Stare runs in races and sprints only, as the concept lists it under
+  Race. Black-and-white flags in qualifying (14 in 2023 to 2026, 9 of them for driving
+  slowly) and practice (39) give nothing.
+- Timing note: Jolpica's qualifying results for the 2026 Mexico City round were in the
+  database about 1.5 hours after the session ended, so qualifying awards can be final
+  on Saturday evening. That is one observation, not a guarantee.
 
 **Phase 2: surprise rule and team lineage table.**
 Add `team_lineages`, seed it from `config/f1.php`, point the team resolver at it, add a

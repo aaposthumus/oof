@@ -3,14 +3,14 @@
 namespace Tests\Feature\Achievements\Detectors;
 
 use App\Achievements\Detectors\ByAWhiskerDetector;
-use App\Achievements\Detectors\CalledInAgainDetector;
-use App\Achievements\Detectors\FamilyFeudDetector;
+use App\Achievements\Detectors\DeletedSceneDetector;
 use App\Achievements\Detectors\FineDiningDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
 use App\Achievements\Detectors\HoldingTheDoorDetector;
+use App\Achievements\Detectors\MirrorMatchDetector;
 use App\Achievements\Detectors\OvertimeDetector;
 use App\Achievements\Detectors\PracticeMakesImperfectDetector;
-use App\Achievements\Detectors\SoCloseDetector;
+use App\Achievements\Detectors\SecondHelpingDetector;
 use App\Achievements\Detectors\TableForOneDetector;
 use App\Achievements\Detectors\TookTheLeadDetector;
 use App\Achievements\Detectors\VirtuallyThereDetector;
@@ -59,7 +59,7 @@ class SessionDetectorsTest extends TestCase
         $team = SeasonTeam::factory()->create(['season_id' => $qualifying->round->season_id]);
         $field = $this->qualifyingField($qualifying, [15 => ['team' => $team], 16 => ['team' => $team]]);
 
-        $detection = $this->detect(FamilyFeudDetector::class, $qualifying)->sole();
+        $detection = $this->detect(MirrorMatchDetector::class, $qualifying)->sole();
 
         $this->assertSame($field[16]->id, $detection->driverEntryId);
         $this->assertSame('Q1', $detection->detail);
@@ -103,7 +103,7 @@ class SessionDetectorsTest extends TestCase
         $this->message($qualifying, 'CAR 2 (VER) TIME 1:27.950 DELETED - TRACK LIMITS AT TURN 4 LAP 17 19:04:00');
         $this->message($qualifying, 'CAR 2 (VER) TIME 1:28.500 DELETED - TRACK LIMITS AT TURN 4 LAP 19 19:06:00');
 
-        $detection = $this->detect(SoCloseDetector::class, $qualifying)->sole();
+        $detection = $this->detect(DeletedSceneDetector::class, $qualifying)->sole();
 
         $this->assertSame($field[1]->id, $detection->driverEntryId);
         $this->assertSame('1:27.950', $detection->detail);
@@ -214,7 +214,7 @@ class SessionDetectorsTest extends TestCase
 
     public function test_safety_car_corner(): void
     {
-        config(['achievements.took_the_lead_laps' => 8, 'achievements.called_in_again' => 2]);
+        config(['achievements.took_the_lead_laps' => 8, 'achievements.second_helping' => 2]);
         $race = $this->raceSession();
         $this->car($race, 1);
         $this->resultFor(DriverEntry::first(), []);
@@ -225,7 +225,7 @@ class SessionDetectorsTest extends TestCase
         $this->message($race, 'SAFETY CAR IN THIS LAP', ['lap_number' => 43]);
 
         $this->assertSame('9 laps', $this->detect(TookTheLeadDetector::class, $race)->sole()->detail);
-        $this->assertSame('2 deployments', $this->detect(CalledInAgainDetector::class, $race)->sole()->detail);
+        $this->assertSame('2 deployments', $this->detect(SecondHelpingDetector::class, $race)->sole()->detail);
         $this->assertSame('lap 20', $this->detect(VirtuallyThereDetector::class, $race)->sole()->detail);
         $this->assertSame('2 deployments', $this->detect(FrequentFlyerDetector::class, $race)->sole()->detail);
         $this->assertNull($this->detect(VirtuallyThereDetector::class, $race)->sole()->driverEntryId);

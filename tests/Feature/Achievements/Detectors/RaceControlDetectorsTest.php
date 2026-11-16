@@ -4,30 +4,30 @@ namespace Tests\Feature\Achievements\Detectors;
 
 use App\Achievements\Detection;
 use App\Achievements\Detector;
+use App\Achievements\Detectors\BlueCarpetDetector;
 use App\Achievements\Detectors\BumperCarsDetector;
 use App\Achievements\Detectors\CalledTheTowTruckDetector;
-use App\Achievements\Detectors\ColouringOutsideTheLinesDetector;
-use App\Achievements\Detectors\DidntSeeTheSignDetector;
 use App\Achievements\Detectors\DriveThruDetector;
 use App\Achievements\Detectors\EarlyBirdDetector;
 use App\Achievements\Detectors\ExpelledDetector;
+use App\Achievements\Detectors\ExtraWideDetector;
 use App\Achievements\Detectors\FailedTheDrivingTestDetector;
 use App\Achievements\Detectors\ForgotToIndicateDetector;
 use App\Achievements\Detectors\HighFiveDetector;
 use App\Achievements\Detectors\ItWasLikeThatDetector;
-use App\Achievements\Detectors\LaneDisciplineDetector;
+use App\Achievements\Detectors\LineDancingDetector;
 use App\Achievements\Detectors\MeatballSubDetector;
-use App\Achievements\Detectors\MirrorSignalManoeuvreDetector;
-use App\Achievements\Detectors\NoteSentHomeDetector;
+use App\Achievements\Detectors\OutsideTheLinesDetector;
 use App\Achievements\Detectors\PerfectTenDetector;
 use App\Achievements\Detectors\QueueJumperDetector;
-use App\Achievements\Detectors\RecalculatingDetector;
 use App\Achievements\Detectors\RedLightGreenLightDetector;
 use App\Achievements\Detectors\ReleasedIntoTheWildDetector;
-use App\Achievements\Detectors\RoadHogDetector;
 use App\Achievements\Detectors\SelectiveHearingDetector;
+use App\Achievements\Detectors\SelectiveVisionDetector;
+use App\Achievements\Detectors\ShortcutTaxDetector;
 use App\Achievements\Detectors\SmileForTheCameraDetector;
 use App\Achievements\Detectors\SundayDriverDetector;
+use App\Achievements\Detectors\TeachersStareDetector;
 use App\Achievements\Detectors\WholeClassDetentionDetector;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
@@ -52,12 +52,12 @@ class RaceControlDetectorsTest extends TestCase
             'bumper cars' => [BumperCarsDetector::class, 'CAUSING A COLLISION'],
             'early bird' => [EarlyBirdDetector::class, 'FALSE START - MOVING BEFORE SIGNAL'],
             'selective hearing' => [SelectiveHearingDetector::class, 'FAILING TO FOLLOW RACE DIRECTORS INSTRUCTIONS'],
-            'recalculating' => [RecalculatingDetector::class, 'LEAVING THE TRACK AND GAINING AN ADVANTAGE'],
-            'lane discipline' => [LaneDisciplineDetector::class, 'CROSSING THE LINE AT PIT ENTRY'],
+            'shortcut_tax' => [ShortcutTaxDetector::class, 'LEAVING THE TRACK AND GAINING AN ADVANTAGE'],
+            'lane discipline' => [LineDancingDetector::class, 'CROSSING THE LINE AT PIT ENTRY'],
             'smile for the camera' => [SmileForTheCameraDetector::class, 'SPEEDING IN THE PIT LANE'],
-            'road hog' => [RoadHogDetector::class, 'FORCING ANOTHER DRIVER OFF THE TRACK'],
+            'road hog' => [ExtraWideDetector::class, 'FORCING ANOTHER DRIVER OFF THE TRACK'],
             'forgot to indicate' => [ForgotToIndicateDetector::class, 'MOVING UNDER BRAKING'],
-            'didnt see the sign' => [DidntSeeTheSignDetector::class, 'FAILING TO SLOW FOR YELLOW FLAGS'],
+            'didnt see the sign' => [SelectiveVisionDetector::class, 'FAILING TO SLOW FOR YELLOW FLAGS'],
             'queue jumper' => [QueueJumperDetector::class, 'OVERTAKING UNDER SAFETY CAR'],
             'failed the driving test' => [FailedTheDrivingTestDetector::class, 'DRIVING ERRATICALLY'],
             'released into the wild' => [ReleasedIntoTheWildDetector::class, 'UNSAFE RELEASE'],
@@ -100,7 +100,7 @@ class RaceControlDetectorsTest extends TestCase
         $this->car($race, 4);
         $this->message($race, 'FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 4 (NOR) - PIT LANE INFRINGEMENT - FAST LANE');
 
-        $this->assertCount(0, $this->detect(LaneDisciplineDetector::class, $race));
+        $this->assertCount(0, $this->detect(LineDancingDetector::class, $race));
     }
 
     public function test_a_grid_penalty_counts_with_its_size_as_detail(): void
@@ -149,7 +149,7 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($race, 'FIA STEWARDS: PENALTY SERVED - 5 SECOND TIME PENALTY FOR CAR 63 (RUS) - LEAVING THE TRACK AND GAINING AN ADVANTAGE (15:04:59)');
 
         $this->assertCount(1, $this->detect(HighFiveDetector::class, $race));
-        $this->assertCount(1, $this->detect(RecalculatingDetector::class, $race));
+        $this->assertCount(1, $this->detect(ShortcutTaxDetector::class, $race));
     }
 
     public function test_sunday_driver_counts_when_noted_for_one_car(): void
@@ -194,7 +194,10 @@ class RaceControlDetectorsTest extends TestCase
 
         $this->assertCount(1, $this->detect(MeatballSubDetector::class, $race));
         $this->assertStringStartsWith('disqualification:', $this->detect(ExpelledDetector::class, $race)->sole()->eventKey);
-        $this->assertStringStartsWith('track_limits:', $this->detect(NoteSentHomeDetector::class, $race)->sole()->eventKey);
+
+        $stares = $this->detect(TeachersStareDetector::class, $race)->keyBy(fn (Detection $stare) => $this->data($race)->entry($stare->driverEntryId)->car_number);
+        $this->assertStringStartsWith('track_limits:', $stares[18]->eventKey);
+        $this->assertStringStartsWith('rcm:', $stares[27]->eventKey);
     }
 
     public function test_a_re_issued_deletion_counts_once(): void
@@ -205,7 +208,7 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($race, 'CAR 14 (ALO) TIME 1:31.617 DELETED - TRACK LIMITS AT TURN 13 LAP 3 18:15:32');
         $this->message($race, 'CAR 14 (ALO) TIME 1:32.001 DELETED - TRACK LIMITS AT TURN 4 LAP 9 18:25:00');
 
-        $this->assertCount(2, $this->detect(ColouringOutsideTheLinesDetector::class, $race));
+        $this->assertCount(2, $this->detect(OutsideTheLinesDetector::class, $race));
     }
 
     public function test_blue_flags_count_from_the_threshold(): void
@@ -221,7 +224,7 @@ class RaceControlDetectorsTest extends TestCase
 
         $this->message($race, 'WAVED BLUE FLAG FOR CAR 21 (DEV) TIMED AT 15:10:00', ['flag' => 'BLUE']);
 
-        $detection = $this->detect(MirrorSignalManoeuvreDetector::class, $race)->sole();
+        $detection = $this->detect(BlueCarpetDetector::class, $race)->sole();
         $this->assertSame('3 blue flags', $detection->detail);
     }
 

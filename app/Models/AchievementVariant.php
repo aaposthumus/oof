@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * A driver's own name for an achievement, counted as the same achievement
- * (e.g. Overstepper's Colouring Outside the Lines is "Off Course").
+ * (e.g. MaxSettings's Outside the Lines is "Off Course").
  */
 #[Fillable(['achievement_id', 'driver_id', 'name'])]
 class AchievementVariant extends Model

@@ -7,17 +7,17 @@ use App\Achievements\Support\Finish;
 use App\Models\DriverEntry;
 
 /**
- * On the podium.
+ * Third place.
  */
-class StandingRoomOnlyDetector extends ResultDetector
+class SolidBronzeDetector extends ResultDetector
 {
     public function key(): string
     {
-        return 'standing_room_only';
+        return 'solid_bronze';
     }
 
     protected function judge(DriverEntry $entry, SessionData $data): string|false|null
     {
-        return in_array($entry->result->position, [1, 2, 3], true) && ! Finish::isDisqualified($entry->result) ? "P{$entry->result->position}" : false;
+        return $entry->result->position === 3 && ! Finish::isDisqualified($entry->result) ? null : false;
     }
 }

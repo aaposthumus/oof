@@ -81,16 +81,17 @@ class OofAchievementsGoldenTest extends TestCase
 
     public function test_reports_awards_that_went_missing_were_added_or_changed(): void
     {
-        [, $runnerUp, $lapped] = $this->race();
+        [$winner, , $lapped] = $this->race();
+        $winner->result->update(['grid' => 12]);
         $this->export();
 
         $lapped->result->update(['status' => '+2 Laps']);
-        $runnerUp->result->update(['position' => 3, 'position_text' => '3']);
+        $winner->result->update(['grid' => 14]);
 
         $this->artisan('oof:achievements:golden')
             ->expectsOutputToContain("missing  2024-05-race|lapped_dog|e{$lapped->id}:result")
             ->expectsOutputToContain("added    2024-05-race|good_boy|e{$lapped->id}:result")
-            ->expectsOutputToContain("changed  2024-05-race|standing_room_only|e{$runnerUp->id}:result  detail: \"P2\" -> \"P3\"")
+            ->expectsOutputToContain("changed  2024-05-race|took_the_scenic_route|e{$winner->id}:result  detail: \"from P12\" -> \"from P14\"")
             ->assertFailed();
 
         $this->assertDatabaseCount('achievement_awards', 0);
@@ -110,11 +111,10 @@ class OofAchievementsGoldenTest extends TestCase
 
     public function test_lists_no_more_differences_than_the_limit(): void
     {
-        [, $runnerUp, $lapped] = $this->race();
+        [, , $lapped] = $this->race();
         $this->export();
 
         $lapped->result->update(['status' => '+2 Laps']);
-        $runnerUp->result->update(['position' => 3, 'position_text' => '3']);
 
         $this->artisan('oof:achievements:golden', ['--limit' => 1])
             ->expectsOutputToContain('missing  2024-05-race|lapped_dog')

@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property list<string> $session_types SessionType values it applies to
  * @property list<string> $supersedes Keys of achievements it replaces for the same event
  */
-#[Fillable(['key', 'name', 'section', 'shelf', 'tier', 'points', 'session_types', 'stacks', 'supersedes', 'description', 'is_enabled'])]
+#[Fillable(['key', 'name', 'section', 'shelf', 'tier', 'session_types', 'stacks', 'supersedes', 'description', 'is_enabled'])]
 class Achievement extends Model
 {
     /** @use HasFactory<AchievementFactory> */
@@ -41,6 +41,19 @@ class Achievement extends Model
             'supersedes' => 'array',
             'is_enabled' => 'boolean',
         ];
+    }
+
+    /**
+     * OOFscore points for one award, from config: the tier's points on a
+     * scoring shelf, unless the achievement has its own value.
+     */
+    public function points(): int
+    {
+        if ($this->tier === null || ! in_array($this->shelf->value, config('achievements.points.scoring_shelves'), true)) {
+            return 0;
+        }
+
+        return config("achievements.points.overrides.{$this->key}") ?? config("achievements.points.tiers.{$this->tier->value}");
     }
 
     public function appliesTo(SessionType $type): bool

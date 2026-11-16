@@ -14,11 +14,11 @@ use App\Models\SessionLap;
  * read from OpenF1's positions at the end of each lap (the start of the
  * next); without positions and laps the race cannot be judged.
  */
-class HoggedTheLotDetector extends ResultDetector
+class CleanSweepDetector extends ResultDetector
 {
     public function key(): string
     {
-        return 'hogged_the_lot';
+        return 'clean_sweep';
     }
 
     protected function judge(DriverEntry $entry, SessionData $data): string|false|null

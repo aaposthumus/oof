@@ -235,7 +235,7 @@ class AchievementAwardsTest extends TestCase
 
         $achievement->refresh();
         $this->assertSame('Lapped Pup', $achievement->name);
-        $this->assertSame(25, $achievement->points);
+        $this->assertSame(25, $achievement->points());
         $this->assertSame(['race'], $achievement->session_types);
         $this->assertFalse(AchievementResource::canCreate());
     }

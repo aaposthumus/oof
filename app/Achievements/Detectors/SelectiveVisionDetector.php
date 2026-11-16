@@ -7,11 +7,11 @@ use App\RaceControl\Offence;
 /**
  * Penalised for: ignoring a yellow, red or blue flag.
  */
-class DidntSeeTheSignDetector extends OffencePenaltyDetector
+class SelectiveVisionDetector extends OffencePenaltyDetector
 {
     public function key(): string
     {
-        return 'didnt_see_the_sign';
+        return 'selective_vision';
     }
 
     protected function offences(): array

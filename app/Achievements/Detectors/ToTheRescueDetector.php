@@ -18,11 +18,11 @@ use Illuminate\Support\Collection;
  * genuine call-up (high confidence). One who already raced for another team
  * that season is a seat swap, which is low confidence and always reviewed.
  */
-class SpareTyreDetector implements Detector
+class ToTheRescueDetector implements Detector
 {
     public function key(): string
     {
-        return 'spare_tyre';
+        return 'to_the_rescue';
     }
 
     public function detect(SessionData $data): Collection

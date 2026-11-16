@@ -6,6 +6,7 @@ use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
 use App\Enums\SessionType;
+use App\Models\Achievement;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -33,8 +34,8 @@ class AchievementsTable
                     ->formatStateUsing(fn (?AchievementTier $state): string => $state?->label() ?? '–')
                     ->sortable(),
                 TextColumn::make('points')
-                    ->numeric()
-                    ->sortable(),
+                    ->state(fn (Achievement $record): int => $record->points())
+                    ->numeric(),
                 TextColumn::make('session_types')
                     ->label('Sessions')
                     ->formatStateUsing(fn (string $state): string => SessionType::from($state)->label())

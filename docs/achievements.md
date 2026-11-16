@@ -1,7 +1,8 @@
 # OOF! Achievements spec
 
 Source of truth for the achievements engine. Written for Claude Code.
-Last updated: 30 October 2026.
+Last updated: 16 November 2026. The phased plan for the engine is in
+`docs/achievement-engine-plan.md`.
 
 ## Concept in short
 
@@ -13,39 +14,39 @@ unlocked"), and collect them all season.
   the sum is the season's **OOFscore** leaderboard.
 - **Glory shelf**: positive achievements (wins, podiums). They show a tier
   but earn **no** points.
-- Tiers and points: Bronze 10, Silver 25, Gold 50, Platinum 100.
-  The tiers below are first estimates; the final tiers come from a test run
-  on 2023–2026 data (how often each achievement actually unlocks).
+- Tiers and points: Bronze 10, Silver 25, Gold 50, Platinum 100. The point
+  values live in `config/achievements.php`, not in the catalogue.
 
 ## Achievements
 
-Rarity = first estimate. "Stacks" = awarded once per instance; otherwise
-once per driver per session.
+Names, tiers and triggers follow the OOF! Concept doc (final tiers from the
+test run on 2023–2026 data). Public text uses American spelling. "Stacks" =
+awarded once per instance; otherwise once per driver per session.
 
 ### Race (OOF shelf)
 
-| Achievement | Trigger | Rarity |
+| Achievement | Trigger | Tier |
 |---|---|---|
-| Lapped Dog | Lapped by the leader (finished 1 lap down) | Bronze |
+| Lapped Dog | Lapped by the leader | Bronze |
 | Good Boy | Lapped twice or more | Silver |
-| Mirror, Signal, Manoeuvre | Shown blue flags several times in one race (threshold from test run) | Bronze |
-| Table for One | Pit stop longer than 5 s stationary | Bronze |
+| Blue Carpet | Shown 8 or more blue flags in one race | Bronze |
+| Table for One | Pit stop longer than 5 seconds stationary | Bronze |
 | Fine Dining | Slowest pit stop of the weekend | Bronze |
-| Meatball Sub | Black-and-orange flag (stacks) | Silver |
-| Colouring Outside the Lines | Lap time deleted for track limits | Bronze |
-| Note Sent Home to Parents | Black-and-white flag for track limits | Silver |
-| It Was Like That When I Got There | Involved in an incident noted by race control | Bronze |
+| Meatball Sub | Black flag with orange circle ("meatball flag"); stacks | Platinum |
+| Outside the Lines | Lap time deleted for track limits | Bronze |
+| Teacher's Stare | Black-and-white warning flag, for any reason (track limits, driving slowly, etc.) | Silver |
+| It Was Like That When I Got There | Involved in an incident noted by race control (never implies blame) | Bronze |
 | Bumper Cars | Penalty for causing a collision | Silver |
-| Early Bird | False start (offence) with a penalty | Gold |
-| Selective Hearing | Failing to follow race director's instructions, with a penalty | Silver |
-| Recalculating | Leaving the track and gaining an advantage, with a penalty | Bronze/Silver |
-| Lane Discipline | Crossing the pit entry or exit line, with a penalty | Silver |
-| Smile for the Camera | Speeding in the pit lane, with a penalty | Bronze |
-| Road Hog | Forcing another driver off the track, with a penalty | Silver |
-| Forgot to Indicate | Moving under braking, with a penalty | Silver |
-| Didn't See the Sign | Ignoring a flag (yellow, blue, red), with a penalty | Silver |
-| Queue Jumper | Overtaking or going too fast under SC/VSC, with a penalty | Silver |
-| Sunday Driver | Maximum delta time offence (too slow, e.g. under SC or on a qualifying in-lap) | Silver |
+| Early Bird | False start, with a penalty | Gold |
+| Selective Hearing | Ignoring the race director's instructions, with a penalty | Platinum |
+| Shortcut Tax | Leaving the track and gaining an advantage, with a penalty | Gold |
+| Line Dancing | Crossing the pit entry or exit line, with a penalty | Platinum |
+| Smile for the Camera | Speeding in the pit lane, with a penalty | Silver |
+| Extra Wide | Forcing another driver off the track, with a penalty | Gold |
+| Forgot to Indicate | Moving under braking, with a penalty | Platinum |
+| Selective Vision | Ignoring a flag (yellow, blue, red), with a penalty | Gold |
+| Queue Jumper | Overtaking or going too fast under a safety car or VSC, with a penalty | Gold |
+| Sunday Driver | Maximum delta time noted by race control (too slow) | Silver |
 | Failed the Driving Test | Erratic or dangerous driving, with a penalty | Gold |
 | Called the Tow Truck | Caused a safety car | Silver |
 | Released Into the Wild | Unsafe release, with a penalty | Gold |
@@ -53,11 +54,15 @@ once per driver per session.
 | Early Lunch | Retired on lap 1 | Silver |
 | Home Before Dinner | Retired later in the race (DNF) | Bronze |
 | Sent to Your Room | Disqualified after the race (DSQ) | Gold |
-| Expelled | Black flag during the race | Platinum |
+| Expelled | Black flag: thrown out during the race | Platinum |
 | Reverse Gear | Most places lost compared with the grid | Bronze |
-| All Dressed Up, Nowhere to Go | Fastest lap but finished outside the points | Silver |
+| All Dressed Up, Nowhere to Go | Fastest lap, but finished outside the points | Gold |
 | Turned Off the Lights | Last classified finisher | Bronze |
-| Nothing to See Here | Unlocked nothing all weekend ("The quiet ones") | Bronze |
+| Nothing to See Here | Unlocked nothing all weekend ("The quiet ones"); 0 points | Bronze |
+
+The offence achievements (Bumper Cars to Released Into the Wild, with a
+penalty, and Sunday Driver) also run in qualifying and sprint qualifying.
+Teacher's Stare runs in races and sprints only.
 
 Sent to Your Room can carry a reason subtitle (Skipped Breakfast =
 underweight, Scraped the Bottom = plank wear, Running on Fumes = fuel
@@ -66,58 +71,62 @@ documents, so they can be filled in via the CMS.
 
 ### Any session (OOF shelf)
 
-| Achievement | Trigger | Rarity |
+| Achievement | Trigger | Tier |
 |---|---|---|
-| Whole Class Detention | Caused a red flag (practice, qualifying or race) | Gold |
+| Whole Class Detention | Caused a red flag | Silver |
 
 Red flags and safety cars only count when one driver caused them. Weather,
 debris or track problems give no achievement. Link them to an incident or
-"car stopped" message just before; without a clear link, award nothing and
-send the case to the CMS to confirm or skip.
+"car stopped" message just before; without a clear link, a race or sprint
+sends the case to the CMS to confirm or skip, and practice and qualifying
+give nothing.
 
 ### Penalties (OOF shelf, stack per instance)
 
-| Achievement | Trigger | Rarity |
+| Achievement | Trigger | Tier |
 |---|---|---|
-| High Five | 5-second time penalty | Bronze |
-| Perfect Ten | 10-second time penalty | Silver |
-| Drive-Thru | Drive-through penalty | Gold |
+| High Five | 5-second time penalty | Silver |
+| Perfect Ten | 10-second time penalty | Gold |
+| Drive-Thru | Drive-through penalty | Platinum |
 | Red Light, Green Light | Stop-go penalty | Platinum |
 
 ### Qualifying (OOF shelf)
 
-| Achievement | Trigger | Rarity |
+| Achievement | Trigger | Tier |
 |---|---|---|
-| Family Feud | Knocked out by your own teammate | Bronze |
-| By a Whisker | Knocked out by less than 0.05 s | Silver |
-| So Close | Best Q3 lap deleted | Silver |
-| Holding the Door | Slowest in Q1 (unlocks every weekend) | Bronze |
+| Mirror Match | First car out, and the last car through is your teammate | Gold |
+| By a Whisker | Knocked out by less than 0.015 seconds | Silver |
+| Deleted Scene | Best Q3 lap deleted | Gold |
+| Holding the Door | Slowest in Q1 | Bronze |
 
 ### Practice (OOF shelf, light "Friday Report")
 
-| Achievement | Trigger | Rarity |
+| Achievement | Trigger | Tier |
 |---|---|---|
 | Overtime | Most laps driven | Bronze |
-| Practice Makes Imperfect | Most deleted laps | Bronze |
+| Practice Makes Imperfect | Most deleted laps, at least 3 | Bronze |
 
 Practice achievements only count for race drivers (not FP1 rookies or
-practice-only drivers).
+practice-only drivers). They are awarded per practice session today; one
+award per weekend comes with the weekend scope (see the engine plan).
 
 ### Glory shelf (trophy cabinet, no points)
 
-| Achievement | Trigger | Rarity |
+| Achievement | Trigger | Tier |
 |---|---|---|
-| Did the Thing | Win | Bronze |
-| Standing Room Only | Podium | Bronze |
-| Plot Twist | Surprise pole | Gold |
-| Lottery Ticket | Surprise win | Platinum |
-| Took the Scenic Route | Win from P10 or lower on the grid | Gold |
-| Hogged the Lot | Grand Chelem: pole, win, fastest lap, led every lap | Platinum |
-| Maths Is Over | Championship clinched | Gold |
-| Spare Tyre | Called up to race as a replacement driver | Gold |
+| Did the Thing | Win | Gold |
+| Silver Lining | Second place | Silver |
+| Solid Bronze | Third place | Bronze |
+| Plot Twist | Surprise pole | Platinum |
+| Giant Slayer | Surprise win | Platinum |
+| Took the Scenic Route | Win from P10 or lower on the grid | Platinum |
+| Clean Sweep | Grand Chelem: pole, win, fastest lap and led every lap | Platinum |
+| Class Dismissed | Championship clinched | Platinum |
+| To the Rescue | Called up to race as a replacement driver | Gold |
 
-"Surprise" (open, first proposal): the team is outside the constructors'
-top 4, or the driver hasn't started in the top 5 earlier that season.
+"Surprise" as built: the team is outside the constructors' top 4, or the
+driver hasn't started in the top 5 earlier that season. It is being replaced
+by a rolling look-back on team form (see the engine plan, phase 2).
 
 ### Safety Car (separate, never in the OOFscore)
 
@@ -125,9 +134,9 @@ The Safety Car is a cameo character with its own small stats corner.
 
 | Achievement | Trigger |
 |---|---|
-| Took the Lead | The safety car led more laps than some of the drivers |
-| Called In Again | Several safety car deployments in one race |
-| Frequent Flyer | Season count of deployments (for the end-of-season awards) |
+| Took the Lead | The safety car ran 8 or more laps in one race |
+| Second Helping | 2 or more safety car deployments in one race |
+| Frequent Flyer | Season count of deployments (end-of-season award) |
 | Virtually There | A VSC deployment |
 
 ## Rules
@@ -139,9 +148,10 @@ from the same event, only the most specific counts.
 - Every offence achievement absorbs its own penalty (e.g. "Released Into
   the Wild · 5 s").
 - Good Boy replaces Lapped Dog; Fine Dining replaces Table for One;
-  Note Sent Home to Parents replaces Colouring Outside the Lines; a High Five
-  for track limits replaces both track-limit achievements; Expelled replaces
-  Sent to Your Room.
+  Teacher's Stare for track limits replaces Outside the Lines (a stare for
+  any other reason stands on its own); a High Five for track limits replaces
+  both track-limit achievements; Expelled replaces Sent to Your Room.
+- A surprise win, a win from far back and a Grand Chelem replace Did the Thing.
 - Separate events still stack (a crash on lap 30 and being lapped both count).
 - Implementation: a "supersedes" relation between achievements; after
   calculating, anything covered by a more specific achievement from the same
@@ -150,8 +160,8 @@ from the same event, only the most specific counts.
 **Thresholds** (blue flags, deleted laps) unlock once per race.
 
 **Driver-specific variants**: an optional variant name per achievement and
-driver, counted as the same achievement (e.g. Overstepper's Colouring
-Outside the Lines becomes "Off Course").
+driver, counted as the same achievement (e.g. MaxSettings's Outside the
+Lines becomes "Off Course").
 
 **Achievements belong to the person, not the seat**: stand-ins keep what
 they unlock.
@@ -170,7 +180,9 @@ they unlock.
   medium (involvement in an incident), low (anything inferred, e.g. who
   caused a safety car or red flag). Low always goes to manual review.
 - **Wait for finality**: achievements tied to an open investigation wait for
-  its outcome. A session is only "final" once stewards are done.
+  its outcome. A session is only "final" once stewards are done: 2 hours
+  after practice and qualifying, 6 after a sprint, 24 after the race
+  (`achievements.final_after_hours`).
 - **Cross-check sources**: penalties in race control vs Jolpica's final
   results; disagreements are flagged, not awarded.
 - **CMS manual override**: suppress any award when the reason isn't funny,
@@ -209,5 +221,4 @@ they unlock.
 ## Still open
 
 - Sprints: reuse the race achievements, or a light set of their own.
-- Final thresholds and rarity tiers (from the test run).
 - Collections (completing a family of achievements unlocks a meta badge).

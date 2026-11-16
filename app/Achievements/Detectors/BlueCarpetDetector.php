@@ -13,11 +13,11 @@ use Illuminate\Support\Collection;
 /**
  * Shown blue flags at least the threshold number of times in one race.
  */
-class MirrorSignalManoeuvreDetector implements Detector
+class BlueCarpetDetector implements Detector
 {
     public function key(): string
     {
-        return 'mirror_signal_manoeuvre';
+        return 'blue_carpet';
     }
 
     public function detect(SessionData $data): Collection

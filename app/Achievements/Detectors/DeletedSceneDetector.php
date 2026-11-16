@@ -14,11 +14,11 @@ use Illuminate\Support\Collection;
  * The best lap of Q3 deleted: a Q3 time deleted for track limits that beats
  * the time the car is classified with.
  */
-class SoCloseDetector implements Detector
+class DeletedSceneDetector implements Detector
 {
     public function key(): string
     {
-        return 'so_close';
+        return 'deleted_scene';
     }
 
     public function detect(SessionData $data): Collection

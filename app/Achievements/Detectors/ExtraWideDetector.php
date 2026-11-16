@@ -7,11 +7,11 @@ use App\RaceControl\Offence;
 /**
  * Penalised for: forcing another driver off the track.
  */
-class RoadHogDetector extends OffencePenaltyDetector
+class ExtraWideDetector extends OffencePenaltyDetector
 {
     public function key(): string
     {
-        return 'road_hog';
+        return 'extra_wide';
     }
 
     protected function offences(): array

@@ -160,7 +160,7 @@ class OofAchievements extends Command
             return false;
         }
 
-        $finalAt = SessionData::load($session, app(MessageClassifier::class))->endsAt()->addHours((int) config('achievements.final_after_hours'));
+        $finalAt = SessionData::load($session, app(MessageClassifier::class))->finalAt();
 
         return $checkedAt->lessThan($finalAt) && $finalAt->lessThanOrEqualTo(CarbonImmutable::now());
     }

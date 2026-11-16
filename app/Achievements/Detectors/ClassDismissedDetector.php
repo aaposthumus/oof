@@ -17,11 +17,11 @@ use Illuminate\Support\Collection;
  * Championship clinched in this race or sprint: the leader's margin is more
  * than the points still to be won, and was not before the session.
  */
-class MathsIsOverDetector implements Detector
+class ClassDismissedDetector implements Detector
 {
     public function key(): string
     {
-        return 'maths_is_over';
+        return 'class_dismissed';
     }
 
     public function detect(SessionData $data): Collection

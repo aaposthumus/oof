@@ -14,7 +14,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 /**
- * A driver's own name for the achievement, e.g. Overstepper's "Off Course".
+ * A driver's own name for the achievement, e.g. MaxSettings's "Off Course".
  * It counts as the same achievement; the next run puts it on the awards.
  */
 class VariantsRelationManager extends RelationManager

@@ -7,11 +7,11 @@ use App\RaceControl\Offence;
 /**
  * Penalised for: leaving the track and gaining an advantage.
  */
-class RecalculatingDetector extends OffencePenaltyDetector
+class ShortcutTaxDetector extends OffencePenaltyDetector
 {
     public function key(): string
     {
-        return 'recalculating';
+        return 'shortcut_tax';
     }
 
     protected function offences(): array

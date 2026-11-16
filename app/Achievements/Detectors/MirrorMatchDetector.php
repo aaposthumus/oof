@@ -13,11 +13,11 @@ use Illuminate\Support\Collection;
  * Knocked out by your own teammate: the first car out of Q1 or Q2, when the
  * car that took the last place through is the teammate.
  */
-class FamilyFeudDetector implements Detector
+class MirrorMatchDetector implements Detector
 {
     public function key(): string
     {
-        return 'family_feud';
+        return 'mirror_match';
     }
 
     public function detect(SessionData $data): Collection

@@ -20,12 +20,47 @@ return [
     |--------------------------------------------------------------------------
     |
     | Awards stay pending until this many hours after the session ended, so a
-    | late stewards' decision can still change them. 24 hours lets race posts
-    | go out the day after; pending awards can be confirmed by hand.
+    | late stewards' decision can still change them. Practice and qualifying
+    | wait briefly, so their awards are final by Saturday evening; 24 hours
+    | for the race lets race posts go out the day after. Pending awards can
+    | be confirmed by hand.
     |
     */
 
-    'final_after_hours' => 24,
+    'final_after_hours' => [
+        'practice_1' => 2,
+        'practice_2' => 2,
+        'practice_3' => 2,
+        'sprint_qualifying' => 2,
+        'qualifying' => 2,
+        'sprint' => 6,
+        'race' => 24,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Points
+    |--------------------------------------------------------------------------
+    |
+    | OOFscore points per award. An achievement on a scoring shelf earns its
+    | tier's points, unless it is listed under overrides: Nothing to See Here
+    | is a slide feature ("The quiet ones"), not an OOF. Other shelves earn
+    | nothing.
+    |
+    */
+
+    'points' => [
+        'tiers' => [
+            'bronze' => 10,
+            'silver' => 25,
+            'gold' => 50,
+            'platinum' => 100,
+        ],
+        'overrides' => [
+            'nothing_to_see_here' => 0,
+        ],
+        'scoring_shelves' => ['oof'],
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -46,9 +81,9 @@ return [
     | Thresholds
     |--------------------------------------------------------------------------
     |
-    | blue_flags: blue flags shown to one car in a race for Mirror, Signal,
-    | Manoeuvre. took_the_lead_laps: laps the safety car ran in one race.
-    | called_in_again: safety car deployments in one race. pit_stop_millis:
+    | blue_flags: blue flags shown to one car in a race for Blue Carpet.
+    | took_the_lead_laps: laps the safety car ran in one race.
+    | second_helping: safety car deployments in one race. pit_stop_millis:
     | stationary time for Table for One. whisker_millis: the gap to the
     | cut-off for By a Whisker. scenic_route_grid: the grid slot a win must
     | come from for Took the Scenic Route. practice_deleted_laps: the fewest
@@ -60,7 +95,7 @@ return [
 
     'took_the_lead_laps' => 8,
 
-    'called_in_again' => 2,
+    'second_helping' => 2,
 
     'pit_stop_millis' => 5_000,
 

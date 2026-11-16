@@ -127,6 +127,22 @@ class AchievementEngineTest extends TestCase
         $this->assertSame(['high_five'], $this->awards()->pluck('achievement.key')->all());
     }
 
+    public function test_a_black_and_white_flag_only_replaces_the_deletions_when_it_is_about_track_limits(): void
+    {
+        $race = $this->raceSession();
+        $warnedForTrackLimits = $this->car($race, 18);
+        $warnedForWeaving = $this->car($race, 27);
+        $this->message($race, 'CAR 18 (STR) TIME 1:07.312 DELETED - TRACK LIMITS AT TURN 10 LAP 12 15:30:01');
+        $this->message($race, 'BLACK AND WHITE FLAG FOR CAR 18 (STR) - TRACK LIMITS');
+        $this->message($race, 'CAR 27 (HUL) TIME 1:08.100 DELETED - TRACK LIMITS AT TURN 10 LAP 14 15:33:10');
+        $this->message($race, 'BLACK AND WHITE FLAG FOR CAR 27 (HUL) - MOVING UNDER BRAKING');
+
+        $this->runEngine($race);
+
+        $this->assertSame(['teachers_stare'], $this->awards()->where('driver_entry_id', $warnedForTrackLimits->id)->pluck('achievement.key')->all());
+        $this->assertEqualsCanonicalizing(['outside_the_lines', 'teachers_stare'], $this->awards()->where('driver_entry_id', $warnedForWeaving->id)->pluck('achievement.key')->all());
+    }
+
     public function test_good_boy_replaces_lapped_dog_and_a_non_stacking_achievement_is_awarded_once(): void
     {
         $race = $this->raceSession();
@@ -140,8 +156,8 @@ class AchievementEngineTest extends TestCase
         $keys = $this->awards()->pluck('achievement.key');
         $this->assertContains('good_boy', $keys);
         $this->assertNotContains('lapped_dog', $keys);
-        $this->assertSame('×2', $this->awards('colouring_outside_the_lines')->sole()->detail);
-        $this->assertCount(2, $this->awards('colouring_outside_the_lines')->sole()->evidence['messages']);
+        $this->assertSame('×2', $this->awards('outside_the_lines')->sole()->detail);
+        $this->assertCount(2, $this->awards('outside_the_lines')->sole()->evidence['messages']);
     }
 
     public function test_involvement_never_implies_blame(): void
@@ -204,6 +220,26 @@ class AchievementEngineTest extends TestCase
 
         $this->runEngine($race, CarbonImmutable::parse('2024-05-06 23:30:00'));
         $this->assertSame(AwardStatus::Final, $this->awards('lapped_dog')->sole()->status);
+    }
+
+    public function test_practice_and_qualifying_are_final_sooner_than_the_race(): void
+    {
+        $race = $this->raceSession();
+        $qualifying = $this->raceSession(SessionType::Qualifying, $race->round);
+        $practice = $this->raceSession(SessionType::Practice3, $race->round);
+        $this->resultFor($this->car($race, 44));
+        $this->qualifying($this->car($qualifying, 44), 1, 90_000);
+
+        // All three ended at 23:00 on 5 May: the scheduled start plus three hours.
+        $justAfter = CarbonImmutable::parse('2024-05-06 00:30:00');
+        $twoHoursLater = CarbonImmutable::parse('2024-05-06 01:00:00');
+
+        $this->assertFalse($this->data($qualifying)->isFinal($justAfter));
+        $this->assertFalse($this->data($practice)->isFinal($justAfter));
+        $this->assertTrue($this->data($qualifying)->isFinal($twoHoursLater));
+        $this->assertTrue($this->data($practice)->isFinal($twoHoursLater));
+        $this->assertFalse($this->data($race)->isFinal($twoHoursLater));
+        $this->assertTrue($this->data($race)->isFinal(CarbonImmutable::parse('2024-05-06 23:00:00')));
     }
 
     public function test_low_confidence_awards_always_wait_for_a_person(): void
@@ -415,7 +451,7 @@ class AchievementEngineTest extends TestCase
         });
         $award = fn (int $number, array $attributes) => AchievementAward::factory()->create([
             'race_session_id' => $qualifying->id,
-            'achievement_id' => Achievement::firstWhere('key', 'spare_tyre')->id,
+            'achievement_id' => Achievement::firstWhere('key', 'to_the_rescue')->id,
             'driver_id' => $cars[$number]->driver_id,
             ...$attributes,
         ]);
@@ -540,7 +576,7 @@ class AchievementEngineTest extends TestCase
 
         $this->assertSame(AwardReviewReason::HeavyCrash, $judge('home_before_dinner', $retired)[1]);
         $this->assertSame(AwardReviewReason::HeavyCrash, $judge('bumper_cars', $retired)[1]);
-        $this->assertNull($judge('spare_tyre', $retired)[1]);
+        $this->assertNull($judge('to_the_rescue', $retired)[1]);
         $this->assertNull($judge('home_before_dinner', $clean)[1]);
     }
 }

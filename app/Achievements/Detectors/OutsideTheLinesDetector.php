@@ -12,11 +12,11 @@ use Illuminate\Support\Collection;
 /**
  * A lap time deleted for track limits, once per deleted time.
  */
-class ColouringOutsideTheLinesDetector implements Detector
+class OutsideTheLinesDetector implements Detector
 {
     public function key(): string
     {
-        return 'colouring_outside_the_lines';
+        return 'outside_the_lines';
     }
 
     public function detect(SessionData $data): Collection

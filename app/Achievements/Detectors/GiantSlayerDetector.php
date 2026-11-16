@@ -10,11 +10,11 @@ use App\Models\DriverEntry;
 /**
  * A surprise win (see Surprise for the rule).
  */
-class LotteryTicketDetector extends ResultDetector
+class GiantSlayerDetector extends ResultDetector
 {
     public function key(): string
     {
-        return 'lottery_ticket';
+        return 'giant_slayer';
     }
 
     protected function judge(DriverEntry $entry, SessionData $data): string|false|null
