@@ -48,13 +48,21 @@ abstract class MostInSessionDetector implements Detector
     }
 
     /**
+     * The five highest counts. Equal counts go by entry ID, so every run lists the same five in the same order.
+     *
      * @return array{source: string, rows?: list<array<string, mixed>>, messages?: list<array<string, mixed>>, note?: string}
      */
     protected function evidence(SessionData $data, int $entryId): array
     {
-        return Evidence::rows('openf1', $this->counts($data)->sortDesc()->take(5)->map(fn (int $count, int $id) => [
-            'driver' => $data->entry($id)?->driver->family_name,
-            'count' => $count,
-        ])->values()->all());
+        return Evidence::rows('openf1', $this->counts($data)
+            ->map(fn (int $count, int $id) => ['id' => $id, 'count' => $count])
+            ->sortBy([['count', 'desc'], ['id', 'asc']])
+            ->take(5)
+            ->map(fn (array $row) => [
+                'driver' => $data->entry($row['id'])?->driver->family_name,
+                'count' => $row['count'],
+            ])
+            ->values()
+            ->all());
     }
 }

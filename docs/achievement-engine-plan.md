@@ -1,0 +1,553 @@
+# OOF achievement engine: plan
+
+Written 16 November 2026, with the owner's answers of the same day worked in.
+Companion to `docs/achievements.md` (the v1 spec) and `docs/discovery-round-2.md`.
+Where this plan and the v1 spec differ on names, tiers or definitions, this plan
+follows the newer OOF! Concept doc.
+
+Each phase is small, leaves the hourly run working and ends with the tests green.
+A later session can pick up any phase from this file: read the phase, sections 3
+and 4 for the design, and "Working notes" at the end.
+
+## Phase status
+
+| Phase | What | Status |
+|---|---|---|
+| 0 | Safety net: golden master and comparison command | Done, 16 November 2026 |
+| 1 | Catalogue alignment, points in config, final-after wait per session type | Not started |
+| 2 | Surprise rule (rolling team form) and team lineage table | Not started |
+| 3 | Award schema | Not started |
+| 4 | Sensitivity | Not started |
+| 5 | OOFscore | Not started |
+| 6 | Facts and triggers | Not started |
+| 7 | Scopes, runs and the Oofies | Not started |
+| 8 | Recipients | Not started |
+| 9 | Nicknames and evolution events | Not started |
+| 10 | 2027 pack | Not started |
+| 11 | Historic backfill | Not started |
+
+## 0. Where the code stood on 16 November 2026
+
+Engine v1 (`app/Achievements`) runs per session: detectors -> Fairness -> CrossCheck
+-> Cascade -> Stacking -> late detectors -> Finality -> store. It is idempotent
+(unique on session + achievement + instance key) and never overwrites a person's
+decision. 55 detectors, 4,126 awards over 450 sessions of 2023 to 2026.
+
+| Requirement | v1 | Gap |
+|---|---|---|
+| Per practice / qualifying / race | Yes, `session_types` per achievement | Practice awards are per session; the concept wants one per weekend |
+| Season-level awards (Oofies) | Only Frequent Flyer, bolted onto the final race | No season scope; awards require a session |
+| Recipients | Driver, or "no driver" for the Safety Car | No team recipient, no explicit recipient type |
+| Declarative rules | 6 abstract detector families, one class per achievement, a hardcoded list, a create-only seeder, tier changes by migration | A new achievement touches 3 to 4 places |
+| Tier, shelf, editions on the award | Tier and shelf only on the achievement; `variant_name` on the award | No snapshot, so a tier change rewrites history |
+| Nickname evolution events | Nothing: no nicknames in the database, no Laravel events | All of it |
+| OOFscore, points in config | Points hardcoded in `AchievementTier::points()`, copied to `achievements.points` | No config, no leaderboard |
+| Incremental and backfill | Hourly `--changed`; `first_season` 2023 blocks anything earlier | No per-rule data gating, no run log, no date lookup |
+| Sensitive weekends | Awards wait for review; a heavy crash sends OOF awards to review | A reviewer can still confirm a crash award; `blocked` is ignored; historic sensitive wins get auto-suppressed |
+| Data source and year per achievement | One global `first_season` | Not recorded per achievement |
+
+Catalogue drift, code -> concept (keys and names to rename in Phase 1):
+`mirror_signal_manoeuvre` -> Blue Carpet, `colouring_outside_the_lines` -> Outside the Lines,
+`note_sent_home_to_parents` -> Teacher's Stare (now any reason, not only track limits),
+`recalculating` -> Shortcut Tax, `lane_discipline` -> Line Dancing, `road_hog` -> Extra Wide,
+`didnt_see_the_sign` -> Selective Vision, `family_feud` -> Mirror Match, `so_close` -> Deleted Scene,
+`standing_room_only` -> split into Silver Lining (P2) and Solid Bronze (P3),
+`lottery_ticket` -> Giant Slayer, `hogged_the_lot` -> Clean Sweep, `maths_is_over` -> Class Dismissed,
+`spare_tyre` -> To the Rescue, `called_in_again` -> Second Helping.
+Tier drift: Meatball Sub and Forgot to Indicate are Silver in code, Platinum in the concept;
+Did the Thing is Bronze in code, Gold in the concept.
+
+## 1. Decisions
+
+Decided by the owner on 16 November 2026:
+
+1. Zoomies and Built Different are part of the 2027 pack.
+2. The Oofies start with three: most-collected per achievement, OOFscore champion,
+   rarest award. Adding another must be a catalogue entry, not new plumbing.
+3. No team achievements and no team leaderboard for now. Team recipients stay in the engine.
+4. A blocked round stores nothing.
+5. Nickname evolution happens in the off-season only. The engine proposes after a
+   breakthrough (first podium, first win, or a strong first season); a person approves.
+6. Only final awards count on the leaderboard.
+7. The final-after wait is configurable per session type, short enough that practice
+   and qualifying awards are final by Saturday evening.
+8. Mechanics (trigger, scope, recipient, data needs) live in config; editorial fields
+   (name, tier, supersedes, enabled) live in the CMS.
+9. The Jolpica lap-time import (about 14.5 hours) will be run.
+10. FIA stewards' documents are for later, not in this plan.
+11. The surprise rule is replaced by a rolling look-back on team form (section 3).
+
+Assumptions that still hold:
+
+- v1 is kept and evolved. Its tests and the golden master are the safety net.
+- A sensitivity reaches its whole round, as in the excavators.
+- OOF shelf and Safety Car count from 2023, glory from 1950. Earlier OOF awards are
+  computed where data allows (OOF Classics, This week in OOF history) but score 0
+  and stay out of stamp books.
+- Points are snapshotted on the award when created and frozen once a season is closed.
+- Sprints keep today's behavior: each achievement lists its own session types.
+- An award's calendar date is the session date as stored (Jolpica, UTC), falling
+  back to the round's race date.
+- The concept's "events" layer stays in memory (typed facts built per run), not a table.
+- Rules read the core model, never other awards. Only declared "late" triggers
+  (Nothing to See Here, the Oofies) read awards.
+
+## 2. Further decisions
+
+Proposed as defaults and accepted by the owner on 16 November 2026. Each is applied
+in the phase named. The final-after waits in section 3 were accepted with them.
+
+| # | Question | Decision | Phase |
+|---|---|---|---|
+| 1 | "Strong first season" for a nickname evolution | Top 10 of the drivers' championship in the first full season, as a config threshold | 9 |
+| 2 | Most-collected Oofie: ties and minimum | Tied drivers share it; at least 2 awards | 7 |
+| 3 | Rarest-award Oofie: definition | The final OOF awards of the achievement unlocked least often that season; a tie between achievements goes to the higher tier | 7 |
+| 4 | Shelf of the Oofies | A fourth shelf, `oofies`, without tiers or points | 7 |
+| 5 | Team form: do sprints count in the window? | No, Grands Prix only | 2 |
+| 6 | Team form: Indianapolis 500 rounds of 1950 to 1960 | Left out of the window | 2 |
+| 7 | Economy Class "top-four team" | The same rolling team form as the surprise rule | 10 |
+| 8 | Keep the golden master out of git? | Yes: it belongs to one database and regenerates with one command | 0 |
+| 9 | Team lineage table | `team_lineages`: the rules of `config/f1.php` moved into a table, editable in the CMS, plus the missing historic renames (the `teams` table already holds the lasting identity) | 2 |
+
+## 3. Architecture
+
+```
+core model (Jolpica + OpenF1)
+   |
+   v
+Fact providers      typed facts per session, each with recipient, event key, instance key, evidence
+   |                (result, qualifying_result, flag, penalty, penalised_offence, incident_involvement,
+   |                 track_limit_deletion, pit_stop, cause, safety_car_period, vsc_period, lap_count ...)
+   v
+Triggers            declarative selection over facts, from config/achievement_catalogue.php
+   |                (match, count, extreme, aggregate, custom)
+   v
+Settling rules      Fairness -> CrossCheck -> Cascade -> Sensitivity -> Stacking -> late triggers -> Finality
+   |                (the classes in App\Achievements\Rules, plus Sensitivity)
+   v
+Award store         idempotent upsert per context; snapshots tier, shelf, points, edition, date
+   |
+   +--> Projections     OOFscore standings per season and round
+   +--> Domain events   dispatched after commit, only for live seasons
+```
+
+**Naming.** `App\Achievements\Rules` already holds the settling rules, so the
+declarative part of an achievement is called its *trigger* in code.
+
+**Facts.** The Support classes (IncidentThreads, TrackLimitDeletions, SafetyCarPeriods,
+PitStops, QualifyingPhases, Finish, Surprise) become fact providers. The fact carries
+the event key, so "one event, one achievement" is decided once: a car's deletions, its
+black-and-white flag for track limits and its track-limits penalty all share
+`track_limits:{entry}`.
+
+**Predicates.** Named conditions on a fact (`won`, `took_pole`, `set_fastest_lap`,
+`led_every_lap`, `is_surprise`, `topped_a_practice_session`, `retired_on_lap_one`).
+Each fact and predicate declares the data it needs and from which year. A predicate
+can have one provider per era (`led_every_lap`: OpenF1 from 2023, Jolpica lap times
+from 1996 once imported).
+
+**Data notes fall out of that.** An achievement's sources and first year are derived
+from its facts and predicates, stored on the achievement by a sync command, shown in
+the CMS and printed by `oof:achievements:catalogue`. The engine skips a trigger for a
+session when the year is too early or the source has no rows for that session.
+
+**Trigger types** (a closed set):
+
+| Type | Does | Covers |
+|---|---|---|
+| `match` | One detection per fact that meets the conditions | Results, flags, penalties, offences, deletions, causes, most glory |
+| `count` | Count or sum facts per recipient against a threshold | Blue Carpet, Took the Lead, Second Helping |
+| `extreme` | The one recipient with the most or least, with a minimum and a tie policy | Reverse Gear, Fine Dining, Holding the Door, Overtime, Practice Makes Imperfect, Zoomies |
+| `aggregate` | Season totals over facts, results or awards | Frequent Flyer, the Oofies |
+| `custom` | A class, for logic that does not fit | Class Dismissed, Nothing to See Here, To the Rescue |
+
+Roughly 45 to 50 of the 55 achievements become pure configuration; the rest need a
+predicate or a custom class.
+
+**Scopes.** Session, weekend, season. A weekend trigger names the session after which
+it is decided (`decided_after`: last practice, qualifying, race). A season trigger runs
+once the final round is final. Run order per round: sessions in weekend order, weekend
+triggers, then season triggers, then projections.
+
+**The Oofies.** Season-scope catalogue entries with an `aggregate` trigger: a source
+(awards, results or facts), a measure, a grouping, a pick (most or fewest), a minimum
+and a tie policy. The first three:
+
+- Most-collected: per OOF achievement, the driver with the most final awards of it that season.
+- OOFscore champion: the top of the final standings.
+- Rarest award: the final OOF awards of the achievement unlocked least often that season.
+
+Frequent Flyer moves here from the final race. Another Oofie is one more entry.
+
+**Recipients.** `driver`, `team`, `safety_car`. A detection carries a recipient value
+(type plus entry or season team) in place of today's nullable entry ID. Fairness keeps
+requiring exactly one named car for fault-based awards. No team achievement ships yet.
+
+**Surprise rule (team form).** Used by Plot Twist and Giant Slayer.
+
+- Window: the last 10 races before the session's round (`achievements.surprise.window_races`),
+  in calendar order, ignoring season boundaries. Fewer are used when fewer exist.
+- Per lasting team: the points its cars scored in the window, divided by the window's
+  races it entered. Teams are ranked on that figure within the window, so the points
+  system of each era does not matter. Equal figures share the better rank.
+- A team outside the top 4 (`achievements.surprise.top_teams`) is a surprise. A team
+  with no race in the window has no history and counts as outside the top 4.
+- Renamed teams keep their history through the lineage (`season_teams.team_id`).
+- The driver part ("no top-five start") is gone; only the team's form decides.
+- It works in round 1 (the window reaches into the previous season) and for historic
+  seasons. The very first championship race has an empty window: nothing is a surprise.
+
+**Sensitivity** (new settling rule, after Cascade so a withheld offence takes its
+absorbed penalty with it):
+
+- Round or driver `blocked`: nothing is stored for that scope.
+- Round `sensitive`: achievements marked `withheld_on_sensitive_weekends` are never
+  awarded. That covers retirements, DNS, causes, incidents, collisions, the Safety Car
+  cameo and Nothing to See Here. An existing row is removed, or force-suppressed with
+  a system note if a person had decided it.
+- Every other award of the round gets `is_sensitive` and the note. OOF and Safety Car
+  awards wait for a person; glory awards are stored final but flagged, so a win stays
+  in the record.
+- The flag never clears. The publishing layer refuses flagged awards in automatic and
+  comedic formats.
+- Live weekends: strong heavy-crash signals (red flag plus medical car, or a long
+  stoppage) create an engine-proposed sensitivity. It acts as sensitive until a person
+  confirms or dismisses it.
+- Built Different stays manual, and the CMS action refuses it on a sensitive weekend.
+
+**Finality.** `achievements.final_after_hours` becomes a map per session type.
+Defaults: practice 2, sprint qualifying 2, qualifying 2, sprint 6, race 24. With the
+hourly import, normalize and achievements runs, a practice or qualifying award is
+final about three hours after the flag. An open investigation still holds its own
+award back until the session is final.
+
+**Points and OOFscore.** `config/achievements.php` gets `points.tiers` (10, 25, 50, 100),
+`points.overrides` (Nothing to See Here: 0), `points.scoring_shelves` (OOF only) and
+`shelf_from` (OOF 2023, glory 1950, Safety Car 2023). `AchievementTier::points()` and
+`achievements.points` go. The standings projection sums final driver awards per season
+and stores a row per driver per round, so climbers, fallers and rivalry triggers are
+simple queries. Pending awards never count.
+
+**Nicknames and events.** Nicknames live in the database with their stage and dates.
+
+- Breakthroughs: a driver's first podium or first win (read from the results, when the
+  award behind it becomes final), or a strong first season (checked when the season is final).
+- For a driver with a planned next-stage nickname, a breakthrough stores a proposal and
+  dispatches `NicknameEvolutionProposed`. One proposal per target nickname, so re-runs
+  and backfills never emit twice.
+- A person approves it in the CMS with an effective date, which must fall between the
+  season's last round and the next season's first. `NicknameEvolved` (driver, from, to,
+  effective date, trigger award) is dispatched on that date.
+- Other events: `AwardFinalized`, `AwardWithdrawn`, `AwardsSettled` (per context, with
+  the diff) and `OofScoreStandingsUpdated`. All dispatch after commit and only for
+  seasons from `achievements.events_from`.
+
+**Runs.** `oof:achievements --changed` stays hourly. New: an `achievement_runs` log
+with a catalogue version hash, `--stale` to re-run contexts computed with an older
+version, and `--scope=weekend|season`. Backfill is the same command over earlier
+seasons, oldest first, one transaction per round; data gating decides what runs.
+
+**Date lookup.** Each award stores `occurred_on` and a month-day number. A query scope
+takes a calendar window (with year wrap) and returns awards across all years; This week
+in OOF history reads that together with `historic_moments.date`.
+
+## 4. Tables and models
+
+**achievements** (alter)
+
+| Column | Purpose |
+|---|---|
+| `recipient_type` | driver, team, safety_car |
+| `scope` | session, weekend, season |
+| `short_name` | Reserve name for tight layouts (Found It Like That) |
+| `withheld_on_sensitive_weekends` | Crash-related, the Safety Car cameo and Nothing to See Here |
+| `is_manual` | Built Different: never detected |
+| `introduced_season`, `retired_after_season` | Season packs and vintage |
+| `data_sources` (json), `available_from` | Derived by the sync command |
+| drop `points` | Moves to config |
+
+**achievement_awards** (alter)
+
+| Column | Purpose |
+|---|---|
+| `season_id`, `round_id` (nullable), `race_session_id` (now nullable) | Weekend awards anchor to their deciding session; season awards have only a season |
+| `scope`, `context_key` | `session:12`, `round:7`, `season:3`; unique on context + achievement + instance replaces today's unique index |
+| `recipient_type`, `season_team_id`, `team_id` | Beside the existing `driver_entry_id` and `driver_id` |
+| `tier`, `shelf`, `points` | Snapshot at award time |
+| `achievement_variant_id` | Beside the existing `variant_name` snapshot |
+| `occurred_on`, `occurred_md` | Date and month*100+day, indexed |
+| `is_sensitive`, `sensitivity_note` | Read by the publishing gate |
+| `source` | engine, manual, curated |
+| `finalized_at` | Set once; makes the events idempotent |
+
+**achievement_variants** (alter): `label` (art file suffix, `name--label.png`),
+`subtitle`, optional season range.
+
+**New tables**
+
+| Table | Columns |
+|---|---|
+| `team_lineages` | constructor ID, from year, to year, team; replaces `f1.team_lineage` in config and feeds `season_teams.team_id` |
+| `achievement_runs` | scope, context_key, season, catalogue_version, options, stats, is_dry_run, started and finished |
+| `oofscore_standings` | season, round, driver, points, awards_count, position, position_change; unique per season + round + driver |
+| `driver_nicknames` | driver, nickname, motto, stage, evolves_from, status (planned, active, retired), active_from, active_to, evolution_trigger (json) |
+| `nickname_evolutions` | driver, from, to, trigger_award, reason, evidence, status (proposed, approved, applied, dismissed), decided_by, effective_on; unique on the target nickname |
+
+**moment_sensitivities** (alter): `source` (seed, manual, engine) and `confirmed_at`.
+
+**seasons** (alter): `oofscore_closed_at`, which freezes that season's snapshots.
+
+**Config**: `config/achievement_catalogue.php` (data arrays only, safe for config
+caching); `config/achievements.php` gains points, shelf_from, events_from, the
+final-after map and the surprise window.
+
+## 5. Five achievements as rules
+
+Grand Chelem. Its availability is derived: `won` and `took_pole` 1950,
+`set_fastest_lap` 2004, `led_every_lap` 2023, so 2023 today and 2004 after the lap import.
+
+```php
+'clean_sweep' => [
+    'name' => 'Clean Sweep', 'shelf' => 'glory', 'tier' => 'platinum',
+    'recipient' => 'driver', 'scope' => 'session', 'sessions' => ['race'],
+    'trigger' => ['type' => 'match', 'fact' => 'result',
+        'where' => ['won', 'took_pole', 'set_fastest_lap', 'led_every_lap']],
+    'supersedes' => ['did_the_thing'],
+],
+```
+
+Track limits. Both facts carry the car's `track_limits` event, so the stare replaces
+the deletions only when it is about track limits; a stare for another reason stands alone.
+
+```php
+'outside_the_lines' => [
+    'name' => 'Outside the Lines', 'shelf' => 'oof', 'tier' => 'bronze',
+    'sessions' => ['race', 'sprint'],
+    'trigger' => ['type' => 'match', 'fact' => 'track_limit_deletion'],
+    'stacks' => false,   // one award per session, detail "×3"
+],
+'teachers_stare' => [
+    'name' => "Teacher's Stare", 'shelf' => 'oof', 'tier' => 'silver',
+    'sessions' => ['race', 'sprint'],
+    'trigger' => ['type' => 'match', 'fact' => 'flag',
+        'where' => [['flag', '=', 'black_and_white']]],
+    'supersedes' => ['outside_the_lines'],
+],
+```
+
+Safety Car.
+
+```php
+'took_the_lead' => [
+    'name' => 'Took the Lead', 'shelf' => 'safety_car', 'tier' => null,
+    'recipient' => 'safety_car', 'sessions' => ['race', 'sprint'],
+    'trigger' => ['type' => 'count', 'fact' => 'safety_car_period', 'sum' => 'laps',
+        'at_least' => 'config:achievements.took_the_lead_laps', 'detail' => ':total laps'],
+    'withheld_on_sensitive_weekends' => true,
+],
+```
+
+An offence that absorbs its penalty ("Bumper Cars · 10 s").
+
+```php
+'bumper_cars' => [
+    'name' => 'Bumper Cars', 'shelf' => 'oof', 'tier' => 'silver', 'section' => 'offence',
+    'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
+    'trigger' => ['type' => 'match', 'fact' => 'penalised_offence',
+        'where' => [['offence', 'in', ['causing_a_collision']]]],
+    'supersedes' => ['it_was_like_that_when_i_got_there', 'high_five', 'perfect_ten',
+        'drive_thru', 'red_light_green_light'],
+    'withheld_on_sensitive_weekends' => true,
+],
+```
+
+A weekend-scope achievement from the 2027 pack.
+
+```php
+'fools_gold' => [
+    'name' => "Fool's Gold", 'shelf' => 'oof', 'tier' => 'gold',
+    'scope' => 'weekend', 'decided_after' => 'qualifying', 'introduced_season' => 2027,
+    'trigger' => ['type' => 'match', 'fact' => 'qualifying_result',
+        'where' => ['topped_a_practice_session', ['position', '>=', 11]]],
+],
+```
+
+## 6. Data needed per achievement
+
+"From" is the first year the data supports it. The OOF shelf counts from 2023 by
+policy even where the data goes back further. Jolpica coverage years marked "check"
+come from general knowledge of the Ergast data, not from this database.
+
+| Achievements | Needs | From | Notes |
+|---|---|---|---|
+| Lapped Dog, Good Boy | Jolpica results (status "+N Laps") | 1950 | |
+| Forgot the Keys, Early Lunch, Home Before Dinner, Sent to Your Room, Reverse Gear, Turned Off the Lights, Peaked Too Soon | Jolpica results and grid | 1950 | From 2025 the retirement reason is only "Retired", so illness and injury cannot be filtered automatically; grid 0 meant a pit lane start until 2024 |
+| All Dressed Up, Nowhere to Go | Jolpica fastest lap rank | 2004 (check) | |
+| Nearly Famous | Jolpica results, points system per era | 2010 for P11 | Earlier eras need the first non-scoring position per year in config |
+| Blue Carpet | OpenF1 race control, blue flags | 2023 | |
+| Outside the Lines | OpenF1 race control, deletions | 2023 | Re-issued deletions are deduplicated on car and time |
+| Teacher's Stare, Meatball Sub, Expelled | OpenF1 race control, flags (Expelled also Jolpica DSQ) | 2023 | Meatball never occurred in 2023 to 2026; one black flag |
+| It Was Like That When I Got There, Sibling Rivalry | OpenF1 race control, incident notes with every car linked | 2023 | Involvement only, never blame |
+| Bumper Cars, Early Bird, Selective Hearing, Shortcut Tax, Line Dancing, Smile for the Camera, Extra Wide, Forgot to Indicate, Selective Vision, Queue Jumper, Failed the Driving Test, Released Into the Wild, Double Detention | OpenF1 race control, penalty naming one car and an offence | 2023 | In-session penalties only |
+| Sunday Driver | OpenF1 race control, maximum delta time noted | 2023 | |
+| High Five, Perfect Ten, Drive-Thru, Red Light Green Light | OpenF1 race control, penalties | 2023 | Post-session penalties are missing |
+| Called the Tow Truck, Whole Class Detention | OpenF1 race control: deployment plus a single-car message just before | 2023 | Inferred, always reviewed |
+| Table for One, Fine Dining | OpenF1 pit, stationary time | 2023 nominally | Stationary time is filled for only a small share of visits; "penalty served" exists only from 2025 |
+| Holding the Door, By a Whisker, Mirror Match | Jolpica qualifying times; OpenF1 session results for sprint qualifying | 2006 (knockout format, check) | |
+| Economy Class | Same, plus team form before the round | 2006 (check) | |
+| Deleted Scene | OpenF1 deletions with a time, plus the Q3 time | 2023 | From 2024 most deletions carry no time, so it undercounts |
+| Overtime | OpenF1 laps | 2023 | |
+| Practice Makes Imperfect | OpenF1 deletions in practice | 2026 | Not published before 2026 |
+| Fool's Gold | Practice classification and qualifying | 2023 | Practice session results are raw only today |
+| Nothing to See Here | The weekend's awards | 2023 | |
+| Did the Thing, Silver Lining, Solid Bronze, Took the Scenic Route, Charging Rhino, First Time for Everything | Jolpica results and grid | 1950 | Shared drives in the 1950s need a rule |
+| Plot Twist, Giant Slayer | Pole or win, plus team form: results of the last 10 races and the team lineage | 1950 | Pole from qualifying where present, otherwise grid 1 |
+| Clean Sweep | Results, pole, fastest lap, laps led | 2023 now; 2004 after the lap import | Earlier ones need a curated list |
+| Led Astray | Laps led | 2023 now; 1996 after the lap import | |
+| Class Dismissed | Driver standings per round, maximum points per era | 1991 reliably | Dropped-score seasons before that break the clinch maths |
+| To the Rescue | Results and entries per team | 1950 data | Only meaningful with fixed line-ups; seat swaps are reviewed |
+| Zoomies | OpenF1 laps, speed trap | 2023 | |
+| Took the Lead, Second Helping, Virtually There, Frequent Flyer | OpenF1 race control, SC and VSC with lap numbers | 2023 | Races and sprints only; a VSC that becomes an SC has no "VSC ending" |
+| Built Different | Manual | n/a | |
+
+## 7. Data gaps
+
+1. **Post-session decisions.** Of 527 "investigated after the session" messages only
+   149 have an outcome in race control. Post-race time penalties, grid penalties and
+   DSQ reasons need Jolpica's final result or, later, the FIA documents. A grid-penalty
+   achievement can only be approximated from qualifying position against grid.
+2. **Laps led before 2023.** Jolpica `lap_times` is empty until the import runs; there
+   is nothing at all before 1996.
+3. **Pit stationary time** is sparse. Check coverage per season before trusting Table
+   for One and Fine Dining; Jolpica's pit data is pit-lane time, not stationary time.
+4. **Track limits.** Practice deletions exist only from 2026; from 2024 most deletions
+   have no lap time.
+5. **Practice classification and starting grid** are only in `raw_responses`.
+6. **Retirement reasons** are generic from 2025, so a DNS or DNF through illness or
+   injury relies on a person suppressing it.
+7. **No live sensitivity source.** The seeded weekends are historic; nothing flags a
+   2027 weekend unless a person or the heavy-crash proposal does.
+8. **Nicknames, mottos, props, reserves** are not in the database; the 2027 line-ups
+   are not confirmed.
+9. **Team lineage** covers today's teams. Historic renames outside those lines
+   (Arrows and Footwork, Ligier and Prost, March and Leyton House) need adding, or the
+   renamed team reads as having no history.
+10. **Session dates.** Old seasons have only the race date, in UTC; a night race can
+    fall on the next calendar day locally.
+11. **Jolpica quirks.** No scheduled race distance, a few wrong 2025 lap counts, grid 0
+    no longer used after 2024.
+12. **No signal in the data.** Black-and-orange flags never occur; team radio has no
+    transcripts and follows the broadcast; stints are noisy.
+13. **Licences.** OpenF1's free tier is personal use; Jolpica is non-commercial. Both
+    need settling before launch.
+
+## 8. Build plan
+
+**Phase 0: safety net. Done.**
+
+- `oof:achievements:golden --export` runs the engine as a dry run and writes what it
+  gives to `storage/app/private/achievements/golden-master.jsonl` (not in git). One
+  line per award: session, achievement, instance key, driver, car, detail, variant,
+  status, confidence, review reason, event key and a hash of the evidence.
+- `oof:achievements:golden` runs the engine as a dry run again and compares. It stores
+  no awards, exits with a failure when anything differs, and lists what went missing,
+  was added or changed, per achievement. `--season=2025` limits it; `--limit=0` lists
+  every difference.
+- Exported on 16 November 2026 from the local database: 4,126 awards in 450 sessions
+  (2023 to 2026 round 19). Two re-runs showed no differences.
+- Fixed on the way: Overtime listed drivers with equal lap counts in an arbitrary
+  order in its evidence, so 124 awards counted as "updated" on every run. Equal counts
+  now go by entry ID. Stored awards keep the old order until their session next runs.
+
+How to use it in the later phases:
+
+1. Before a change, run `oof:achievements:golden` and expect "No differences".
+2. Make the change, run it again and read the differences.
+3. When they are exactly the intended ones, replace the master with
+   `oof:achievements:golden --export --force`. A pure refactor (Phase 6) must never need this.
+
+It belongs to the database it was exported from: instance keys carry that database's
+IDs. Sessions first run after the export are reported and not compared. A session
+younger than its final-after wait changes from pending to final by itself.
+
+**Phase 1: catalogue alignment and points in config.**
+Rename the 15 keys and names, apply the tier changes, split the podium (convert existing
+rows by P2/P3), widen Teacher's Stare to any reason. Move points to config, drop the
+enum method and the column. Make the final-after wait a map per session type. Update
+`docs/achievements.md`.
+Done when the catalogue matches the concept tables and the golden master differs only
+by the intended changes, after which it is re-exported.
+
+**Phase 2: surprise rule and team lineage table.**
+Add `team_lineages`, seed it from `config/f1.php`, point the team resolver at it, add a
+CMS screen and the missing historic renames. Replace `Surprise` with the rolling team
+form of section 3. Apply decisions 5, 6 and 9 of section 2.
+Done when Plot Twist and Giant Slayer for 2023 to 2026 have been read through by hand,
+round 1 of a season works, and a renamed team keeps its form across the rename.
+
+**Phase 3: award schema.**
+Add context, scope, recipient, snapshot, date, source and `finalized_at` columns;
+backfill them; switch the unique index to the context key. Add the calendar-window
+query scope.
+Done when every existing award has a season, a date and a snapshot, and behavior is unchanged.
+
+**Phase 4: sensitivity.**
+Add the `withheld_on_sensitive_weekends` flag and the Sensitivity rule (withhold, block,
+flag), glory flagged rather than pending, engine-proposed sensitivities, the Built
+Different guard.
+Done when tests cover: a crash award is never stored on a sensitive round, a person's
+earlier confirmation is overridden, a blocked round stores nothing, a sensitive win is
+final and flagged.
+
+**Phase 5: OOFscore.**
+Standings projection, a rebuild command, the standings event, a leaderboard page in the CMS.
+Done when the 2026 leaderboard can be rebuilt from scratch and matches a hand check of
+two drivers.
+
+**Phase 6: facts and triggers.**
+Add the catalogue config, fact providers, predicates with data needs, trigger types and
+the sync and catalogue commands. Port one family at a time (offences and penalties,
+flags, results, pit, qualifying, Safety Car, causes), deleting each replaced detector.
+Done when the golden master is unchanged after every port and the catalogue command
+prints section 6 from code.
+
+**Phase 7: scopes, runs and the Oofies.**
+Weekend scope (combined practice awards, Fine Dining, Nothing to See Here), season scope
+(Frequent Flyer and the three Oofies), the run log and `--stale`. Apply decisions 2, 3
+and 4 of section 2.
+Done when practice awards appear once per weekend, the 2025 Oofies can be computed, and
+a catalogue change marks old contexts stale.
+
+**Phase 8: recipients.**
+Recipient value on detections, team columns in use, Safety Car explicit; trophy queries
+per recipient.
+Done when a test team achievement can be awarded end to end without engine changes.
+
+**Phase 9: nicknames and evolution events.**
+Tables, seed the 22 nicknames and the legends, CMS screens, the breakthrough check,
+both events, the off-season rule for the effective date, nickname-based edition
+subtitles. Apply decision 1 of section 2.
+Done when a fixture podium for Lindblad creates one proposal and one event, a re-run
+creates none, and an effective date inside the season is refused.
+
+**Phase 10: 2027 pack.**
+The nine new achievements, Zoomies, manual Built Different; normalise practice session
+results for Fool's Gold. Re-run the report on 2023 to 2026 and set final tiers.
+Done when each new achievement is a config entry plus, at most, one predicate.
+
+**Phase 11: historic backfill.**
+Import Jolpica lap times (independent of the other phases, so it can start any time),
+lift `first_season`, run 1950 to 2022 oldest first, add a curated list for Clean Sweeps
+before the lap data, wire the This week in OOF history query.
+Done when a second full backfill changes nothing and any calendar week returns awards
+with sensitive ones flagged.
+
+## Working notes
+
+- The work lives on the branch `achievement-engine`, one commit per phase. `main` stays
+  untouched. A phase starts only when the owner says so.
+- PHP runs only inside Sail: `vendor/bin/sail artisan ...`, `vendor/bin/sail bin pint --dirty --format agent`.
+- When another Sail project holds the default ports, start this one beside it:
+  `APP_PORT=8087 FORWARD_DB_PORT=33087 VITE_PORT=5187 vendor/bin/sail up -d`
+  (and keep those variables set for later `sail` calls).
+- A full engine dry run over 2023 to 2026 takes about 30 seconds.

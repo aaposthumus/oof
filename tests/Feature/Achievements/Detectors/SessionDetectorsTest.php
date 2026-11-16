@@ -135,6 +135,29 @@ class SessionDetectorsTest extends TestCase
         $this->assertSame('3 deleted laps', $this->detect(PracticeMakesImperfectDetector::class, $practice)->sole()->detail);
     }
 
+    public function test_overtime_lists_drivers_with_equal_lap_counts_in_a_fixed_order(): void
+    {
+        $race = $this->raceSession();
+        $practice = $this->raceSession(SessionType::Practice1, $race->round);
+        $busiest = $this->car($practice, 16);
+        $first = $this->car($practice, 55);
+        $second = $this->car($practice, 63);
+
+        // The later entry's laps are stored first, so the order of the rows cannot decide.
+        foreach ([[$second, 20], [$first, 20], [$busiest, 25]] as [$entry, $laps]) {
+            $this->car($race, $entry->car_number, null, $entry->driver);
+
+            foreach (range(1, $laps) as $lap) {
+                SessionLap::factory()->create(['race_session_id' => $practice->id, 'driver_number' => $entry->car_number, 'driver_entry_id' => $entry->id, 'lap_number' => $lap]);
+            }
+        }
+
+        $this->assertSame(
+            [$busiest->driver->family_name, $first->driver->family_name, $second->driver->family_name],
+            array_column($this->detect(OvertimeDetector::class, $practice)->sole()->evidence['rows'], 'driver'),
+        );
+    }
+
     public function test_a_shared_top_spot_or_too_few_deleted_laps_gives_no_practice_award(): void
     {
         $race = $this->raceSession();
