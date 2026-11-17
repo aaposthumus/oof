@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * A driver's OOFscore after a round: the points of their final awards on
- * the scoring shelves so far that season, their place (equal points share
+ * the scoring shelves so far that season (each times its score multiplier), their place (equal points share
  * it) and how many places they moved since the round before (positive is
  * up, null when they were not in the standings yet).
  */
@@ -28,7 +28,7 @@ class OofscoreStanding extends Model
     protected function casts(): array
     {
         return [
-            'points' => 'integer',
+            'points' => 'float',
             'awards_count' => 'integer',
             'position' => 'integer',
             'position_change' => 'integer',

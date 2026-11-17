@@ -70,11 +70,12 @@ class OofScoreTest extends TestCase
         $award = $this->award('good_boy', AwardStatus::Pending);
         $this->award('lapped_dog');
         app(OofScoreStandings::class)->rebuild($this->race->round->season);
-        $this->assertSame(10, OofscoreStanding::query()->sole()->points);
+        // The car's team has no race in the form window, so pace awards count ×0.5.
+        $this->assertSame(5.0, OofscoreStanding::query()->sole()->points);
 
         Livewire::test(ViewAchievementAward::class, ['record' => $award->getRouteKey()])->callAction('confirm');
 
-        $this->assertSame(35, OofscoreStanding::query()->sole()->points);
+        $this->assertSame(17.5, OofscoreStanding::query()->sole()->points);
     }
 
     public function test_closing_a_season_with_awards_waiting_is_refused(): void

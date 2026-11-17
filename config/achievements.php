@@ -47,6 +47,12 @@ return [
     | is a slide feature ("The quiet ones"), not an OOF. Other shelves earn
     | nothing.
     |
+    | In the OOFscore, pace and reliability achievements are multiplied by
+    | the band of the team's form rank before the round (see TeamForm): top
+    | is ranks 1 to bands.top, middle up to bands.middle, rest below that and
+    | a team without a race in the window. Driver and surprise achievements
+    | count ×1. The award keeps its tier and base points.
+    |
     */
 
     'points' => [
@@ -60,6 +66,11 @@ return [
             'nothing_to_see_here' => 0,
         ],
         'scoring_shelves' => ['oof'],
+        'multipliers' => [
+            'bands' => ['top' => 4, 'middle' => 7],
+            'pace' => ['top' => 2.0, 'middle' => 1.0, 'rest' => 0.5],
+            'reliability' => ['top' => 1.0, 'middle' => 1.0, 'rest' => 0.5],
+        ],
     ],
 
     /*

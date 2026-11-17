@@ -6,14 +6,17 @@ use App\Achievements\OofScoreStandings;
 use App\Achievements\SeasonNotClosable;
 use App\Enums\AchievementTier;
 use App\Enums\AwardStatus;
+use App\Enums\ScoreCategory;
 use App\Enums\SessionType;
 use App\Events\OofScoreStandingsUpdated;
 use App\Models\Achievement;
 use App\Models\AchievementAward;
 use App\Models\Driver;
+use App\Models\DriverEntry;
 use App\Models\OofscoreStanding;
 use App\Models\RaceSession;
 use App\Models\Round;
+use App\Models\SeasonTeam;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -51,7 +54,7 @@ class OofScoreStandingsTest extends TestCase
     }
 
     /**
-     * @return array<int, array{int, int, int, int|null}> Driver ID => [points, awards, position, change]
+     * @return array<int, array{float, int, int, int|null}> Driver ID => [points, awards, position, change]
      */
     private function after(RaceSession $race): array
     {
@@ -76,8 +79,8 @@ class OofScoreStandingsTest extends TestCase
 
         app(OofScoreStandings::class)->rebuild($first->round->season);
 
-        $this->assertSame([$alice->id => [10, 1, 2, null], $bob->id => [25, 1, 1, null]], $this->after($first));
-        $this->assertSame([$alice->id => [60, 2, 1, 1], $bob->id => [25, 1, 2, -1], $carol->id => [0, 1, 3, null]], $this->after($second));
+        $this->assertSame([$alice->id => [10.0, 1, 2, null], $bob->id => [25.0, 1, 1, null]], $this->after($first));
+        $this->assertSame([$alice->id => [60.0, 2, 1, 1], $bob->id => [25.0, 1, 2, -1], $carol->id => [0.0, 1, 3, null]], $this->after($second));
         $this->assertSame([$alice->id, $bob->id, $carol->id], array_keys($this->after($second)), 'Drivers in ID order, for the comparison.');
     }
 
@@ -115,8 +118,110 @@ class OofScoreStandingsTest extends TestCase
         app(OofScoreStandings::class)->rebuild($race->round->season);
 
         $after = $this->after($race);
-        $this->assertSame([10, 2, 1, null], $after[$quiet->id], 'It still shows as an award.');
-        $this->assertSame([10, 1, 1, null], $after[$other->id], 'But both share the place.');
+        $this->assertSame([10.0, 2, 1, null], $after[$quiet->id], 'It still shows as an award.');
+        $this->assertSame([10.0, 1, 1, null], $after[$other->id], 'But both share the place.');
+    }
+
+    /**
+     * Eight lasting teams with a race in round 1 that ranks them 1 to 8 on form, and
+     * a car of the teams ranked 1, 6 and 8 in round 2.
+     *
+     * @return array{RaceSession, array<int, DriverEntry>} The round 2 race and its cars by form rank
+     */
+    private function formField(): array
+    {
+        $first = $this->race(1);
+        $second = $this->race(2);
+        $cars = [];
+
+        foreach (range(1, 8) as $rank) {
+            $team = SeasonTeam::factory()->create(['season_id' => $first->round->season_id]);
+            $this->resultFor($this->car($first, 10 + $rank, $team), ['points' => 30 - $rank]);
+
+            if (in_array($rank, [1, 6, 8], true)) {
+                $cars[$rank] = $this->car($second, 10 + $rank, $team);
+            }
+        }
+
+        return [$second, $cars];
+    }
+
+    private function awardFor(RaceSession $race, DriverEntry $car, string $key): AchievementAward
+    {
+        return AchievementAward::factory()->create([
+            'race_session_id' => $race->id,
+            'achievement_id' => Achievement::firstWhere('key', $key)->id,
+            'driver_entry_id' => $car->id,
+            'driver_id' => $car->driver_id,
+        ]);
+    }
+
+    public function test_pace_and_reliability_awards_are_weighed_by_team_form_and_driver_awards_are_not(): void
+    {
+        [$race, $cars] = $this->formField();
+        $awards = [];
+
+        foreach ($cars as $rank => $car) {
+            foreach (['lapped_dog', 'forgot_the_keys', 'outside_the_lines'] as $key) {
+                $awards[$rank][$key] = $this->awardFor($race, $car, $key);
+            }
+        }
+
+        app(OofScoreStandings::class)->rebuild($race->round->season);
+
+        // Pace: 10 × 2 / 1 / 0.5. Reliability: 50 × 1 / 1 / 0.5. Driver: 10 × 1.
+        $this->assertSame(80.0, $this->after($race)[$cars[1]->driver_id][0]);
+        $this->assertSame(70.0, $this->after($race)[$cars[6]->driver_id][0]);
+        $this->assertSame(40.0, $this->after($race)[$cars[8]->driver_id][0]);
+
+        $lapped = $awards[1]['lapped_dog']->fresh();
+        $this->assertSame([10, AchievementTier::Bronze, 1, 2.0], [$lapped->points, $lapped->tier, $lapped->team_form_rank, $lapped->score_multiplier]);
+        $this->assertSame([8, 0.5], [$awards[8]['forgot_the_keys']->fresh()->team_form_rank, $awards[8]['forgot_the_keys']->fresh()->score_multiplier]);
+        $this->assertSame(1.0, $awards[1]['outside_the_lines']->fresh()->score_multiplier);
+    }
+
+    public function test_changing_an_achievements_score_category_reaches_the_open_seasons(): void
+    {
+        [$race, $cars] = $this->formField();
+        $award = $this->awardFor($race, $cars[1], 'outside_the_lines');
+        app(OofScoreStandings::class)->rebuild($race->round->season);
+        $this->assertSame(10.0, $this->after($race)[$cars[1]->driver_id][0]);
+
+        $award->achievement->update(['score_category' => ScoreCategory::Pace]);
+
+        $this->assertSame(2.0, $award->fresh()->score_multiplier);
+        $this->assertSame(20.0, $this->after($race)[$cars[1]->driver_id][0]);
+    }
+
+    public function test_a_closed_season_keeps_its_stored_multipliers(): void
+    {
+        [$race, $cars] = $this->formField();
+        $award = $this->awardFor($race, $cars[1], 'lapped_dog');
+        $standings = app(OofScoreStandings::class);
+        $standings->close($race->round->season, CarbonImmutable::parse('2024-12-31'));
+
+        $award->achievement->update(['score_category' => ScoreCategory::Driver]);
+        config(['achievements.points.multipliers.pace.top' => 3.0]);
+        $standings->rebuild($race->round->season->fresh());
+
+        $this->assertSame(2.0, $award->fresh()->score_multiplier);
+        $this->assertSame(20.0, $this->after($race)[$cars[1]->driver_id][0]);
+    }
+
+    public function test_the_medal_tie_break_counts_tiers_not_multiplied_points(): void
+    {
+        [$race, $cars] = $this->formField();
+        $this->awardFor($race, $cars[1], 'lapped_dog');              // one bronze: 10 × 2 = 20
+
+        foreach (['lapped_dog', 'blue_carpet', 'holding_the_door', 'turned_off_the_lights'] as $key) {
+            $this->awardFor($race, $cars[8], $key);                  // four bronzes: 4 × 10 × 0.5 = 20
+        }
+
+        app(OofScoreStandings::class)->rebuild($race->round->season);
+
+        $after = $this->after($race);
+        $this->assertSame([20.0, 20.0], [$after[$cars[1]->driver_id][0], $after[$cars[8]->driver_id][0]]);
+        $this->assertSame([2, 1], [$after[$cars[1]->driver_id][2], $after[$cars[8]->driver_id][2]]);
     }
 
     public function test_a_rebuild_from_scratch_gives_the_same_standings_and_changes_nothing(): void
@@ -158,13 +263,13 @@ class OofScoreStandingsTest extends TestCase
         $standings->close($race->round->season, CarbonImmutable::parse('2024-12-31'));
 
         $this->assertTrue($race->round->season->fresh()->isClosed());
-        $this->assertSame([$alice->id => [10, 1, 1, null]], $this->after($race));
+        $this->assertSame([$alice->id => [10.0, 1, 1, null]], $this->after($race));
 
         $this->award($race, $alice, 'good_boy');
         $award->achievement->update(['tier' => AchievementTier::Platinum]);
 
         $this->assertNull($standings->rebuild($race->round->season->fresh()));
-        $this->assertSame([$alice->id => [10, 1, 1, null]], $this->after($race));
+        $this->assertSame([$alice->id => [10.0, 1, 1, null]], $this->after($race));
         $this->assertSame(10, $award->fresh()->points);
     }
 
@@ -182,7 +287,7 @@ class OofScoreStandingsTest extends TestCase
 
         $this->assertFalse($race->round->season->fresh()->isClosed());
         $this->assertSame(25, $award->fresh()->points);
-        $this->assertSame([$alice->id => [50, 2, 1, null]], $this->after($race));
+        $this->assertSame([$alice->id => [50.0, 2, 1, null]], $this->after($race));
 
         $this->expectException(SeasonNotClosable::class);
         $standings->reopen($race->round->season->fresh());
@@ -266,7 +371,7 @@ class OofScoreStandingsTest extends TestCase
 
         $counted = AchievementAward::query()->where('driver_id', $car->driver_id)->where('status', AwardStatus::Final)->where('shelf', 'oof')->get();
         $this->assertContains('smile_for_the_camera', $counted->map(fn (AchievementAward $award) => $award->achievement->key));
-        $this->assertSame([$car->driver_id => [$counted->sum('points'), $counted->count(), 1, null]], $this->after($race));
+        $this->assertSame([$car->driver_id => [(float) $counted->sum(fn (AchievementAward $award) => $award->points * $award->score_multiplier), $counted->count(), 1, null]], $this->after($race));
     }
 
     public function test_the_commands_rebuild_and_close(): void

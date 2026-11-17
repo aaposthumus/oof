@@ -2,6 +2,7 @@
 
 namespace App\Achievements;
 
+use App\Achievements\Support\TeamForm;
 use App\Enums\AwardStatus;
 use App\Enums\RecipientType;
 use App\Enums\SessionType;
@@ -18,7 +19,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The OOFscore standings projection. Per season, the points of each
- * driver's final awards on the scoring shelves (their snapshot), summed
+ * driver's final awards on the scoring shelves (their snapshot, times the
+ * multiplier their score category takes from the team's form), summed
  * round by round, with a row per driver per round from their first award
  * on, for every round that has awards. Pending and suppressed awards never count. Equal points share a
  * place. A closed season is never rebuilt: its standings are frozen.
@@ -43,6 +45,7 @@ class OofScoreStandings
 
         return DB::transaction(function () use ($season) {
             $before = $this->rowsOf($season);
+            $this->weigh($season);
             $rows = $this->compute($season);
 
             OofscoreStanding::query()->where('season_id', $season->id)->delete();
@@ -139,7 +142,7 @@ class OofScoreStandings
     }
 
     /**
-     * @return list<array{season_id: int, round_id: int, driver_id: int, points: int, awards_count: int, position: int, position_change: int|null}>
+     * @return list<array{season_id: int, round_id: int, driver_id: int, points: float, awards_count: int, position: int, position_change: int|null}>
      */
     private function compute(Season $season): array
     {
@@ -151,7 +154,7 @@ class OofScoreStandings
             ->whereNotNull('round_id')
             ->whereIn('shelf', config('achievements.points.scoring_shelves'))
             ->toBase()
-            ->get(['round_id', 'driver_id', 'points', 'tier', 'achievement_id'])
+            ->get(['round_id', 'driver_id', 'points', 'score_multiplier', 'tier', 'achievement_id'])
             ->groupBy('round_id');
 
         // Achievements worth nothing by design (Nothing to See Here: no OOFs that weekend) never help in a tie.
@@ -174,7 +177,7 @@ class OofScoreStandings
         foreach ($rounds as $roundId) {
             foreach ($awards->get($roundId, collect()) as $award) {
                 $totals[$award->driver_id] ??= ['points' => 0, 'awards_count' => 0, 'tie_break_awards' => 0, 'tiers' => array_fill_keys(self::TIERS, 0)];
-                $totals[$award->driver_id]['points'] += (int) $award->points;
+                $totals[$award->driver_id]['points'] = round($totals[$award->driver_id]['points'] + $award->points * (float) ($award->score_multiplier ?? 1), 2);
                 $totals[$award->driver_id]['awards_count']++;
 
                 if (in_array((int) $award->achievement_id, $outOfTieBreak, true)) {
@@ -214,6 +217,34 @@ class OofScoreStandings
     }
 
     /**
+     * Store on every OOF award of the season the team's form rank before its
+     * round and the multiplier its score category takes from it. Only for
+     * open seasons, so a closed season keeps the values it was closed with.
+     */
+    private function weigh(Season $season): void
+    {
+        $achievements = Achievement::query()->get()->keyBy('id');
+        $forms = [];
+
+        AchievementAward::query()
+            ->where('season_id', $season->id)
+            ->whereIn('shelf', config('achievements.points.scoring_shelves'))
+            ->whereNotNull('round_id')
+            ->with('round.season')
+            ->get()
+            ->each(function (AchievementAward $award) use ($achievements, &$forms): void {
+                $form = $forms[$award->round_id] ??= TeamForm::before($award->round);
+                $rank = $award->team_id === null ? null : $form->rankOf($award->team_id);
+                // Without a known car there is no team to weigh by.
+                $multiplier = $award->team_id === null ? 1.0 : $achievements[$award->achievement_id]->scoreMultiplier($rank);
+
+                if ($award->team_form_rank !== $rank || $award->score_multiplier !== $multiplier) {
+                    AchievementAward::query()->whereKey($award->id)->update(['team_form_rank' => $rank, 'score_multiplier' => $multiplier]);
+                }
+            });
+    }
+
+    /**
      * What decides a place, compared as an array: points, then the number of
      * Platinum, Gold, Silver and Bronze awards, then the number of awards.
      * Awards worth nothing by design are left out of the counts.
@@ -248,7 +279,7 @@ class OofScoreStandings
     {
         return collect($rows)
             ->where('round_id', $roundId)
-            ->map(fn (array $row) => array_map(fn ($value) => $value === null ? null : (int) $value, $row))
+            ->map(fn (array $row) => array_map(fn ($value) => $value === null ? null : (float) $value, $row))
             ->sortBy('driver_id')
             ->values()
             ->all();

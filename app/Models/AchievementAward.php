@@ -36,7 +36,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property array{source: string, messages?: list<array<string, mixed>>, rows?: list<array<string, mixed>>, note?: string} $evidence
  */
-#[Fillable(['season_id', 'round_id', 'race_session_id', 'scope', 'context_key', 'recipient_type', 'driver_entry_id', 'driver_id', 'season_team_id', 'team_id', 'achievement_id', 'tier', 'shelf', 'points', 'instance_key', 'event_key', 'detail', 'subtitle', 'variant_name', 'achievement_variant_id', 'occurred_on', 'occurred_md', 'source', 'is_sensitive', 'sensitivity_note', 'evidence', 'confidence', 'status', 'review_reason', 'decided_by', 'decided_at', 'decision_note', 'held_decision', 'finalized_at', 'handed_back_at'])]
+#[Fillable(['season_id', 'round_id', 'race_session_id', 'scope', 'context_key', 'recipient_type', 'driver_entry_id', 'driver_id', 'season_team_id', 'team_id', 'achievement_id', 'tier', 'shelf', 'points', 'team_form_rank', 'score_multiplier', 'instance_key', 'event_key', 'detail', 'subtitle', 'variant_name', 'achievement_variant_id', 'occurred_on', 'occurred_md', 'source', 'is_sensitive', 'sensitivity_note', 'evidence', 'confidence', 'status', 'review_reason', 'decided_by', 'decided_at', 'decision_note', 'held_decision', 'finalized_at', 'handed_back_at'])]
 class AchievementAward extends Model
 {
     /** @use HasFactory<AchievementAwardFactory> */
@@ -60,6 +60,8 @@ class AchievementAward extends Model
             'tier' => AchievementTier::class,
             'shelf' => AchievementShelf::class,
             'points' => 'integer',
+            'team_form_rank' => 'integer',
+            'score_multiplier' => 'float',
             'occurred_on' => 'date',
             'occurred_md' => 'integer',
             'source' => AwardSource::class,

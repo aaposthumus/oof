@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Achievements\Schemas;
 use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
+use App\Enums\ScoreCategory;
 use App\Enums\SessionType;
 use App\Models\Achievement;
 use Filament\Forms\Components\CheckboxList;
@@ -38,6 +39,11 @@ class AchievementForm
                 Select::make('tier')
                     ->options(collect(AchievementTier::cases())->mapWithKeys(fn (AchievementTier $tier) => [$tier->value => "{$tier->label()} (".config("achievements.points.tiers.{$tier->value}").' points)'])->all())
                     ->helperText('The points per tier are set in config/achievements.php.'),
+                Select::make('score_category')
+                    ->label('Score category')
+                    ->options(collect(ScoreCategory::cases())->mapWithKeys(fn (ScoreCategory $category) => [$category->value => $category->label()])->all())
+                    ->required()
+                    ->helperText('Pace and reliability are weighed in the OOFscore by the team\'s form before the round (multipliers in config/achievements.php). A change reaches the seasons that are not closed.'),
                 CheckboxList::make('session_types')
                     ->label('Sessions')
                     ->options(collect(SessionType::cases())->mapWithKeys(fn (SessionType $type) => [$type->value => $type->label()])->all())

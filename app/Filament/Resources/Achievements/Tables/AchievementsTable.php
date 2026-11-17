@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Achievements\Tables;
 use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
+use App\Enums\ScoreCategory;
 use App\Enums\SessionType;
 use App\Models\Achievement;
 use Filament\Actions\EditAction;
@@ -36,6 +37,15 @@ class AchievementsTable
                 TextColumn::make('points')
                     ->state(fn (Achievement $record): int => $record->points())
                     ->numeric(),
+                TextColumn::make('score_category')
+                    ->label('Score')
+                    ->badge()
+                    ->formatStateUsing(fn (ScoreCategory $state): string => ucfirst($state->value))
+                    ->color(fn (ScoreCategory $state): string => match ($state) {
+                        ScoreCategory::Pace => 'info',
+                        ScoreCategory::Reliability => 'warning',
+                        default => 'gray',
+                    }),
                 TextColumn::make('session_types')
                     ->label('Sessions')
                     ->formatStateUsing(fn (string $state): string => SessionType::from($state)->label())

@@ -79,6 +79,14 @@ class AchievementAwardsTable
                         AwardStatus::Final => 'success',
                         AwardStatus::Suppressed => 'gray',
                     }),
+                TextColumn::make('oofscore')
+                    ->label('OOFscore')
+                    ->state(fn (AchievementAward $record): ?string => $record->score_multiplier === null ? null
+                        : rtrim(rtrim(number_format($record->points * $record->score_multiplier, 2, '.', ''), '0'), '.')
+                            ." ({$record->points} × ".rtrim(rtrim(number_format($record->score_multiplier, 2, '.', ''), '0'), '.')
+                            .($record->team_form_rank === null ? ', team without form' : ", team P{$record->team_form_rank} on form").')')
+                    ->placeholder('–')
+                    ->toggleable(),
                 IconColumn::make('is_sensitive')
                     ->label('Sensitive')
                     ->boolean()

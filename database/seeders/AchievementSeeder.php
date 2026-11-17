@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
+use App\Enums\ScoreCategory;
 use App\Models\Achievement;
 use Illuminate\Database\Seeder;
 
@@ -29,6 +30,36 @@ class AchievementSeeder extends Seeder
     private const PENALTIES = ['high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'];
 
     private const TRACK_LIMITS = ['outside_the_lines', 'teachers_stare'];
+
+    /**
+     * Score categories other than driver (the default: the driver's own doing).
+     * Keys not in the catalogue yet are listed for when they are added.
+     *
+     * @var array<string, ScoreCategory>
+     */
+    public const SCORE_CATEGORIES = [
+        'lapped_dog' => ScoreCategory::Pace,
+        'good_boy' => ScoreCategory::Pace,
+        'blue_carpet' => ScoreCategory::Pace,
+        'holding_the_door' => ScoreCategory::Pace,
+        'turned_off_the_lights' => ScoreCategory::Pace,
+        'reverse_gear' => ScoreCategory::Pace,
+        'overtime' => ScoreCategory::Pace,
+        'nearly_famous' => ScoreCategory::Pace,
+        'mirror_match' => ScoreCategory::Pace,
+        'all_dressed_up_nowhere_to_go' => ScoreCategory::Pace,
+        'forgot_the_keys' => ScoreCategory::Reliability,
+        'early_lunch' => ScoreCategory::Reliability,
+        'home_before_dinner' => ScoreCategory::Reliability,
+        'sent_to_your_room' => ScoreCategory::Reliability,
+        'table_for_one' => ScoreCategory::Reliability,
+        'fine_dining' => ScoreCategory::Reliability,
+        'released_into_the_wild' => ScoreCategory::Reliability,
+        'meatball_sub' => ScoreCategory::Reliability,
+        'economy_class' => ScoreCategory::Surprise,
+        'peaked_too_soon' => ScoreCategory::Surprise,
+        'led_astray' => ScoreCategory::Surprise,
+    ];
 
     /**
      * Never awarded on a sensitive weekend: retirements, the DNS, causes,
@@ -150,6 +181,7 @@ class AchievementSeeder extends Seeder
                 'description' => $description,
                 'is_enabled' => true,
                 'withheld_on_sensitive_weekends' => in_array($key, self::WITHHELD_ON_SENSITIVE_WEEKENDS, true),
+                'score_category' => self::SCORE_CATEGORIES[$key] ?? ScoreCategory::Driver,
             ]);
         }
     }

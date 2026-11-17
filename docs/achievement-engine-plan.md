@@ -697,6 +697,24 @@ way is not done.
 - Reopening, owner only: `oof:oofscore:reopen {year}`, no CMS action; it asks for the
   year to be typed (`--force` does not). Its awards take the catalogue's current tier,
   shelf and points again and the standings are rebuilt.
+- Multipliers (decided 17 November 2026, after a read-only simulation of two sets):
+  every achievement has a `score_category`, editable in the CMS: `driver` (×1: penalties,
+  offences, track limits, flags, collisions, Sunday Driver, By a Whisker, It Was Like
+  That When I Got There, Called the Tow Truck, Whole Class Detention; also the default),
+  `pace` (Lapped Dog, Good Boy, Blue Carpet, Holding the Door, Turned Off the Lights,
+  Reverse Gear, Overtime, Nearly Famous, Mirror Match, All Dressed Up Nowhere to Go),
+  `reliability` (Forgot the Keys, Early Lunch, Home Before Dinner, Sent to Your Room,
+  Table for One, Fine Dining, Released Into the Wild, Meatball Sub) and `surprise` (×1:
+  Economy Class, Peaked Too Soon, Led Astray, when added). `achievements.points.multipliers`
+  by the team's form rank before the round (Phase 2 rule; no race in the window counts
+  as the last band): pace 1-4 ×2, 5-7 ×1, 8+ ×0.5; reliability 1-4 ×1, 5-7 ×1, 8+ ×0.5.
+  Nothing to See Here stays 0.
+- The multiplier counts only in the OOFscore: the award keeps its tier and base points.
+  The rebuild of an open season stores `team_form_rank` and `score_multiplier` on each
+  of its OOF awards (an award without a known car is ×1) and sums points × multiplier,
+  so standings hold halves; a closed season keeps the stored values. A change of an
+  achievement's tier, shelf or score category rebuilds the open seasons it appears in.
+  The tie-break is unchanged: medals on tiers, then award count.
 - CMS: an OOFscore page with the leaderboard after a chosen round (latest by default),
   change arrows, and the Rebuild and Close season actions.
 - Checked on the local database: 2026 rebuilt from scratch (19 rounds with data, 425 rows),
