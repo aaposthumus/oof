@@ -1,36 +1,27 @@
 <?php
 
-use App\Achievements\Detectors\AllDressedUpDetector;
 use App\Achievements\Detectors\ByAWhiskerDetector;
 use App\Achievements\Detectors\CalledTheTowTruckDetector;
 use App\Achievements\Detectors\ClassDismissedDetector;
 use App\Achievements\Detectors\CleanSweepDetector;
 use App\Achievements\Detectors\DeletedSceneDetector;
 use App\Achievements\Detectors\DidTheThingDetector;
-use App\Achievements\Detectors\EarlyLunchDetector;
 use App\Achievements\Detectors\FineDiningDetector;
-use App\Achievements\Detectors\ForgotTheKeysDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
 use App\Achievements\Detectors\GiantSlayerDetector;
-use App\Achievements\Detectors\GoodBoyDetector;
 use App\Achievements\Detectors\HoldingTheDoorDetector;
-use App\Achievements\Detectors\HomeBeforeDinnerDetector;
-use App\Achievements\Detectors\LappedDogDetector;
 use App\Achievements\Detectors\MirrorMatchDetector;
 use App\Achievements\Detectors\NothingToSeeHereDetector;
 use App\Achievements\Detectors\OvertimeDetector;
 use App\Achievements\Detectors\PlotTwistDetector;
 use App\Achievements\Detectors\PracticeMakesImperfectDetector;
-use App\Achievements\Detectors\ReverseGearDetector;
 use App\Achievements\Detectors\SecondHelpingDetector;
-use App\Achievements\Detectors\SentToYourRoomDetector;
 use App\Achievements\Detectors\SilverLiningDetector;
 use App\Achievements\Detectors\SolidBronzeDetector;
 use App\Achievements\Detectors\TableForOneDetector;
 use App\Achievements\Detectors\TookTheLeadDetector;
 use App\Achievements\Detectors\TookTheScenicRouteDetector;
 use App\Achievements\Detectors\ToTheRescueDetector;
-use App\Achievements\Detectors\TurnedOffTheLightsDetector;
 use App\Achievements\Detectors\VirtuallyThereDetector;
 use App\Achievements\Detectors\WholeClassDetentionDetector;
 
@@ -562,7 +553,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => LappedDogDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => [['laps_down', '=', 1]], 'detail' => '1 lap'],
         ],
 
         'good_boy' => [
@@ -578,7 +569,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => GoodBoyDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => [['laps_down', '>=', 2]], 'detail' => '{laps_down} laps'],
         ],
 
         'forgot_the_keys' => [
@@ -594,7 +585,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => ForgotTheKeysDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => ['did_not_start'], 'detail' => '{status}'],
         ],
 
         'early_lunch' => [
@@ -610,7 +601,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => EarlyLunchDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => ['retired', ['laps_completed', '=', 0]], 'detail' => '{status}'],
         ],
 
         'home_before_dinner' => [
@@ -626,7 +617,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => HomeBeforeDinnerDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => ['retired'], 'detail' => '{status}'],
         ],
 
         'sent_to_your_room' => [
@@ -642,7 +633,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => SentToYourRoomDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => ['disqualified'], 'event' => 'disqualification:{entry}'],
         ],
 
         'reverse_gear' => [
@@ -658,7 +649,11 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => ReverseGearDetector::class],
+            'trigger' => [
+                'type' => 'extreme', 'fact' => 'result', 'where' => ['classified_finisher', ['grid', '>', 0]],
+                'measure' => 'places_lost', 'pick' => 'max', 'at_least' => 1, 'ties' => 'none',
+                'detail' => 'P{grid} → P{position}',
+            ],
         ],
 
         'all_dressed_up_nowhere_to_go' => [
@@ -674,7 +669,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => AllDressedUpDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => [['fastest_lap_rank', '=', 1], ['points', '=', 0.0], 'not_disqualified'], 'detail' => 'P{position_text}'],
         ],
 
         'turned_off_the_lights' => [
@@ -690,7 +685,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => TurnedOffTheLightsDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => ['last_classified_finisher'], 'detail' => 'P{position}'],
         ],
 
         'table_for_one' => [

@@ -2,6 +2,7 @@
 
 namespace App\Achievements\Facts\Providers;
 
+use App\Achievements\Facts\Concerns\ReadsRaceControl;
 use App\Achievements\Facts\Fact;
 use App\Achievements\Facts\FactEvidence;
 use App\Achievements\Facts\FactProvider;

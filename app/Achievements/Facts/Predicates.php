@@ -14,7 +14,14 @@ class Predicates
     /**
      * @var array<string, class-string<Predicate>>
      */
-    public const PREDICATES = [];
+    public const PREDICATES = [
+        'did_not_start' => Predicates\DidNotStart::class,
+        'retired' => Predicates\Retired::class,
+        'disqualified' => Predicates\Disqualified::class,
+        'not_disqualified' => Predicates\NotDisqualified::class,
+        'classified_finisher' => Predicates\ClassifiedFinisher::class,
+        'last_classified_finisher' => Predicates\LastClassifiedFinisher::class,
+    ];
 
     /**
      * @var array<string, Predicate>

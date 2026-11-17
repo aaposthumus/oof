@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Achievements\Facts\Providers;
+namespace App\Achievements\Facts\Concerns;
 
 use App\Achievements\Facts\DataSource;
 

@@ -2,24 +2,15 @@
 
 namespace Tests\Feature\Achievements\Detectors;
 
-use App\Achievements\Detectors\AllDressedUpDetector;
 use App\Achievements\Detectors\ClassDismissedDetector;
 use App\Achievements\Detectors\CleanSweepDetector;
 use App\Achievements\Detectors\DidTheThingDetector;
-use App\Achievements\Detectors\EarlyLunchDetector;
-use App\Achievements\Detectors\ForgotTheKeysDetector;
 use App\Achievements\Detectors\GiantSlayerDetector;
-use App\Achievements\Detectors\GoodBoyDetector;
-use App\Achievements\Detectors\HomeBeforeDinnerDetector;
-use App\Achievements\Detectors\LappedDogDetector;
 use App\Achievements\Detectors\PlotTwistDetector;
-use App\Achievements\Detectors\ReverseGearDetector;
-use App\Achievements\Detectors\SentToYourRoomDetector;
 use App\Achievements\Detectors\SilverLiningDetector;
 use App\Achievements\Detectors\SolidBronzeDetector;
 use App\Achievements\Detectors\TookTheScenicRouteDetector;
 use App\Achievements\Detectors\ToTheRescueDetector;
-use App\Achievements\Detectors\TurnedOffTheLightsDetector;
 use App\Achievements\Support\TeamForm;
 use App\Enums\AwardConfidence;
 use App\Enums\SessionType;
@@ -67,9 +58,9 @@ class ResultDetectorsTest extends TestCase
         $once = $this->finisher(2, 2, ['status' => '+1 Lap', 'laps_completed' => 56]);
         $twice = $this->finisher(3, 3, ['status' => 'Lapped', 'laps_completed' => 55]);
 
-        $this->assertSame([$once->id], $this->detect(LappedDogDetector::class, $this->race)->pluck('driverEntryId')->all());
-        $this->assertSame('2 laps', $this->detect(GoodBoyDetector::class, $this->race)->sole()->detail);
-        $this->assertSame($twice->id, $this->detect(GoodBoyDetector::class, $this->race)->sole()->driverEntryId);
+        $this->assertSame([$once->id], $this->detect('lapped_dog', $this->race)->pluck('driverEntryId')->all());
+        $this->assertSame('2 laps', $this->detect('good_boy', $this->race)->sole()->detail);
+        $this->assertSame($twice->id, $this->detect('good_boy', $this->race)->sole()->driverEntryId);
     }
 
     public function test_retirements_on_lap_one_and_later(): void
@@ -78,8 +69,8 @@ class ResultDetectorsTest extends TestCase
         $later = $this->finisher(2, 0, ['position' => null, 'position_text' => 'R', 'is_classified' => false, 'status' => 'Engine', 'laps_completed' => 30]);
         $this->finisher(3, 0, ['position' => null, 'position_text' => 'R', 'is_classified' => false, 'status' => 'Illness', 'laps_completed' => 3]);
 
-        $this->assertSame([$lapOne->id], $this->detect(EarlyLunchDetector::class, $this->race)->pluck('driverEntryId')->all());
-        $this->assertSame([$lapOne->id, $later->id], $this->detect(HomeBeforeDinnerDetector::class, $this->race)->pluck('driverEntryId')->all());
+        $this->assertSame([$lapOne->id], $this->detect('early_lunch', $this->race)->pluck('driverEntryId')->all());
+        $this->assertSame([$lapOne->id, $later->id], $this->detect('home_before_dinner', $this->race)->pluck('driverEntryId')->all());
     }
 
     public function test_did_not_start_unless_through_illness(): void
@@ -89,7 +80,7 @@ class ResultDetectorsTest extends TestCase
         $ill = $this->car($this->race, 2);
         Result::factory()->for($ill)->withdrawn()->create(['status' => 'Illness']);
 
-        $this->assertSame([$withdrew->id], $this->detect(ForgotTheKeysDetector::class, $this->race)->pluck('driverEntryId')->all());
+        $this->assertSame([$withdrew->id], $this->detect('forgot_the_keys', $this->race)->pluck('driverEntryId')->all());
     }
 
     public function test_disqualified_whatever_the_position_text_says(): void
@@ -97,7 +88,7 @@ class ResultDetectorsTest extends TestCase
         $this->finisher(1, 1);
         $disqualified = $this->finisher(44, 2, ['status' => 'Disqualified', 'is_classified' => false]);
 
-        $detection = $this->detect(SentToYourRoomDetector::class, $this->race)->sole();
+        $detection = $this->detect('sent_to_your_room', $this->race)->sole();
         $this->assertSame($disqualified->id, $detection->driverEntryId);
         $this->assertSame("disqualification:{$disqualified->id}", $detection->eventKey);
         $this->assertSame([], $this->detect(SilverLiningDetector::class, $this->race)->where('driverEntryId', $disqualified->id)->all());
@@ -109,9 +100,9 @@ class ResultDetectorsTest extends TestCase
         $this->finisher(2, 2, ['grid' => 3, 'points' => 18]);
         $last = $this->finisher(3, 3, ['grid' => 1, 'points' => 0, 'fastest_lap_rank' => 1]);
 
-        $this->assertSame([$last->id], $this->detect(ReverseGearDetector::class, $this->race)->pluck('driverEntryId')->all());
-        $this->assertSame($last->id, $this->detect(TurnedOffTheLightsDetector::class, $this->race)->sole()->driverEntryId);
-        $this->assertSame($last->id, $this->detect(AllDressedUpDetector::class, $this->race)->sole()->driverEntryId);
+        $this->assertSame([$last->id], $this->detect('reverse_gear', $this->race)->pluck('driverEntryId')->all());
+        $this->assertSame($last->id, $this->detect('turned_off_the_lights', $this->race)->sole()->driverEntryId);
+        $this->assertSame($last->id, $this->detect('all_dressed_up_nowhere_to_go', $this->race)->sole()->driverEntryId);
     }
 
     public function test_a_shared_top_spot_for_most_places_lost_gives_no_award(): void
@@ -120,7 +111,7 @@ class ResultDetectorsTest extends TestCase
         $this->finisher(2, 2, ['grid' => 1]);
         $this->finisher(3, 3, ['grid' => 2]);
 
-        $this->assertCount(0, $this->detect(ReverseGearDetector::class, $this->race));
+        $this->assertCount(0, $this->detect('reverse_gear', $this->race));
     }
 
     public function test_win_second_third_and_win_from_far_back(): void
