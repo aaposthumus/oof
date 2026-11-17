@@ -3,6 +3,8 @@
 namespace App\Achievements\Triggers;
 
 use App\Achievements\Catalogue;
+use App\Achievements\Facts\Conditions;
+use App\Achievements\Facts\Facts;
 use Illuminate\Contracts\Container\Container;
 use InvalidArgumentException;
 
@@ -16,7 +18,12 @@ class TriggerFactory
      */
     private array $built = [];
 
-    public function __construct(private Container $container, private Catalogue $catalogue) {}
+    public function __construct(
+        private Container $container,
+        private Catalogue $catalogue,
+        private Facts $facts,
+        private Conditions $conditions,
+    ) {}
 
     /**
      * @return array<string, Trigger> Keyed by achievement key, in run order
@@ -38,6 +45,7 @@ class TriggerFactory
     {
         return match ($definition['type']) {
             'custom' => new CustomTrigger($this->container->make($definition['class'])),
+            'match' => new MatchTrigger($key, $definition, $this->facts, $this->conditions),
             default => throw new InvalidArgumentException("Unknown trigger type [{$definition['type']}] for [{$key}]."),
         };
     }

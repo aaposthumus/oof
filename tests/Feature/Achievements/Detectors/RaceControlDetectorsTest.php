@@ -3,30 +3,11 @@
 namespace Tests\Feature\Achievements\Detectors;
 
 use App\Achievements\Detection;
-use App\Achievements\Detector;
 use App\Achievements\Detectors\BlueCarpetDetector;
-use App\Achievements\Detectors\BumperCarsDetector;
 use App\Achievements\Detectors\CalledTheTowTruckDetector;
-use App\Achievements\Detectors\DriveThruDetector;
-use App\Achievements\Detectors\EarlyBirdDetector;
 use App\Achievements\Detectors\ExpelledDetector;
-use App\Achievements\Detectors\ExtraWideDetector;
-use App\Achievements\Detectors\FailedTheDrivingTestDetector;
-use App\Achievements\Detectors\ForgotToIndicateDetector;
-use App\Achievements\Detectors\HighFiveDetector;
-use App\Achievements\Detectors\ItWasLikeThatDetector;
-use App\Achievements\Detectors\LineDancingDetector;
 use App\Achievements\Detectors\MeatballSubDetector;
 use App\Achievements\Detectors\OutsideTheLinesDetector;
-use App\Achievements\Detectors\PerfectTenDetector;
-use App\Achievements\Detectors\QueueJumperDetector;
-use App\Achievements\Detectors\RedLightGreenLightDetector;
-use App\Achievements\Detectors\ReleasedIntoTheWildDetector;
-use App\Achievements\Detectors\SelectiveHearingDetector;
-use App\Achievements\Detectors\SelectiveVisionDetector;
-use App\Achievements\Detectors\ShortcutTaxDetector;
-use App\Achievements\Detectors\SmileForTheCameraDetector;
-use App\Achievements\Detectors\SundayDriverDetector;
 use App\Achievements\Detectors\TeachersStareDetector;
 use App\Achievements\Detectors\WholeClassDetentionDetector;
 use App\Enums\AwardConfidence;
@@ -42,42 +23,39 @@ class RaceControlDetectorsTest extends TestCase
     use BuildsSessions, LazilyRefreshDatabase;
 
     /**
-     * An offence achievement per detector, with a real wording of its offence.
+     * An offence achievement per catalogue key, with a real wording of its offence.
      *
-     * @return array<string, array{class-string<Detector>, string}>
+     * @return array<string, array{string, string}>
      */
     public static function offences(): array
     {
         return [
-            'bumper cars' => [BumperCarsDetector::class, 'CAUSING A COLLISION'],
-            'early bird' => [EarlyBirdDetector::class, 'FALSE START - MOVING BEFORE SIGNAL'],
-            'selective hearing' => [SelectiveHearingDetector::class, 'FAILING TO FOLLOW RACE DIRECTORS INSTRUCTIONS'],
-            'shortcut_tax' => [ShortcutTaxDetector::class, 'LEAVING THE TRACK AND GAINING AN ADVANTAGE'],
-            'lane discipline' => [LineDancingDetector::class, 'CROSSING THE LINE AT PIT ENTRY'],
-            'smile for the camera' => [SmileForTheCameraDetector::class, 'SPEEDING IN THE PIT LANE'],
-            'road hog' => [ExtraWideDetector::class, 'FORCING ANOTHER DRIVER OFF THE TRACK'],
-            'forgot to indicate' => [ForgotToIndicateDetector::class, 'MOVING UNDER BRAKING'],
-            'didnt see the sign' => [SelectiveVisionDetector::class, 'FAILING TO SLOW FOR YELLOW FLAGS'],
-            'queue jumper' => [QueueJumperDetector::class, 'OVERTAKING UNDER SAFETY CAR'],
-            'failed the driving test' => [FailedTheDrivingTestDetector::class, 'DRIVING ERRATICALLY'],
-            'released into the wild' => [ReleasedIntoTheWildDetector::class, 'UNSAFE RELEASE'],
+            'bumper cars' => ['bumper_cars', 'CAUSING A COLLISION'],
+            'early bird' => ['early_bird', 'FALSE START - MOVING BEFORE SIGNAL'],
+            'selective hearing' => ['selective_hearing', 'FAILING TO FOLLOW RACE DIRECTORS INSTRUCTIONS'],
+            'shortcut_tax' => ['shortcut_tax', 'LEAVING THE TRACK AND GAINING AN ADVANTAGE'],
+            'lane discipline' => ['line_dancing', 'CROSSING THE LINE AT PIT ENTRY'],
+            'smile for the camera' => ['smile_for_the_camera', 'SPEEDING IN THE PIT LANE'],
+            'road hog' => ['extra_wide', 'FORCING ANOTHER DRIVER OFF THE TRACK'],
+            'forgot to indicate' => ['forgot_to_indicate', 'MOVING UNDER BRAKING'],
+            'didnt see the sign' => ['selective_vision', 'FAILING TO SLOW FOR YELLOW FLAGS'],
+            'queue jumper' => ['queue_jumper', 'OVERTAKING UNDER SAFETY CAR'],
+            'failed the driving test' => ['failed_the_driving_test', 'DRIVING ERRATICALLY'],
+            'released into the wild' => ['released_into_the_wild', 'UNSAFE RELEASE'],
         ];
     }
 
-    /**
-     * @param  class-string<Detector>  $detector
-     */
     #[DataProvider('offences')]
-    public function test_an_offence_counts_once_it_is_penalised(string $detector, string $offence): void
+    public function test_an_offence_counts_once_it_is_penalised(string $achievement, string $offence): void
     {
         $race = $this->raceSession();
         $car = $this->car($race, 4);
         $this->message($race, "INCIDENT INVOLVING CAR 4 (NOR) NOTED - {$offence}");
         $this->message($race, "FIA STEWARDS: INCIDENT INVOLVING CAR 4 (NOR) UNDER INVESTIGATION - {$offence}");
-        $this->assertCount(0, $this->detect($detector, $race));
+        $this->assertCount(0, $this->detect($achievement, $race));
 
         $this->message($race, "FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 4 (NOR) - {$offence}");
-        $detection = $this->detect($detector, $race)->sole();
+        $detection = $this->detect($achievement, $race)->sole();
 
         $this->assertSame($car->id, $detection->driverEntryId);
         $this->assertSame(1, $detection->carsNamed);
@@ -91,7 +69,7 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($race, 'FIA STEWARDS: WARNING FOR CAR 4 (NOR) - CAUSING A COLLISION');
         $this->message($race, 'FIA STEWARDS: REPRIMAND (DRIVING) FOR CAR 4 (NOR) - CAUSING A COLLISION');
 
-        $this->assertCount(0, $this->detect(BumperCarsDetector::class, $race));
+        $this->assertCount(0, $this->detect('bumper_cars', $race));
     }
 
     public function test_lane_discipline_needs_the_pit_entry_or_exit_line(): void
@@ -100,7 +78,7 @@ class RaceControlDetectorsTest extends TestCase
         $this->car($race, 4);
         $this->message($race, 'FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 4 (NOR) - PIT LANE INFRINGEMENT - FAST LANE');
 
-        $this->assertCount(0, $this->detect(LineDancingDetector::class, $race));
+        $this->assertCount(0, $this->detect('line_dancing', $race));
     }
 
     public function test_a_grid_penalty_counts_with_its_size_as_detail(): void
@@ -109,33 +87,30 @@ class RaceControlDetectorsTest extends TestCase
         $this->car($qualifying, 4);
         $this->message($qualifying, 'FIA STEWARDS: 3 PLACE GRID PENALTY FOR CAR 4 (NOR) - IMPEDING - CAUSING A COLLISION');
 
-        $this->assertSame('3 places', $this->detect(BumperCarsDetector::class, $qualifying)->sole()->detail);
+        $this->assertSame('3 places', $this->detect('bumper_cars', $qualifying)->sole()->detail);
     }
 
     /**
-     * @return array<string, array{class-string<Detector>, string, string}>
+     * @return array<string, array{string, string, string}>
      */
     public static function penalties(): array
     {
         return [
-            'high five' => [HighFiveDetector::class, '5 SECOND TIME PENALTY', '5 s'],
-            'perfect ten' => [PerfectTenDetector::class, '10 SECOND TIME PENALTY', '10 s'],
-            'drive-thru' => [DriveThruDetector::class, 'DRIVE THROUGH PENALTY', 'drive-through'],
-            'red light, green light' => [RedLightGreenLightDetector::class, '10 SECOND STOP/GO PENALTY', 'stop-go 10 s'],
+            'high five' => ['high_five', '5 SECOND TIME PENALTY', '5 s'],
+            'perfect ten' => ['perfect_ten', '10 SECOND TIME PENALTY', '10 s'],
+            'drive-thru' => ['drive_thru', 'DRIVE THROUGH PENALTY', 'drive-through'],
+            'red light, green light' => ['red_light_green_light', '10 SECOND STOP/GO PENALTY', 'stop-go 10 s'],
         ];
     }
 
-    /**
-     * @param  class-string<Detector>  $detector
-     */
     #[DataProvider('penalties')]
-    public function test_a_penalty_counts_per_penalty(string $detector, string $penalty, string $detail): void
+    public function test_a_penalty_counts_per_penalty(string $achievement, string $penalty, string $detail): void
     {
         $race = $this->raceSession();
         $this->car($race, 23);
         $this->message($race, "FIA STEWARDS: {$penalty} FOR CAR 23 (ALB) - UNSAFE CONDITION");
 
-        $detection = $this->detect($detector, $race)->sole();
+        $detection = $this->detect($achievement, $race)->sole();
 
         $this->assertSame($detail, $detection->detail);
         $this->assertStringStartsWith('incident:', $detection->eventKey);
@@ -148,8 +123,8 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($race, 'FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 63 (RUS) - LEAVING THE TRACK AND GAINING AN ADVANTAGE');
         $this->message($race, 'FIA STEWARDS: PENALTY SERVED - 5 SECOND TIME PENALTY FOR CAR 63 (RUS) - LEAVING THE TRACK AND GAINING AN ADVANTAGE (15:04:59)');
 
-        $this->assertCount(1, $this->detect(HighFiveDetector::class, $race));
-        $this->assertCount(1, $this->detect(ShortcutTaxDetector::class, $race));
+        $this->assertCount(1, $this->detect('high_five', $race));
+        $this->assertCount(1, $this->detect('shortcut_tax', $race));
     }
 
     public function test_sunday_driver_counts_when_noted_for_one_car(): void
@@ -160,7 +135,7 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($qualifying, 'Q1 INCIDENT INVOLVING CAR 6 (HAD) NOTED - FAILING TO FOLLOW RACE DIRECTORS INSTRUCTIONS - MAXIMUM DELTA TIME');
         $this->message($qualifying, 'Q1 INCIDENT INVOLVING CARS 6 (HAD), 77 (BOT) NOTED - FAILING TO FOLLOW RACE DIRECTORS INSTRUCTIONS - MAXIMUM DELTA TIME');
 
-        $detection = $this->detect(SundayDriverDetector::class, $qualifying)->sole();
+        $detection = $this->detect('sunday_driver', $qualifying)->sole();
 
         $this->assertSame(6, $this->data($qualifying)->entry($detection->driverEntryId)->car_number);
         $this->assertSame(AwardConfidence::Medium, $detection->confidence);
@@ -174,7 +149,7 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($race, 'TURN 13 INCIDENT INVOLVING CARS 87 (BEA) AND 10 (GAS) NOTED - CAUSING A COLLISION');
         $this->message($race, 'FIA STEWARDS: TURN 13 INCIDENT INVOLVING CARS 87 (BEA) AND 10 (GAS) UNDER INVESTIGATION - CAUSING A COLLISION');
 
-        $detections = $this->detect(ItWasLikeThatDetector::class, $race);
+        $detections = $this->detect('it_was_like_that_when_i_got_there', $race);
 
         $this->assertCount(2, $detections);
         $this->assertSame([true], $detections->pluck('isOpen')->unique()->all());

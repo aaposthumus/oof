@@ -2,52 +2,34 @@
 
 use App\Achievements\Detectors\AllDressedUpDetector;
 use App\Achievements\Detectors\BlueCarpetDetector;
-use App\Achievements\Detectors\BumperCarsDetector;
 use App\Achievements\Detectors\ByAWhiskerDetector;
 use App\Achievements\Detectors\CalledTheTowTruckDetector;
 use App\Achievements\Detectors\ClassDismissedDetector;
 use App\Achievements\Detectors\CleanSweepDetector;
 use App\Achievements\Detectors\DeletedSceneDetector;
 use App\Achievements\Detectors\DidTheThingDetector;
-use App\Achievements\Detectors\DriveThruDetector;
-use App\Achievements\Detectors\EarlyBirdDetector;
 use App\Achievements\Detectors\EarlyLunchDetector;
 use App\Achievements\Detectors\ExpelledDetector;
-use App\Achievements\Detectors\ExtraWideDetector;
-use App\Achievements\Detectors\FailedTheDrivingTestDetector;
 use App\Achievements\Detectors\FineDiningDetector;
 use App\Achievements\Detectors\ForgotTheKeysDetector;
-use App\Achievements\Detectors\ForgotToIndicateDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
 use App\Achievements\Detectors\GiantSlayerDetector;
 use App\Achievements\Detectors\GoodBoyDetector;
-use App\Achievements\Detectors\HighFiveDetector;
 use App\Achievements\Detectors\HoldingTheDoorDetector;
 use App\Achievements\Detectors\HomeBeforeDinnerDetector;
-use App\Achievements\Detectors\ItWasLikeThatDetector;
 use App\Achievements\Detectors\LappedDogDetector;
-use App\Achievements\Detectors\LineDancingDetector;
 use App\Achievements\Detectors\MeatballSubDetector;
 use App\Achievements\Detectors\MirrorMatchDetector;
 use App\Achievements\Detectors\NothingToSeeHereDetector;
 use App\Achievements\Detectors\OutsideTheLinesDetector;
 use App\Achievements\Detectors\OvertimeDetector;
-use App\Achievements\Detectors\PerfectTenDetector;
 use App\Achievements\Detectors\PlotTwistDetector;
 use App\Achievements\Detectors\PracticeMakesImperfectDetector;
-use App\Achievements\Detectors\QueueJumperDetector;
-use App\Achievements\Detectors\RedLightGreenLightDetector;
-use App\Achievements\Detectors\ReleasedIntoTheWildDetector;
 use App\Achievements\Detectors\ReverseGearDetector;
 use App\Achievements\Detectors\SecondHelpingDetector;
-use App\Achievements\Detectors\SelectiveHearingDetector;
-use App\Achievements\Detectors\SelectiveVisionDetector;
 use App\Achievements\Detectors\SentToYourRoomDetector;
-use App\Achievements\Detectors\ShortcutTaxDetector;
 use App\Achievements\Detectors\SilverLiningDetector;
-use App\Achievements\Detectors\SmileForTheCameraDetector;
 use App\Achievements\Detectors\SolidBronzeDetector;
-use App\Achievements\Detectors\SundayDriverDetector;
 use App\Achievements\Detectors\TableForOneDetector;
 use App\Achievements\Detectors\TeachersStareDetector;
 use App\Achievements\Detectors\TookTheLeadDetector;
@@ -94,7 +76,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => BumperCarsDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['causing_a_collision']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'early_bird' => [
@@ -110,7 +97,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => EarlyBirdDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['false_start']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'selective_hearing' => [
@@ -126,7 +118,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => SelectiveHearingDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['race_directors_instructions']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'shortcut_tax' => [
@@ -142,7 +139,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => ShortcutTaxDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['leaving_the_track']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'line_dancing' => [
@@ -158,7 +160,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => LineDancingDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['pit_lane_infringement']], ['reason', 'matches', '/PIT (?:ENTRY|EXIT)|LINE/']],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'smile_for_the_camera' => [
@@ -174,7 +181,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => SmileForTheCameraDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['speeding_in_the_pit_lane']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'extra_wide' => [
@@ -190,7 +202,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => ExtraWideDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['forcing_off_the_track']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'forgot_to_indicate' => [
@@ -206,7 +223,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => ForgotToIndicateDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['moving_under_braking']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'selective_vision' => [
@@ -222,7 +244,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => SelectiveVisionDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['yellow_flag_infringement', 'red_flag_infringement', 'ignoring_blue_flags']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'queue_jumper' => [
@@ -238,7 +265,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => QueueJumperDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['safety_car_infringement']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'failed_the_driving_test' => [
@@ -254,7 +286,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => FailedTheDrivingTestDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['erratic_driving']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'released_into_the_wild' => [
@@ -270,7 +307,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => ReleasedIntoTheWildDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['unsafe_release']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
         ],
 
         'sunday_driver' => [
@@ -286,7 +328,13 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => SundayDriverDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'offence_noted',
+                'where' => [['offence', '=', 'maximum_time']],
+                'distinct' => ['incident', 'entry'],
+                'confidence' => 'medium',
+                'confidence_when' => ['high' => [['penalised', '=', true]]],
+            ],
         ],
 
         'high_five' => [
@@ -302,7 +350,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => HighFiveDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalty',
+                'where' => [['kind', '=', 'time_penalty'], ['detail', '=', '5 s']],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '5 s',
+            ],
         ],
 
         'perfect_ten' => [
@@ -318,7 +371,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => PerfectTenDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalty',
+                'where' => [['kind', '=', 'time_penalty'], ['detail', '=', '10 s']],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '10 s',
+            ],
         ],
 
         'drive_thru' => [
@@ -334,7 +392,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => DriveThruDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalty',
+                'where' => [['kind', '=', 'drive_through_penalty']],
+                'distinct' => ['incident', 'entry'],
+                'detail' => 'drive-through',
+            ],
         ],
 
         'red_light_green_light' => [
@@ -350,7 +413,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => RedLightGreenLightDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalty',
+                'where' => [['kind', '=', 'stop_go_penalty']],
+                'distinct' => ['incident', 'entry'],
+                'detail' => 'stop-go {detail}',
+            ],
         ],
 
         'it_was_like_that_when_i_got_there' => [
@@ -366,7 +434,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => ItWasLikeThatDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'incident_involvement', 'confidence' => 'medium'],
         ],
 
         'meatball_sub' => [
