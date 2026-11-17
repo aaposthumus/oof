@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\AchievementAwards\Tables;
 
+use App\Achievements\OofScoreStandings;
 use App\Achievements\WithheldOnSensitiveWeekend;
 use App\Enums\AchievementShelf;
 use App\Enums\AwardConfidence;
@@ -121,9 +122,12 @@ class AchievementAwardsTable
                         ->color('danger')
                         ->schema([self::reasonField()])
                         ->hidden(fn ($livewire): bool => $livewire->activeStatus() === AwardStatus::Suppressed)
-                        ->action(fn (Collection $records, array $data) => $records
-                            ->reject(fn (AchievementAward $record) => $record->status === AwardStatus::Suppressed)
-                            ->each->suppress(auth()->user(), $data['reason']))
+                        ->action(function (Collection $records, array $data): void {
+                            $records
+                                ->reject(fn (AchievementAward $record) => $record->status === AwardStatus::Suppressed)
+                                ->each->suppress(auth()->user(), $data['reason']);
+                            self::rebuildOofScore($records->pluck('season_id'));
+                        })
                         ->deselectRecordsAfterCompletion(),
                 ]),
             ]);
@@ -135,7 +139,7 @@ class AchievementAwardsTable
      *
      * @throws Halt
      */
-    private static function refusingWithheld(Closure $action): void
+    private static function refusingWithheld(Closure $action, ?AchievementAward $record = null): void
     {
         try {
             $action();
@@ -144,6 +148,20 @@ class AchievementAwardsTable
 
             throw new Halt;
         }
+
+        if ($record !== null) {
+            self::rebuildOofScore([$record->season_id]);
+        }
+    }
+
+    /**
+     * A decision changes what counts, so the OOFscore of an open season follows it.
+     *
+     * @param  iterable<int>  $seasonIds
+     */
+    private static function rebuildOofScore(iterable $seasonIds): void
+    {
+        app(OofScoreStandings::class)->rebuildSeasons($seasonIds);
     }
 
     /**
@@ -177,14 +195,14 @@ class AchievementAwardsTable
                 ->action(fn (AchievementAward $record, array $data) => self::refusingWithheld(fn () => $record->confirm(
                     auth()->user(),
                     isset($data['driver_entry_id']) ? DriverEntry::find($data['driver_entry_id']) : null,
-                ))),
+                ), $record)),
             Action::make('suppress')
                 ->label('Suppress')
                 ->icon('heroicon-o-eye-slash')
                 ->color('danger')
                 ->visible(fn (AchievementAward $record): bool => $record->status !== AwardStatus::Suppressed)
                 ->schema([self::reasonField()])
-                ->action(fn (AchievementAward $record, array $data) => $record->suppress(auth()->user(), $data['reason'])),
+                ->action(fn (AchievementAward $record, array $data) => self::refusingWithheld(fn () => $record->suppress(auth()->user(), $data['reason']), $record)),
             Action::make('restore')
                 ->label('Hand back to the engine')
                 ->icon('heroicon-o-arrow-uturn-left')
@@ -192,7 +210,7 @@ class AchievementAwardsTable
                 ->visible(fn (AchievementAward $record): bool => $record->isDecided() || $record->isSuppressedAsHistoric())
                 ->requiresConfirmation()
                 ->modalDescription('The decision is removed and the award goes back to the review queue. The next run of oof:achievements judges it again.')
-                ->action(fn (AchievementAward $record) => self::refusingWithheld(fn () => $record->restore())),
+                ->action(fn (AchievementAward $record) => self::refusingWithheld(fn () => $record->restore(), $record)),
             Action::make('subtitle')
                 ->label('Subtitle')
                 ->icon('heroicon-o-pencil')

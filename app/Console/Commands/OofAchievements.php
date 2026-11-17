@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Achievements\AchievementEngine;
+use App\Achievements\OofScoreStandings;
 use App\Achievements\SessionData;
 use App\Enums\AwardStatus;
 use App\Enums\SessionType;
@@ -33,7 +34,7 @@ class OofAchievements extends Command
      *
      * @var string
      */
-    protected $description = 'Unlock achievements per session (safe to re-run; updates awards and keeps manual decisions)';
+    protected $description = 'Unlock achievements per session (safe to re-run; updates awards and keeps manual decisions), then rebuild the OOFscore of the seasons touched';
 
     /**
      * Sessions in the order they run, so the race comes last and can look at the whole weekend.
@@ -59,7 +60,7 @@ class OofAchievements extends Command
     /**
      * Execute the console command.
      */
-    public function handle(AchievementEngine $engine): int
+    public function handle(AchievementEngine $engine, OofScoreStandings $standings): int
     {
         $sessionType = $this->option('session') === null ? null : SessionType::tryFrom($this->option('session'));
 
@@ -91,12 +92,19 @@ class OofAchievements extends Command
             }
         }
 
+        // The OOFscore of every open season the run touched follows its awards.
+        $rebuilt = $standings->rebuildSeasons($sessions->map(fn (RaceSession $session) => $session->round->season_id))->filter();
+
         if ($dryRun) {
             DB::rollBack();
         }
 
         ksort($totals);
         $this->components->info("{$sessions->count()} sessions");
+
+        if ($rebuilt->isNotEmpty()) {
+            $this->components->info('OOFscore rebuilt for '.$rebuilt->keys()->implode(', ').'.');
+        }
 
         if ($totals !== []) {
             $this->table(

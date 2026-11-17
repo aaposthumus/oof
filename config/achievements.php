@@ -133,6 +133,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Domain events
+    |--------------------------------------------------------------------------
+    |
+    | Events such as OofScoreStandingsUpdated are dispatched only for seasons
+    | from this year, so a rebuild or backfill of older seasons is quiet.
+    |
+    */
+
+    'events_from' => 2027,
+
+    /*
+    |--------------------------------------------------------------------------
     | Sensitive weekends
     |--------------------------------------------------------------------------
     |

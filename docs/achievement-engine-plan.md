@@ -18,7 +18,7 @@ and 4 for the design, and "Working notes" at the end.
 | 2 | Surprise rule (rolling team form) and team lineage table | Done, 17 November 2026 |
 | 3 | Award schema | Done, 17 November 2026 |
 | 4 | Sensitivity | Done, 17 November 2026 |
-| 5 | OOFscore | Not started |
+| 5 | OOFscore | Done, 17 November 2026 |
 | 6 | Facts and triggers | Not started |
 | 7 | Scopes, runs and the Oofies | Not started |
 | 8 | Recipients | Not started |
@@ -668,10 +668,33 @@ the public site, exports): read awards only through `publishable()`. Suppressed,
 and flagged awards never leave the CMS. A publishing change that reads awards another
 way is not done.
 
-**Phase 5: OOFscore.**
-Standings projection, a rebuild command, the standings event, a leaderboard page in the CMS.
-Done when the 2026 leaderboard can be rebuilt from scratch and matches a hand check of
-two drivers.
+**Phase 5: OOFscore. Done.**
+
+- `oofscore_standings` (season, round, driver, points, awards_count, position,
+  position_change; unique per season + round + driver) and `App\Achievements\OofScoreStandings`.
+  Per season: the points snapshot of each driver's final awards on the scoring shelves,
+  summed round by round; a row per driver per round from their first award on, for every
+  round that has awards. Pending and suppressed awards never count; Nothing to See Here
+  counts as an award with 0 points. Equal points share a place; `position_change` is the
+  places gained since the round before (null for a newcomer).
+- Rebuilt from scratch every time, in one transaction: by `oof:achievements` for each
+  season it ran, after every decision in the CMS (confirm, suppress, hand back, bulk
+  suppress), by `oof:oofscore [--season=]`, and by the Rebuild action on the OOFscore page.
+- `OofScoreStandingsUpdated` (season, changed round IDs), dispatched after the commit
+  when a rebuild changed something, only for seasons from `achievements.events_from` (2027).
+- Closing a season: `oof:oofscore:close {year}` (asks first; `--force` does not) or the
+  "Close season" action on the OOFscore page. It refuses while the last race has not been
+  run or is not final, while any award of the season waits for review, or when the
+  season is closed already. Otherwise it rebuilds the standings a last time and sets
+  `seasons.oofscore_closed_at`. From then on the season is never rebuilt, a tier change
+  no longer reaches its awards, and a new award there takes the season's snapshot.
+  There is no reopening yet. No season has been closed.
+- CMS: an OOFscore page with the leaderboard after a chosen round (latest by default),
+  change arrows, and the Rebuild and Close season actions.
+- Checked on the local database: 2026 rebuilt from scratch (19 rounds with data, 425 rows),
+  a second rebuild changed nothing; Pérez (72 awards, 1,035) and Hülkenberg (50 awards,
+  745) match their final OOF awards by hand. 2023 to 2025 rebuilt as well; all three
+  could be closed. Golden master: no differences.
 
 **Phase 6: facts and triggers.**
 Add the catalogue config, fact providers, predicates with data needs, trigger types and
@@ -742,4 +765,7 @@ When the `achievement-engine` branch is deployed to production (decided 17 Novem
 2. `php artisan oof:achievements --season=2023 --season=2024 --season=2025 --season=2026`,
    to bring the stored awards up to date, as was done locally. Decisions made by people
    stay as they are.
-3. Do not run `oof:dig` yet; it waits for the chassis-engine merge in Phase 11.
+3. `php artisan oof:oofscore`, to build the standings of every season (step 2 already
+   rebuilds the seasons it ran; this makes sure).
+4. Do not run `oof:dig` yet; it waits for the chassis-engine merge in Phase 11.
+5. Do not close any season until the owner says so.
