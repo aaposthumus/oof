@@ -26,6 +26,7 @@ class Facts
         'track_limit_deletion' => Providers\TrackLimitDeletionFacts::class,
         'result' => Providers\ResultFacts::class,
         'qualifying_result' => Providers\QualifyingResultFacts::class,
+        'pit_stop' => Providers\PitStopFacts::class,
     ];
 
     /**

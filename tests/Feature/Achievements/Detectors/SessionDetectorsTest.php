@@ -4,14 +4,12 @@ namespace Tests\Feature\Achievements\Detectors;
 
 use App\Achievements\Detectors\ByAWhiskerDetector;
 use App\Achievements\Detectors\DeletedSceneDetector;
-use App\Achievements\Detectors\FineDiningDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
 use App\Achievements\Detectors\HoldingTheDoorDetector;
 use App\Achievements\Detectors\MirrorMatchDetector;
 use App\Achievements\Detectors\OvertimeDetector;
 use App\Achievements\Detectors\PracticeMakesImperfectDetector;
 use App\Achievements\Detectors\SecondHelpingDetector;
-use App\Achievements\Detectors\TableForOneDetector;
 use App\Achievements\Detectors\TookTheLeadDetector;
 use App\Achievements\Detectors\VirtuallyThereDetector;
 use App\Enums\SessionType;
@@ -197,9 +195,9 @@ class SessionDetectorsTest extends TestCase
         PitLaneVisit::factory()->create(['race_session_id' => $race->id, 'driver_number' => 44, 'driver_entry_id' => $car->id, 'entered_at' => '2024-05-05 20:50:00', 'stop_duration_millis' => null, 'lane_duration_millis' => 45_000]);
         PitLaneVisit::factory()->create(['race_session_id' => $sprint->id, 'driver_number' => 44, 'driver_entry_id' => $sprintCar->id, 'entered_at' => '2024-05-04 16:20:00', 'stop_duration_millis' => 3_000, 'lane_duration_millis' => 22_000]);
 
-        $this->assertSame('6.2 s', $this->detect(TableForOneDetector::class, $race)->sole()->detail);
-        $this->assertSame("pit:{$slow->id}", $this->detect(FineDiningDetector::class, $race)->sole()->eventKey);
-        $this->assertCount(0, $this->detect(FineDiningDetector::class, $sprint));
+        $this->assertSame('6.2 s', $this->detect('table_for_one', $race)->sole()->detail);
+        $this->assertSame("pit:{$slow->id}", $this->detect('fine_dining', $race)->sole()->eventKey);
+        $this->assertCount(0, $this->detect('fine_dining', $sprint));
     }
 
     public function test_a_stop_that_served_a_penalty_is_not_a_slow_stop(): void
@@ -209,7 +207,7 @@ class SessionDetectorsTest extends TestCase
         PitLaneVisit::factory()->create(['race_session_id' => $race->id, 'driver_number' => 44, 'driver_entry_id' => $car->id, 'entered_at' => '2024-05-05 20:00:30', 'stop_duration_millis' => 7_400, 'lane_duration_millis' => 26_000]);
         $this->message($race, 'FIA STEWARDS: PENALTY SERVED - 5 SECOND TIME PENALTY FOR CAR 44 (HAM) - SPEEDING IN THE PIT LANE');
 
-        $this->assertCount(0, $this->detect(TableForOneDetector::class, $race));
+        $this->assertCount(0, $this->detect('table_for_one', $race));
     }
 
     public function test_safety_car_corner(): void

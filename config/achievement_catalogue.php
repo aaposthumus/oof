@@ -4,7 +4,6 @@ use App\Achievements\Detectors\ByAWhiskerDetector;
 use App\Achievements\Detectors\CalledTheTowTruckDetector;
 use App\Achievements\Detectors\ClassDismissedDetector;
 use App\Achievements\Detectors\DeletedSceneDetector;
-use App\Achievements\Detectors\FineDiningDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
 use App\Achievements\Detectors\HoldingTheDoorDetector;
 use App\Achievements\Detectors\MirrorMatchDetector;
@@ -12,7 +11,6 @@ use App\Achievements\Detectors\NothingToSeeHereDetector;
 use App\Achievements\Detectors\OvertimeDetector;
 use App\Achievements\Detectors\PracticeMakesImperfectDetector;
 use App\Achievements\Detectors\SecondHelpingDetector;
-use App\Achievements\Detectors\TableForOneDetector;
 use App\Achievements\Detectors\TookTheLeadDetector;
 use App\Achievements\Detectors\ToTheRescueDetector;
 use App\Achievements\Detectors\VirtuallyThereDetector;
@@ -694,7 +692,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => TableForOneDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'pit_stop', 'where' => [['stop_millis', '>', 5_000]], 'detail' => '{stop_time}'],
         ],
 
         'fine_dining' => [
@@ -710,7 +708,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => FineDiningDetector::class],
+            'trigger' => [
+                'type' => 'extreme', 'fact' => 'pit_stop',
+                'from' => ['race', 'sprint'], 'only_own_session' => true,
+                'measure' => 'stop_millis', 'pick' => 'max', 'ties' => 'none',
+                'detail' => '{stop_time}', 'note' => 'The slowest measured stop of the weekend.',
+            ],
         ],
 
         'mirror_match' => [
