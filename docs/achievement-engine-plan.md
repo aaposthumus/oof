@@ -542,10 +542,14 @@ Follow-ups decided by the owner on 17 November 2026, done the same day:
 - The Indianapolis 500 rounds are never a surprise (`Surprise::forTeam()`), besides
   staying out of the window.
 - Three more lineages, by migration and in the seeder: Coloni to Andrea Moda (`moda`),
-  Ensign to Theodore (`theodore`), Onyx to Monteverdi (`monteverdi`). Ensign and
-  Theodore both entered cars in 1978, 1981 and 1982 and now count as one team in
-  those seasons. The Monteverdi team is named "Onyx", Jolpica's name for 1990.
+  Ensign to Theodore (`theodore`), Onyx to Monteverdi (`monteverdi`). The Monteverdi
+  team is named "Onyx", Jolpica's name for 1990 (decided: fine, no CMS name field).
   Local database: teams 181 to 179.
+- Ensign and Theodore (decided afterwards): both entered cars in 1978, 1981 and 1982,
+  so they stay separate until 1983, when Ensign merged into Theodore. The lasting
+  team `theodore` holds Ensign's seasons and Theodore's from 1983; Theodore's own
+  entries of 1978 to 1982 are the team `theodore_1978`, as with `aston_martin_1950s`.
+  Local database: teams 179 to 180.
 - 2026 round 13 qualifying re-run: Gasly's stored Plot Twist has the new detail and
   evidence, still final.
 - The surprise-winner excavator (version 3) uses the same rule: a team hit is a win
@@ -557,7 +561,8 @@ Follow-ups decided by the owner on 17 November 2026, done the same day:
   database it would give 108 candidates against the 65 stored (58 kept, 50 added,
   7 dropped), 44 of the added from before 1990, many through the chassis-engine
   constructors that have no history of their own (see Phase 11). The stored
-  candidates change on the next `oof:dig`.
+  candidates change on the next `oof:dig`, which runs only after the chassis-engine
+  merge in Phase 11 (decided by the owner).
 - Golden master: no differences (all of it is before 2023 or Indianapolis);
   re-exported, 4,156 awards in 450 sessions.
 
@@ -624,7 +629,8 @@ Decided for this phase on 17 November 2026:
   (Lotus-Climax and the other Lotus variants into Team Lotus, Cooper-Climax and the
   other Cooper variants into Cooper, likewise Brabham, McLaren, March, Eagle, BRM,
   Matra, Shadow, LDS and De Tomaso), so their form is not split. Do it before the
-  backfill runs, and dig the surprise-winner excavator again afterwards.
+  backfill runs. Then run `oof:dig`, which re-digs the surprise-winner excavator
+  (version 3, on team form); it has not been run since that change.
 - Open question: should the Indianapolis 500 rounds of 1950 to 1960 count for any
   achievement at all? Today they are only out of the surprise rule.
 

@@ -71,8 +71,9 @@ class TeamLineageSeeder extends Seeder
         ['constructor' => 'coloni', 'team' => 'moda', 'note' => 'Andrea Moda bought Coloni for 1992.'],
         ['constructor' => 'moda', 'team' => 'moda'],
 
-        ['constructor' => 'ensign', 'team' => 'theodore', 'note' => 'Ensign merged into Theodore for 1983. Both entered cars in 1978, 1981 and 1982.'],
-        ['constructor' => 'theodore', 'team' => 'theodore'],
+        ['constructor' => 'ensign', 'team' => 'theodore', 'note' => 'Ensign merged into Theodore for 1983; from then on Theodore carries Ensign\'s history.'],
+        ['constructor' => 'theodore', 'from' => 1983, 'team' => 'theodore'],
+        ['constructor' => 'theodore', 'to' => 1982, 'team' => 'theodore_1978', 'note' => 'Theodore\'s own entries of 1978 to 1982, separate from Ensign, which raced in the same seasons.'],
 
         ['constructor' => 'onyx', 'team' => 'monteverdi', 'note' => 'Peter Monteverdi took over Onyx during 1990.'],
 

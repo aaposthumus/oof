@@ -35,8 +35,21 @@ class TeamLineageSyncTest extends TestCase
         $this->assertSame('audi', $resolver->slugFor('alfa', 2020));
         $this->assertSame('alfa', $resolver->slugFor('alfa', 1950));
         $this->assertSame('moda', $resolver->slugFor('coloni', 1989));
-        $this->assertSame('theodore', $resolver->slugFor('ensign', 1980));
         $this->assertSame('monteverdi', $resolver->slugFor('onyx', 1990));
+    }
+
+    public function test_ensign_and_theodore_stay_apart_while_both_raced_and_join_from_1983(): void
+    {
+        $ensign = $this->seasonTeam(1981, 'ensign', 'Ensign');
+        $earlyTheodore = $this->seasonTeam(1981, 'theodore', 'Theodore');
+        $theodore = $this->seasonTeam(1983, 'theodore', 'Theodore');
+
+        app(TeamLineageSync::class)->run();
+
+        $this->assertNotSame($ensign->fresh()->team_id, $earlyTheodore->fresh()->team_id);
+        $this->assertSame('theodore_1978', $earlyTheodore->fresh()->team->slug);
+        $this->assertSame('theodore', $ensign->fresh()->team->slug);
+        $this->assertSame($ensign->fresh()->team_id, $theodore->fresh()->team_id);
     }
 
     public function test_re_points_season_teams_removes_emptied_teams_and_takes_the_latest_name(): void
