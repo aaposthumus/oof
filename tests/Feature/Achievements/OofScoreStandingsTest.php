@@ -104,17 +104,19 @@ class OofScoreStandingsTest extends TestCase
         $this->assertSame([$platinum->id => 1, $gold->id => 2, $silvers->id => 3, $bronzes->id => 4, $twin->id => 4], $places);
     }
 
-    public function test_a_nothing_to_see_here_counts_as_a_bronze_in_the_medal_count(): void
+    public function test_nothing_to_see_here_never_helps_in_a_tie(): void
     {
-        [$more, $fewer] = Driver::factory()->count(2)->create();
+        [$quiet, $other] = Driver::factory()->count(2)->create();
         $race = $this->race(1);
-        $this->award($race, $more, 'lapped_dog');
-        $this->award($race, $more, 'nothing_to_see_here');   // bronze, worth 0 points
-        $this->award($race, $fewer, 'lapped_dog');
+        $this->award($race, $quiet, 'lapped_dog');
+        $this->award($race, $quiet, 'nothing_to_see_here');
+        $this->award($race, $other, 'lapped_dog');
 
         app(OofScoreStandings::class)->rebuild($race->round->season);
 
-        $this->assertSame([1, 2], [$this->after($race)[$more->id][2], $this->after($race)[$fewer->id][2]]);
+        $after = $this->after($race);
+        $this->assertSame([10, 2, 1, null], $after[$quiet->id], 'It still shows as an award.');
+        $this->assertSame([10, 1, 1, null], $after[$other->id], 'But both share the place.');
     }
 
     public function test_a_rebuild_from_scratch_gives_the_same_standings_and_changes_nothing(): void

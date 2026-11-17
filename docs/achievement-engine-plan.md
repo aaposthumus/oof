@@ -691,8 +691,9 @@ way is not done.
   No season has been closed (the owner decides when).
 - Decided afterwards: final awards of sensitive weekends count. Equal points are split
   like a medal table: more Platinum, then Gold, Silver, Bronze, then more awards; only
-  drivers equal on all of that share a place. Every OOF award has a tier (Nothing to See
-  Here is a 0-point Bronze), so the award count never decides on its own today.
+  drivers equal on all of that share a place. Achievements worth 0 by design (Nothing to
+  See Here: no OOFs that weekend) count in neither the medals nor the award count of the
+  tie-break, so they never help in a tie; they still show in `awards_count`.
 - Reopening, owner only: `oof:oofscore:reopen {year}`, no CMS action; it asks for the
   year to be typed (`--force` does not). Its awards take the catalogue's current tier,
   shelf and points again and the standings are rebuilt.

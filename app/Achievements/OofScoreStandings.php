@@ -151,8 +151,14 @@ class OofScoreStandings
             ->whereNotNull('round_id')
             ->whereIn('shelf', config('achievements.points.scoring_shelves'))
             ->toBase()
-            ->get(['round_id', 'driver_id', 'points', 'tier'])
+            ->get(['round_id', 'driver_id', 'points', 'tier', 'achievement_id'])
             ->groupBy('round_id');
+
+        // Achievements worth nothing by design (Nothing to See Here: no OOFs that weekend) never help in a tie.
+        $outOfTieBreak = Achievement::query()
+            ->whereIn('key', array_keys(array_filter(config('achievements.points.overrides'), fn ($points) => (int) $points === 0)))
+            ->pluck('id')
+            ->all();
 
         // A round counts once it has any award, whatever its status: one without data so far adds no row.
         $rounds = Round::query()
@@ -167,9 +173,15 @@ class OofScoreStandings
 
         foreach ($rounds as $roundId) {
             foreach ($awards->get($roundId, collect()) as $award) {
-                $totals[$award->driver_id] ??= ['points' => 0, 'awards_count' => 0, 'tiers' => array_fill_keys(self::TIERS, 0)];
+                $totals[$award->driver_id] ??= ['points' => 0, 'awards_count' => 0, 'tie_break_awards' => 0, 'tiers' => array_fill_keys(self::TIERS, 0)];
                 $totals[$award->driver_id]['points'] += (int) $award->points;
                 $totals[$award->driver_id]['awards_count']++;
+
+                if (in_array((int) $award->achievement_id, $outOfTieBreak, true)) {
+                    continue;
+                }
+
+                $totals[$award->driver_id]['tie_break_awards']++;
 
                 if (isset($totals[$award->driver_id]['tiers'][$award->tier])) {
                     $totals[$award->driver_id]['tiers'][$award->tier]++;
@@ -204,13 +216,14 @@ class OofScoreStandings
     /**
      * What decides a place, compared as an array: points, then the number of
      * Platinum, Gold, Silver and Bronze awards, then the number of awards.
+     * Awards worth nothing by design are left out of the counts.
      *
-     * @param  array{points: int, awards_count: int, tiers: array<string, int>}  $total
+     * @param  array{points: int, awards_count: int, tie_break_awards: int, tiers: array<string, int>}  $total
      * @return list<int>
      */
     private static function rankKey(array $total): array
     {
-        return [$total['points'], ...array_values($total['tiers']), $total['awards_count']];
+        return [$total['points'], ...array_values($total['tiers']), $total['tie_break_awards']];
     }
 
     /**
