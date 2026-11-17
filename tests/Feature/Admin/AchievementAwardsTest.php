@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Achievements\Rules\Sensitivity;
 use App\Enums\AwardStatus;
 use App\Enums\SessionType;
 use App\Filament\Resources\AchievementAwards\Pages\ListAchievementAwards;
@@ -12,6 +13,7 @@ use App\Filament\Resources\Achievements\Pages\EditAchievement;
 use App\Filament\Resources\Achievements\Pages\ListAchievements;
 use App\Models\Achievement;
 use App\Models\AchievementAward;
+use App\Models\MomentSensitivity;
 use App\Models\RaceSession;
 use App\Models\Round;
 use App\Models\Season;
@@ -238,5 +240,22 @@ class AchievementAwardsTest extends TestCase
         $this->assertSame(25, $achievement->points());
         $this->assertSame(['race'], $achievement->session_types);
         $this->assertFalse(AchievementResource::canCreate());
+    }
+
+    public function test_handing_back_an_award_withheld_on_a_sensitive_weekend_is_refused(): void
+    {
+        $race = $this->raceSession();
+        $award = AchievementAward::factory()->create([
+            'race_session_id' => $race->id,
+            'achievement_id' => Achievement::firstWhere('key', 'took_the_lead')->id,
+        ]);
+        MomentSensitivity::factory()->create(['round_id' => $race->round_id]);
+        $award->update(['status' => AwardStatus::Suppressed, 'decided_at' => now(), 'decision_note' => Sensitivity::SYSTEM_NOTE]);
+
+        Livewire::test(ViewAchievementAward::class, ['record' => $award->getRouteKey()])
+            ->callAction('restore')
+            ->assertNotified('Not awarded');
+
+        $this->assertSame(AwardStatus::Suppressed, $award->fresh()->status);
     }
 }

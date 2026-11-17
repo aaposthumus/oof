@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\SensitivityLevel;
 use App\Enums\SensitivitySeverity;
+use App\Enums\SensitivitySource;
 use App\Models\MomentSensitivity;
 use App\Models\Round;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -25,8 +26,17 @@ class MomentSensitivityFactory extends Factory
             'driver_id' => null,
             'level' => SensitivityLevel::Sensitive,
             'severity' => SensitivitySeverity::Fatal,
+            'source' => SensitivitySource::Manual,
             'note' => fake()->sentence(),
         ];
+    }
+
+    /**
+     * Proposed by the engine, not yet confirmed or dismissed.
+     */
+    public function proposal(): static
+    {
+        return $this->state(fn () => ['source' => SensitivitySource::Engine, 'severity' => SensitivitySeverity::Injury]);
     }
 
     public function injury(): static

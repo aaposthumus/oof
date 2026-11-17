@@ -21,6 +21,10 @@ use WeakMap;
  *
  * The moment the car stopped is a message naming the car as stopped, off
  * track or in an incident, or else the end of its last lap.
+ *
+ * Strong signals (a red flag together with the medical car, or a red-flag
+ * stoppage of at least achievements.sensitivity.long_stoppage_minutes)
+ * make the engine propose a sensitivity for the whole round.
  */
 class HeavyCrash
 {
@@ -41,6 +45,20 @@ class HeavyCrash
     }
 
     /**
+     * Entries that retired in a crash with strong signals, each with what the signal was.
+     *
+     * @return Collection<int, array{entry: DriverEntry, signal: string}>
+     */
+    public function strongCrashes(SessionData $data): Collection
+    {
+        return $data->resultEntries()
+            ->filter(fn (DriverEntry $entry) => Finish::retired($entry->result))
+            ->map(fn (DriverEntry $entry) => ['entry' => $entry, 'signal' => $this->strongSignal($entry, $data)])
+            ->filter(fn (array $crash) => $crash['signal'] !== null)
+            ->values();
+    }
+
+    /**
      * IDs of the entries that retired in a heavy crash.
      *
      * @return Collection<int, int>
@@ -55,6 +73,33 @@ class HeavyCrash
 
     private function crashed(DriverEntry $entry, SessionData $data): bool
     {
+        $signals = $this->signals($entry, $data);
+
+        return $signals['red_flag'] !== null || $signals['medical_car'] || $signals['stopped_for_long'];
+    }
+
+    private function strongSignal(DriverEntry $entry, SessionData $data): ?string
+    {
+        $signals = $this->signals($entry, $data);
+
+        if ($signals['red_flag'] === null) {
+            return null;
+        }
+
+        if ($signals['medical_car']) {
+            return 'red flag and medical car';
+        }
+
+        $minutes = intdiv($this->stoppageSeconds($signals['red_flag'], $data), 60);
+
+        return $minutes >= (int) config('achievements.sensitivity.long_stoppage_minutes') ? "red flag, stopped for {$minutes} minutes" : null;
+    }
+
+    /**
+     * @return array{red_flag: ClassifiedMessage|null, medical_car: bool, stopped_for_long: bool}
+     */
+    private function signals(DriverEntry $entry, SessionData $data): array
+    {
         $window = (int) config('achievements.cause_window_seconds');
         $own = $data->messages()->filter(fn (ClassifiedMessage $message) => $message->soleEntryId() === $entry->id);
         $stops = $own->filter(fn (ClassifiedMessage $message) => $message->is(MessageType::CarStopped, MessageType::OffTrack, MessageType::IncidentNoted));
@@ -64,13 +109,26 @@ class HeavyCrash
             ->values();
 
         $redFlag = $data->messagesOfType(MessageType::RedFlag)
-            ->contains(fn (ClassifiedMessage $flag) => $moments->contains(fn (CarbonInterface $moment) => $flag->message->issued_at->betweenIncluded($moment, $moment->copy()->addSeconds($window))));
+            ->first(fn (ClassifiedMessage $flag) => $moments->contains(fn (CarbonInterface $moment) => $flag->message->issued_at->betweenIncluded($moment, $moment->copy()->addSeconds($window))));
 
         $medicalCar = $data->messagesOfType(MessageType::MedicalCar)
             ->contains(fn (ClassifiedMessage $car) => in_array($entry->id, $car->entryIds, true)
                 || $moments->contains(fn (CarbonInterface $moment) => $car->message->issued_at->betweenIncluded($moment->copy()->subSeconds($window), $moment->copy()->addSeconds(2 * $window))));
 
-        return $redFlag || $medicalCar || $this->stoppedForLong($own, $data);
+        return ['red_flag' => $redFlag, 'medical_car' => $medicalCar, 'stopped_for_long' => $this->stoppedForLong($own, $data)];
+    }
+
+    /**
+     * From the red flag until the session started again, or else its last message.
+     */
+    private function stoppageSeconds(ClassifiedMessage $redFlag, SessionData $data): int
+    {
+        $from = $redFlag->message->issued_at;
+        $restart = $data->messagesOfType(MessageType::SessionStatus)
+            ->first(fn (ClassifiedMessage $message) => $message->message->issued_at->gt($from) && preg_match('/\b(STARTED|RESUMED)\b/', $message->message->message) === 1 && ! str_contains($message->message->message, 'WILL'));
+        $until = $restart?->message->issued_at ?? $data->messages()->last()->message->issued_at;
+
+        return (int) $from->diffInSeconds($until);
     }
 
     /**

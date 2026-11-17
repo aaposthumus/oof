@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property list<string> $session_types SessionType values it applies to
  * @property list<string> $supersedes Keys of achievements it replaces for the same event
  */
-#[Fillable(['key', 'name', 'section', 'shelf', 'tier', 'session_types', 'stacks', 'supersedes', 'description', 'is_enabled'])]
+#[Fillable(['key', 'name', 'section', 'shelf', 'tier', 'session_types', 'stacks', 'supersedes', 'description', 'is_enabled', 'withheld_on_sensitive_weekends'])]
 class Achievement extends Model
 {
     /** @use HasFactory<AchievementFactory> */
@@ -41,6 +41,7 @@ class Achievement extends Model
             'stacks' => 'boolean',
             'supersedes' => 'array',
             'is_enabled' => 'boolean',
+            'withheld_on_sensitive_weekends' => 'boolean',
         ];
     }
 

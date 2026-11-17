@@ -45,6 +45,10 @@ class AchievementsTable
                 IconColumn::make('is_enabled')
                     ->label('Enabled')
                     ->boolean(),
+                IconColumn::make('withheld_on_sensitive_weekends')
+                    ->label('Withheld when sensitive')
+                    ->boolean()
+                    ->tooltip('Never awarded on a sensitive weekend. A safety setting, not edited here.'),
                 TextColumn::make('awards_count')
                     ->label('Awards')
                     ->numeric()

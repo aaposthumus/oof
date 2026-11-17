@@ -31,8 +31,8 @@ class MomentSensitivityForm
                     ->helperText('Leave empty to cover the whole round.'),
                 Select::make('level')
                     ->options([
-                        SensitivityLevel::Sensitive->value => 'Sensitive: keep candidates, flag them for review',
-                        SensitivityLevel::Blocked->value => 'Blocked: excavation skips it',
+                        SensitivityLevel::Sensitive->value => 'Sensitive: candidates flagged for review; no crash, retirement or Safety Car awards, the rest flagged',
+                        SensitivityLevel::Blocked->value => 'Blocked: excavation skips it and no awards are stored',
                     ])
                     ->default(SensitivityLevel::Sensitive->value)
                     ->required(),

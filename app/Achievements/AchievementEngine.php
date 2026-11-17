@@ -6,6 +6,7 @@ use App\Achievements\Rules\Cascade;
 use App\Achievements\Rules\CrossCheck;
 use App\Achievements\Rules\Fairness;
 use App\Achievements\Rules\Finality;
+use App\Achievements\Rules\Sensitivity;
 use App\Achievements\Rules\Stacking;
 use App\Enums\AwardStatus;
 use App\Models\Achievement;
@@ -24,8 +25,9 @@ use Throwable;
  * stores the awards. Re-running a session updates its awards in place,
  * never duplicates them, and never changes what a person decided.
  *
- * Order: detect, fairness, cross-check, cascade, stacking, the late
- * detectors, then finality.
+ * Order: propose sensitivities, detect, fairness, cross-check, cascade,
+ * sensitivity, stacking, the late detectors, sensitivity again, then
+ * finality.
  */
 class AchievementEngine
 {
@@ -107,6 +109,7 @@ class AchievementEngine
         private Cascade $cascade,
         private Stacking $stacking,
         private Finality $finality,
+        private Sensitivity $sensitivity,
     ) {}
 
     /**
@@ -139,13 +142,14 @@ class AchievementEngine
         $detections = $this->fairness->apply($detections, $catalogue);
         $detections = $this->crossCheck->apply($detections, $catalogue, $data);
         $detections = $this->cascade->apply($detections, $catalogue);
+        $detections = $this->sensitivity->apply($detections, $catalogue, $data);
         $detections = $this->stacking->apply($detections, $catalogue);
 
         foreach ($detectors->filter(fn ($detector) => $detector instanceof LateDetector) as $detector) {
             $detections = $detections->concat($detector->detectAfter($data, $detections))->values();
         }
 
-        return $detections;
+        return $this->sensitivity->apply($detections, $catalogue, $data);
     }
 
     /**
@@ -156,12 +160,13 @@ class AchievementEngine
     public function run(RaceSession $session, bool $dryRun = false, ?CarbonImmutable $now = null): array
     {
         $data = SessionData::load($session, $this->classifier);
-        $detections = $this->detect($data);
         $sessionIsFinal = $this->finality->sessionIsFinal($data, $now);
 
         DB::beginTransaction();
 
         try {
+            $this->sensitivity->propose($data);
+            $detections = $this->detect($data);
             $stats = $this->store($data, $detections, $sessionIsFinal);
             $session->update(['achievements_checked_at' => $now ?? now()]);
         } catch (Throwable $exception) {
@@ -188,6 +193,7 @@ class AchievementEngine
             ->get()
             ->keyBy(fn (AchievementAward $award) => "{$award->achievement_id}|{$award->instance_key}");
         $isHistoric = $data->session->round->date->lt(CarbonImmutable::parse(config('achievements.review_from')));
+        $round = $this->sensitivity->of($data);
         $stats = [];
         $kept = [];
 
@@ -233,6 +239,10 @@ class AchievementEngine
                 ]);
             }
 
+            if ($round['sensitive']) {
+                $award->fill(['is_sensitive' => true, 'sensitivity_note' => $round['note']]);
+            }
+
             $variant = $award->driver_id === null ? null : $variants->get("{$achievement->id}|{$award->driver_id}");
             $award->variant_name = $variant?->name;
             $award->achievement_variant_id = $variant?->id;
@@ -249,12 +259,47 @@ class AchievementEngine
         }
 
         foreach ($existing as $key => $award) {
-            if (! isset($kept[$key]) && ! $award->isDecided()) {
+            if (isset($kept[$key])) {
+                continue;
+            }
+
+            $achievement = $catalogue->firstWhere('id', $award->achievement_id);
+            $blocked = $round['blocked_round'] || ($award->driver_id !== null && in_array($award->driver_id, $round['blocked_drivers'], true));
+            $withheld = $achievement !== null && ! Sensitivity::allows($round, $achievement, $award->driver_id);
+
+            // A block stores nothing, whoever decided; a withheld award a person decided is suppressed by the system instead.
+            $outcome = match (true) {
+                $blocked, ! $award->isDecided() => 'delete',
+                $withheld && $award->decision_note !== Sensitivity::SYSTEM_NOTE => 'suppress',
+                default => null,
+            };
+
+            if ($outcome === 'delete') {
                 $award->delete();
-                $achievementKey = $catalogue->firstWhere('id', $award->achievement_id)?->key ?? (string) $award->achievement_id;
+            } elseif ($outcome === 'suppress') {
+                $award->update([
+                    'status' => AwardStatus::Suppressed,
+                    'decided_by' => null,
+                    'decided_at' => now(),
+                    'decision_note' => Sensitivity::SYSTEM_NOTE,
+                    'is_sensitive' => true,
+                    'sensitivity_note' => $round['note'],
+                ]);
+            }
+
+            if ($outcome !== null) {
+                $achievementKey = $achievement?->key ?? (string) $award->achievement_id;
                 $stats[$achievementKey] ??= ['found' => 0, 'created' => 0, 'updated' => 0, 'removed' => 0, 'pending' => 0];
                 $stats[$achievementKey]['removed']++;
             }
+        }
+
+        // Whatever stays of a sensitive round is flagged, decided or not; the flag never clears.
+        if ($round['sensitive']) {
+            AchievementAward::query()
+                ->where('context_key', "session:{$data->session->id}")
+                ->where('is_sensitive', false)
+                ->update(['is_sensitive' => true, 'sensitivity_note' => $round['note'], 'updated_at' => now()]);
         }
 
         ksort($stats);

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\SensitivityLevel;
 use App\Enums\SensitivitySeverity;
+use App\Enums\SensitivitySource;
 use App\Models\Driver;
 use App\Models\MomentSensitivity;
 use App\Models\Round;
@@ -179,7 +180,7 @@ class MomentSensitivitySeeder extends Seeder
     {
         $sensitivity = MomentSensitivity::firstOrNew(
             ['round_id' => $this->round($key)->id, 'driver_id' => $driverId, 'severity' => $severity],
-            ['level' => SensitivityLevel::Sensitive],
+            ['level' => SensitivityLevel::Sensitive, 'source' => SensitivitySource::Seed],
         );
         $sensitivity->note = $note;
         $sensitivity->save();

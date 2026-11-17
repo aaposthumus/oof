@@ -96,7 +96,7 @@ class ExcavationRunner
     {
         $startedAt = now();
         $found = $excavator->dig($parameters);
-        $sensitivities = MomentSensitivity::with('round.season')->get()->groupBy('round_id');
+        $sensitivities = MomentSensitivity::query()->active()->with('round.season')->get()->groupBy('round_id');
 
         $blocked = 0;
         $candidates = $found

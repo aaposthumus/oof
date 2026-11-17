@@ -31,6 +31,21 @@ class AchievementSeeder extends Seeder
     private const TRACK_LIMITS = ['outside_the_lines', 'teachers_stare'];
 
     /**
+     * Never awarded on a sensitive weekend: retirements, the DNS, causes,
+     * incidents, collisions, the Safety Car and Nothing to See Here, and the
+     * manual Built Different (2027 pack).
+     *
+     * @var list<string>
+     */
+    public const WITHHELD_ON_SENSITIVE_WEEKENDS = [
+        'early_lunch', 'home_before_dinner', 'forgot_the_keys',
+        'called_the_tow_truck', 'whole_class_detention',
+        'it_was_like_that_when_i_got_there', 'bumper_cars',
+        'took_the_lead', 'second_helping', 'frequent_flyer', 'virtually_there',
+        'nothing_to_see_here', 'built_different',
+    ];
+
+    /**
      * A penalty absorbs the incident note and, for track limits, the deletions and flag before it.
      */
     private const PENALTY_SUPERSEDES = ['it_was_like_that_when_i_got_there', ...self::TRACK_LIMITS];
@@ -132,6 +147,7 @@ class AchievementSeeder extends Seeder
                 'supersedes' => $row[6] ?? [],
                 'description' => $description,
                 'is_enabled' => true,
+                'withheld_on_sensitive_weekends' => in_array($key, self::WITHHELD_ON_SENSITIVE_WEEKENDS, true),
             ]);
         }
     }

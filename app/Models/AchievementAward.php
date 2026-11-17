@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Achievements\Rules\Sensitivity;
+use App\Achievements\WithheldOnSensitiveWeekend;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
 use App\Enums\AwardConfidence;
@@ -34,7 +36,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property array{source: string, messages?: list<array<string, mixed>>, rows?: list<array<string, mixed>>, note?: string} $evidence
  */
-#[Fillable(['season_id', 'round_id', 'race_session_id', 'scope', 'context_key', 'recipient_type', 'driver_entry_id', 'driver_id', 'season_team_id', 'team_id', 'achievement_id', 'tier', 'shelf', 'points', 'instance_key', 'event_key', 'detail', 'subtitle', 'variant_name', 'achievement_variant_id', 'occurred_on', 'occurred_md', 'source', 'evidence', 'confidence', 'status', 'review_reason', 'decided_by', 'decided_at', 'decision_note', 'finalized_at', 'handed_back_at'])]
+#[Fillable(['season_id', 'round_id', 'race_session_id', 'scope', 'context_key', 'recipient_type', 'driver_entry_id', 'driver_id', 'season_team_id', 'team_id', 'achievement_id', 'tier', 'shelf', 'points', 'instance_key', 'event_key', 'detail', 'subtitle', 'variant_name', 'achievement_variant_id', 'occurred_on', 'occurred_md', 'source', 'is_sensitive', 'sensitivity_note', 'evidence', 'confidence', 'status', 'review_reason', 'decided_by', 'decided_at', 'decision_note', 'finalized_at', 'handed_back_at'])]
 class AchievementAward extends Model
 {
     /** @use HasFactory<AchievementAwardFactory> */
@@ -62,6 +64,7 @@ class AchievementAward extends Model
             'occurred_md' => 'integer',
             'source' => AwardSource::class,
             'finalized_at' => 'datetime',
+            'is_sensitive' => 'boolean',
             'evidence' => 'array',
             'confidence' => AwardConfidence::class,
             'status' => AwardStatus::class,
@@ -75,6 +78,7 @@ class AchievementAward extends Model
     {
         static::saving(function (self $award): void {
             $award->fillDerived();
+            $award->guardSensitivity();
         });
     }
 
@@ -101,6 +105,30 @@ class AchievementAward extends Model
         $start <= $end
             ? $query->whereBetween('occurred_md', [$start, $end])
             : $query->where(fn (Builder $query) => $query->where('occurred_md', '>=', $start)->orWhere('occurred_md', '<=', $end));
+    }
+
+    /**
+     * The sensitive flag never clears. Nothing may be awarded in a blocked
+     * scope, nor a withheld achievement (Built Different among them) on a
+     * sensitive weekend, unless it is stored suppressed.
+     *
+     * @throws WithheldOnSensitiveWeekend
+     */
+    private function guardSensitivity(): void
+    {
+        if ($this->getOriginal('is_sensitive') === true) {
+            $this->is_sensitive = true;
+        }
+
+        if ($this->round_id === null || $this->status === AwardStatus::Suppressed || ($this->exists && ! $this->isDirty(['status', 'driver_id', 'achievement_id', 'round_id']))) {
+            return;
+        }
+
+        $achievement = Achievement::query()->findOrFail($this->achievement_id);
+
+        if (! Sensitivity::allows(Sensitivity::forRound($this->round_id), $achievement, $this->driver_id)) {
+            throw new WithheldOnSensitiveWeekend("{$achievement->name} cannot be awarded here: the weekend is sensitive or blocked.");
+        }
     }
 
     private function fillDerived(): void

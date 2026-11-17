@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\AchievementAwards\Tables;
 
+use App\Achievements\WithheldOnSensitiveWeekend;
 use App\Enums\AchievementShelf;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
@@ -13,6 +14,7 @@ use App\Models\DriverEntry;
 use App\Models\RaceSession;
 use App\Models\Round;
 use App\Models\Season;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -20,8 +22,11 @@ use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Support\Exceptions\Halt;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -73,6 +78,13 @@ class AchievementAwardsTable
                         AwardStatus::Final => 'success',
                         AwardStatus::Suppressed => 'gray',
                     }),
+                IconColumn::make('is_sensitive')
+                    ->label('Sensitive')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-shield-exclamation')
+                    ->trueColor('warning')
+                    ->falseIcon('')
+                    ->tooltip(fn (AchievementAward $record): ?string => $record->sensitivity_note),
                 TextColumn::make('review_reason')
                     ->label('Review')
                     ->formatStateUsing(fn (?AwardReviewReason $state): ?string => $state?->label())
@@ -118,6 +130,23 @@ class AchievementAwardsTable
     }
 
     /**
+     * Run a review action, refusing one that would award what may not exist
+     * on a sensitive or blocked weekend.
+     *
+     * @throws Halt
+     */
+    private static function refusingWithheld(Closure $action): void
+    {
+        try {
+            $action();
+        } catch (WithheldOnSensitiveWeekend $exception) {
+            Notification::make()->danger()->title('Not awarded')->body($exception->getMessage())->send();
+
+            throw new Halt;
+        }
+    }
+
+    /**
      * Suppress, confirm, restore and edit the subtitle, shared by the list rows
      * and the detail page.
      *
@@ -145,10 +174,10 @@ class AchievementAwardsTable
                             ->all())
                         ->required(),
                 ] : [])
-                ->action(fn (AchievementAward $record, array $data) => $record->confirm(
+                ->action(fn (AchievementAward $record, array $data) => self::refusingWithheld(fn () => $record->confirm(
                     auth()->user(),
                     isset($data['driver_entry_id']) ? DriverEntry::find($data['driver_entry_id']) : null,
-                )),
+                ))),
             Action::make('suppress')
                 ->label('Suppress')
                 ->icon('heroicon-o-eye-slash')
@@ -163,7 +192,7 @@ class AchievementAwardsTable
                 ->visible(fn (AchievementAward $record): bool => $record->isDecided() || $record->isSuppressedAsHistoric())
                 ->requiresConfirmation()
                 ->modalDescription('The decision is removed and the award goes back to the review queue. The next run of oof:achievements judges it again.')
-                ->action(fn (AchievementAward $record) => $record->restore()),
+                ->action(fn (AchievementAward $record) => self::refusingWithheld(fn () => $record->restore())),
             Action::make('subtitle')
                 ->label('Subtitle')
                 ->icon('heroicon-o-pencil')

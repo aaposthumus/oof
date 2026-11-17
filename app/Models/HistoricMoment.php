@@ -73,6 +73,7 @@ class HistoricMoment extends Model
         }
 
         return MomentSensitivity::query()
+            ->active()
             ->where('round_id', $this->round_id)
             ->orderByRaw('driver_id is null')
             ->value('note');

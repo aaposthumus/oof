@@ -22,7 +22,7 @@ class GoldenMaster
     /**
      * The fields of an award that are compared.
      */
-    public const FIELDS = ['driver', 'car', 'detail', 'variant', 'status', 'confidence', 'review_reason', 'event_key', 'evidence'];
+    public const FIELDS = ['driver', 'car', 'detail', 'variant', 'status', 'confidence', 'review_reason', 'event_key', 'evidence', 'sensitive'];
 
     /**
      * The awards as stored right now, with the sessions the engine has run.
@@ -57,7 +57,7 @@ class GoldenMaster
                 'seasons.year', 'rounds.round_number', 'race_sessions.type', 'achievements.key', 'achievement_awards.instance_key',
                 'drivers.jolpica_driver_id', 'driver_entries.car_number', 'achievement_awards.detail', 'achievement_awards.variant_name',
                 'achievement_awards.status', 'achievement_awards.confidence', 'achievement_awards.review_reason',
-                'achievement_awards.event_key', 'achievement_awards.evidence',
+                'achievement_awards.event_key', 'achievement_awards.evidence', 'achievement_awards.is_sensitive',
             ])
             ->mapWithKeys(fn (object $award) => [
                 self::sessionKey($award->year, $award->round_number, $award->type)."|{$award->key}|{$award->instance_key}" => [
@@ -70,6 +70,8 @@ class GoldenMaster
                     'review_reason' => $award->review_reason,
                     'event_key' => $award->event_key,
                     'evidence' => self::hash($award->evidence),
+                    // Only when set, so a master exported before the flag existed still compares.
+                    'sensitive' => $award->is_sensitive ? 1 : null,
                 ],
             ])
             ->sortKeys()

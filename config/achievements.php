@@ -133,6 +133,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Sensitive weekends
+    |--------------------------------------------------------------------------
+    |
+    | From propose_from, a race or sprint in which a car retired with strong
+    | heavy-crash signals (a red flag with the medical car, or a red-flag
+    | stoppage of at least long_stoppage_minutes) makes the engine propose a
+    | sensitivity for the round. It acts as sensitive until a person confirms
+    | or dismisses it. Earlier weekends rely on the seeded list.
+    |
+    */
+
+    'sensitivity' => [
+        'propose_from' => '2027-01-01',
+        'long_stoppage_minutes' => 20,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Surprises
     |--------------------------------------------------------------------------
     |

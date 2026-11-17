@@ -17,7 +17,7 @@ and 4 for the design, and "Working notes" at the end.
 | 1 | Catalogue alignment, points in config, final-after wait per session type | Done, 16 November 2026 |
 | 2 | Surprise rule (rolling team form) and team lineage table | Done, 17 November 2026 |
 | 3 | Award schema | Done, 17 November 2026 |
-| 4 | Sensitivity | Not started |
+| 4 | Sensitivity | Done, 17 November 2026 |
 | 5 | OOFscore | Not started |
 | 6 | Facts and triggers | Not started |
 | 7 | Scopes, runs and the Oofies | Not started |
@@ -608,13 +608,43 @@ Follow-ups decided by the owner on 17 November 2026, done the same day:
   changed. No award had been decided by a person; the 132 historic suppressions are
   unchanged. Golden master: no differences.
 
-**Phase 4: sensitivity.**
-Add the `withheld_on_sensitive_weekends` flag and the Sensitivity rule (withhold, block,
-flag), glory flagged rather than pending, engine-proposed sensitivities, the Built
-Different guard.
-Done when tests cover: a crash award is never stored on a sensitive round, a person's
-earlier confirmation is overridden, a blocked round stores nothing, a sensitive win is
-final and flagged.
+**Phase 4: sensitivity. Done.**
+
+- `achievements.withheld_on_sensitive_weekends` (migration, and `AchievementSeeder::WITHHELD_ON_SENSITIVE_WEEKENDS`):
+  Early Lunch, Home Before Dinner, Forgot the Keys, Called the Tow Truck, Whole Class
+  Detention, It Was Like That When I Got There, Bumper Cars, the four Safety Car
+  achievements, Nothing to See Here, and `built_different` for when it is added. A
+  safety setting: shown in the CMS, not editable there.
+- `achievement_awards.is_sensitive` and `sensitivity_note`. `moment_sensitivities.source`
+  (seed, manual, engine; the existing rows are `seed`), `confirmed_at`, `dismissed_at`.
+- `App\Achievements\Rules\Sensitivity`, after Cascade and again after the late detectors:
+  every sensitivity that is not a dismissed proposal makes its whole round sensitive,
+  with or without a driver. Withheld achievements are left out on a sensitive round (a
+  withheld offence takes its absorbed penalty with it); a block leaves out everything
+  in its scope (round, or driver). The store step deletes such rows; a withheld row a
+  person had decided is force-suppressed instead (status suppressed, no decider, note
+  "Withheld: sensitive weekend"), and a block deletes even decided rows. Everything left
+  in a sensitive round is flagged with the notes; the flag never clears (model guard).
+- Finality: on a sensitive round OOF and Safety Car awards wait for a person
+  (`sensitive_weekend`); glory is final and flagged.
+- Guard: saving an award that a sensitive or blocked weekend does not allow (unless it
+  is suppressed) throws `WithheldOnSensitiveWeekend`; the CMS confirm and hand-back
+  actions show "Not awarded" instead. This is what keeps Built Different off sensitive
+  weekends once it exists (Phase 10).
+- Engine proposals (`achievements.sensitivity`): from `propose_from` (2027-01-01, the
+  live seasons), a race or sprint in which a car retired with a red flag and the medical
+  car, or a red-flag stoppage of at least `long_stoppage_minutes` (20), creates an engine
+  sensitivity (level sensitive, severity injury, the driver named) once per driver and
+  round. It acts as sensitive at once; the sensitivities screen confirms or dismisses
+  it, and a dismissed one is never proposed again and is ignored by the engine and the
+  excavators.
+- Any change to a sensitivity clears `achievements_checked_at` for its round, so
+  `--changed` re-runs the whole weekend.
+- The golden master now records the flag (only when set).
+- Golden master: no differences (no 2023 to 2026 sensitivities; proposals start in
+  2027). Read-only check of the proposal rule on 2023 to 2026: it would have proposed
+  2023 Australia (Ocon, Gasly, de Vries, Sargeant: red flag, 32 minutes) and 2023
+  Netherlands (Zhou: red flag in the rain, 42 minutes); none had the medical car.
 
 **Phase 5: OOFscore.**
 Standings projection, a rebuild command, the standings event, a leaderboard page in the CMS.
@@ -651,6 +681,8 @@ creates none, and an effective date inside the season is refused.
 The nine new achievements, Zoomies, manual Built Different; normalise practice session
 results for Fool's Gold. Re-run the report on 2023 to 2026 and set final tiers.
 Done when each new achievement is a config entry plus, at most, one predicate.
+Built Different must keep `withheld_on_sensitive_weekends` (it is already in the
+seeder's list), so the award guard keeps it off sensitive weekends.
 
 **Phase 11: historic backfill.**
 Import Jolpica lap times (independent of the other phases, so it can start any time),
@@ -679,3 +711,13 @@ Decided for this phase on 17 November 2026:
   `APP_PORT=8087 FORWARD_DB_PORT=33087 VITE_PORT=5187 vendor/bin/sail up -d`
   (and keep those variables set for later `sail` calls).
 - A full engine dry run over 2023 to 2026 takes about 30 seconds.
+
+## Deploy steps
+
+When the `achievement-engine` branch is deployed to production (decided 17 November 2026):
+
+1. `php artisan migrate` (lineages, award schema and snapshot, sensitivity columns).
+2. `php artisan oof:achievements --season=2023 --season=2024 --season=2025 --season=2026`,
+   to bring the stored awards up to date, as was done locally. Decisions made by people
+   stay as they are.
+3. Do not run `oof:dig` yet; it waits for the chassis-engine merge in Phase 11.
