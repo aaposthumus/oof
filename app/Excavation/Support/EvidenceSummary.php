@@ -83,8 +83,8 @@ final class EvidenceSummary
             'fewest_starters' => "only {$evidence['starters']} cars started",
             'fewest_finishers' => "only {$evidence['running']} of {$evidence['starters']} cars were running at the flag",
             'grid_to_win_climb' => self::climbPhrase($candidate),
-            'surprise_winner' => $evidence['team_position_before'] !== null
-                ? self::driverName($candidate).' won with a team '.self::ordinal($evidence['team_position_before'])." of {$evidence['teams_before']} in the constructors' standings"
+            'surprise_winner' => ($team = self::surpriseTeamPhrase($evidence)) !== null
+                ? self::driverName($candidate).' won with a team '.$team
                 : self::driverName($candidate).' took the only win of their career',
             'first_time_winner' => self::driverName($candidate).' won for the first time'.($evidence['one_hit_wonder'] ? ' and never again' : ''),
             'win_drought_ended' => self::driverName($candidate)." won for the first time after {$evidence['starts_before']} starts",
@@ -148,15 +148,35 @@ final class EvidenceSummary
      */
     private static function surpriseSummary(array $evidence): string
     {
-        $team = $evidence['team_position_before'] !== null
-            ? 'Won with a team '.self::ordinal($evidence['team_position_before'])." of {$evidence['teams_before']} in the constructors' standings"
-            : null;
+        $team = self::surpriseTeamPhrase($evidence);
+        $team = $team === null ? null : 'Won with a team '.$team;
 
         return match (true) {
             $team !== null && $evidence['only_career_win'] => "{$team}, only career win",
             $team !== null => $team,
             default => 'Only career win',
         };
+    }
+
+    /**
+     * "7th of 11 on form over the last 10 races", or for candidates dug
+     * before version 3, "7th of 11 in the constructors' standings".
+     *
+     * @param  array<string, mixed>  $evidence
+     */
+    private static function surpriseTeamPhrase(array $evidence): ?string
+    {
+        if (array_key_exists('window_races', $evidence)) {
+            return match (true) {
+                $evidence['window_races'] === null => null,
+                $evidence['team_form_rank'] === null => "without a race in the last {$evidence['window_races']} races",
+                default => self::ordinal($evidence['team_form_rank'])." of {$evidence['teams_in_window']} on form over the last {$evidence['window_races']} races",
+            };
+        }
+
+        return ($evidence['team_position_before'] ?? null) !== null
+            ? self::ordinal($evidence['team_position_before'])." of {$evidence['teams_before']} in the constructors' standings"
+            : null;
     }
 
     /**

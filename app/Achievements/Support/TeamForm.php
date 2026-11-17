@@ -87,6 +87,15 @@ class TeamForm
         return 1 + $this->teams->filter(fn (array $other) => $other['per_race'] > $team['per_race'])->count();
     }
 
+    /**
+     * The Indianapolis 500 rounds of 1950 to 1960 stand apart from the
+     * Grands Prix: they are out of every window and never a surprise.
+     */
+    public static function isIndianapolis500(Round $round): bool
+    {
+        return $round->jolpica_race_name === self::INDIANAPOLIS_500 || $round->name === self::INDIANAPOLIS_500;
+    }
+
     public function isEmpty(): bool
     {
         return $this->races->isEmpty();

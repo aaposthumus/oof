@@ -432,7 +432,7 @@ come from general knowledge of the Ergast data, not from this database.
 9. **Team lineage** covers today's teams and, since Phase 2, the main historic renames.
    Jolpica's chassis-engine constructors of the 1950s to 1970s (Lotus-Climax beside Team
    Lotus, Cooper-Climax, Brabham-Repco, McLaren-Ford and so on) are still separate teams,
-   which splits their form; that needs a decision before the historic backfill.
+   which splits their form; the owner decided to merge them in Phase 11.
 10. **Session dates.** Old seasons have only the race date, in UTC; a night race can
     fall on the next calendar day locally.
 11. **Jolpica quirks.** No scheduled race distance, a few wrong 2025 lap counts, grid 0
@@ -534,7 +534,32 @@ younger than its final-after wait changes from pending to final by itself.
   Mercedes 2013 rounds 5 and 6) and drops 22 (15 of them McLaren 2007, which the old
   rule read as P11 after its exclusion from the constructors' standings).
 - Note: a session's surprise awards now depend on the ten races before it, so a late
-  result change in an earlier race does not re-run them under `--changed`.
+  result change in an earlier race does not re-run them under `--changed`. Decided
+  by the owner: left to Phase 7 and `--stale`.
+
+Follow-ups decided by the owner on 17 November 2026, done the same day:
+
+- The Indianapolis 500 rounds are never a surprise (`Surprise::forTeam()`), besides
+  staying out of the window.
+- Three more lineages, by migration and in the seeder: Coloni to Andrea Moda (`moda`),
+  Ensign to Theodore (`theodore`), Onyx to Monteverdi (`monteverdi`). Ensign and
+  Theodore both entered cars in 1978, 1981 and 1982 and now count as one team in
+  those seasons. The Monteverdi team is named "Onyx", Jolpica's name for 1990.
+  Local database: teams 181 to 179.
+- 2026 round 13 qualifying re-run: Gasly's stored Plot Twist has the new detail and
+  evidence, still final.
+- The surprise-winner excavator (version 3) uses the same rule: a team hit is a win
+  that `Surprise::forTeam()` calls a surprise, scored 100 × how far down the form the
+  team stood (no race in the window counts as last), plus the only-career-win bonus.
+  `min_position`, `min_relative`, `early_season_rounds` and `excluded_teams` are gone.
+  Its evidence holds the form rank, the teams and races in the window and the points
+  per race; summaries of candidates dug before version 3 still read. On the local
+  database it would give 108 candidates against the 65 stored (58 kept, 50 added,
+  7 dropped), 44 of the added from before 1990, many through the chassis-engine
+  constructors that have no history of their own (see Phase 11). The stored
+  candidates change on the next `oof:dig`.
+- Golden master: no differences (all of it is before 2023 or Indianapolis);
+  re-exported, 4,156 awards in 450 sessions.
 
 **Phase 3: award schema.**
 Add context, scope, recipient, snapshot, date, source and `finalized_at` columns;
@@ -592,6 +617,16 @@ lift `first_season`, run 1950 to 2022 oldest first, add a curated list for Clean
 before the lap data, wire the This week in OOF history query.
 Done when a second full backfill changes nothing and any calendar week returns awards
 with sensitive ones flagged.
+
+Decided for this phase on 17 November 2026:
+
+- Merge Jolpica's chassis-engine constructors into lasting teams in `team_lineages`
+  (Lotus-Climax and the other Lotus variants into Team Lotus, Cooper-Climax and the
+  other Cooper variants into Cooper, likewise Brabham, McLaren, March, Eagle, BRM,
+  Matra, Shadow, LDS and De Tomaso), so their form is not split. Do it before the
+  backfill runs, and dig the surprise-winner excavator again afterwards.
+- Open question: should the Indianapolis 500 rounds of 1950 to 1960 count for any
+  achievement at all? Today they are only out of the surprise rule.
 
 ## Working notes
 

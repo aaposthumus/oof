@@ -252,6 +252,16 @@ class ResultDetectorsTest extends TestCase
         $this->assertSame('No race for the team in the last race', $this->detect(GiantSlayerDetector::class, $this->race)->sole()->detail);
     }
 
+    public function test_an_indianapolis_500_is_never_a_surprise(): void
+    {
+        $this->race = $this->raceSession(SessionType::Race, $this->round(1955, 5, ['name' => 'Indianapolis 500', 'jolpica_race_name' => 'Indianapolis 500']));
+        $teams = $this->fiveTeams();
+        $this->earlierRace(1955, 4, [$teams[0][2024]->id => 8]);
+        $this->finisher(10, 1);
+
+        $this->assertCount(0, $this->detect(GiantSlayerDetector::class, $this->race));
+    }
+
     public function test_grand_chelem_needs_pole_win_fastest_lap_and_every_lap_led(): void
     {
         $winner = $this->finisher(1, 1, ['fastest_lap_rank' => 1, 'laps_completed' => 3]);

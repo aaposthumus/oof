@@ -45,17 +45,17 @@ class TeamLineagesTest extends TestCase
 
     public function test_a_new_rule_re_points_the_season_teams_at_once(): void
     {
-        $onyx = $this->seasonTeam(1989, 'onyx');
-        $this->seasonTeam(1991, 'monteverdi');
-        TeamLineage::factory()->create(['jolpica_constructor_id' => 'monteverdi', 'team_slug' => 'monteverdi']);
+        $eurobrun = $this->seasonTeam(1989, 'eurobrun');
+        $this->seasonTeam(1991, 'brun');
+        TeamLineage::factory()->create(['jolpica_constructor_id' => 'brun', 'team_slug' => 'brun']);
 
         Livewire::test(CreateTeamLineage::class)
-            ->fillForm(['jolpica_constructor_id' => 'onyx', 'team_slug' => 'monteverdi', 'to_year' => 1990])
+            ->fillForm(['jolpica_constructor_id' => 'eurobrun', 'team_slug' => 'brun', 'to_year' => 1990])
             ->call('create')
             ->assertHasNoFormErrors()
             ->assertNotified('Lineage applied');
 
-        $this->assertSame('monteverdi', $onyx->fresh()->team->slug);
+        $this->assertSame('brun', $eurobrun->fresh()->team->slug);
     }
 
     public function test_an_overlapping_rule_for_the_same_constructor_is_refused(): void
@@ -68,10 +68,10 @@ class TeamLineagesTest extends TestCase
 
     public function test_a_rule_that_would_merge_an_unmapped_constructor_is_rolled_back(): void
     {
-        $this->seasonTeam(1989, 'onyx');
-        $this->seasonTeam(1991, 'monteverdi');
-        $rule = TeamLineage::factory()->create(['jolpica_constructor_id' => 'monteverdi', 'team_slug' => 'monteverdi']);
-        TeamLineage::factory()->create(['jolpica_constructor_id' => 'onyx', 'team_slug' => 'monteverdi']);
+        $this->seasonTeam(1989, 'eurobrun');
+        $this->seasonTeam(1991, 'brun');
+        $rule = TeamLineage::factory()->create(['jolpica_constructor_id' => 'brun', 'team_slug' => 'brun']);
+        TeamLineage::factory()->create(['jolpica_constructor_id' => 'eurobrun', 'team_slug' => 'brun']);
 
         Livewire::test(EditTeamLineage::class, ['record' => $rule->getRouteKey()])
             ->callAction(DeleteAction::class)

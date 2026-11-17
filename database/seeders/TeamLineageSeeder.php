@@ -68,6 +68,14 @@ class TeamLineageSeeder extends Seeder
         ['constructor' => 'lotus_racing', 'team' => 'caterham', 'note' => 'Lotus Racing (2010) and Team Lotus (2011) became Caterham for 2012.'],
         ['constructor' => 'caterham', 'team' => 'caterham'],
 
+        ['constructor' => 'coloni', 'team' => 'moda', 'note' => 'Andrea Moda bought Coloni for 1992.'],
+        ['constructor' => 'moda', 'team' => 'moda'],
+
+        ['constructor' => 'ensign', 'team' => 'theodore', 'note' => 'Ensign merged into Theodore for 1983. Both entered cars in 1978, 1981 and 1982.'],
+        ['constructor' => 'theodore', 'team' => 'theodore'],
+
+        ['constructor' => 'onyx', 'team' => 'monteverdi', 'note' => 'Peter Monteverdi took over Onyx during 1990.'],
+
         ['constructor' => 'virgin', 'team' => 'manor'],
         ['constructor' => 'marussia', 'team' => 'manor'],
         ['constructor' => 'manor', 'team' => 'manor'],

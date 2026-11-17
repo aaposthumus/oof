@@ -27,12 +27,16 @@ class TeamLineageSyncTest extends TestCase
     public function test_the_migration_seeds_the_lineage_with_the_historic_renames(): void
     {
         $this->assertSame(count(TeamLineageSeeder::RULES), TeamLineage::count());
+        $this->assertSame(TeamLineage::count(), TeamLineage::all()->unique(fn (TeamLineage $rule) => "{$rule->jolpica_constructor_id}|{$rule->from_year}|{$rule->to_year}")->count());
 
         $resolver = app(TeamResolver::class);
         $this->assertSame('arrows', $resolver->slugFor('footwork', 1993));
         $this->assertSame('march', $resolver->slugFor('leyton', 1990));
         $this->assertSame('audi', $resolver->slugFor('alfa', 2020));
         $this->assertSame('alfa', $resolver->slugFor('alfa', 1950));
+        $this->assertSame('moda', $resolver->slugFor('coloni', 1989));
+        $this->assertSame('theodore', $resolver->slugFor('ensign', 1980));
+        $this->assertSame('monteverdi', $resolver->slugFor('onyx', 1990));
     }
 
     public function test_re_points_season_teams_removes_emptied_teams_and_takes_the_latest_name(): void
