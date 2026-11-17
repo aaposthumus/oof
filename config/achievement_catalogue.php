@@ -4,8 +4,6 @@ use App\Achievements\Detectors\CalledTheTowTruckDetector;
 use App\Achievements\Detectors\ClassDismissedDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
 use App\Achievements\Detectors\NothingToSeeHereDetector;
-use App\Achievements\Detectors\OvertimeDetector;
-use App\Achievements\Detectors\PracticeMakesImperfectDetector;
 use App\Achievements\Detectors\SecondHelpingDetector;
 use App\Achievements\Detectors\TookTheLeadDetector;
 use App\Achievements\Detectors\ToTheRescueDetector;
@@ -807,7 +805,11 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => OvertimeDetector::class],
+            'trigger' => [
+                'type' => 'extreme', 'fact' => 'lap_count',
+                'measure' => 'laps', 'pick' => 'max', 'at_least' => 1, 'ties' => 'none', 'among' => 'race_drivers',
+                'evidence' => 'leaderboard', 'detail' => '{laps} laps',
+            ],
         ],
 
         'practice_makes_imperfect' => [
@@ -823,7 +825,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => PracticeMakesImperfectDetector::class],
+            'trigger' => [
+                'type' => 'extreme', 'fact' => 'track_limit_deletion',
+                'measure' => 'count', 'pick' => 'max', 'at_least' => 3, 'ties' => 'none', 'among' => 'race_drivers',
+                'instance' => 'session', 'event' => 'session:{entry}',
+                'detail' => '{count} deleted {count:lap|laps}',
+            ],
         ],
 
         'did_the_thing' => [

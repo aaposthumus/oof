@@ -3,8 +3,6 @@
 namespace Tests\Feature\Achievements\Detectors;
 
 use App\Achievements\Detectors\FrequentFlyerDetector;
-use App\Achievements\Detectors\OvertimeDetector;
-use App\Achievements\Detectors\PracticeMakesImperfectDetector;
 use App\Achievements\Detectors\SecondHelpingDetector;
 use App\Achievements\Detectors\TookTheLeadDetector;
 use App\Achievements\Detectors\VirtuallyThereDetector;
@@ -125,8 +123,8 @@ class SessionDetectorsTest extends TestCase
             $this->message($practice, "CAR 38 (BEA) TIME {$time} DELETED - TRACK LIMITS AT TURN 4 LAP 4 13:11:00");
         }
 
-        $this->assertSame('25 laps', $this->detect(OvertimeDetector::class, $practice)->sole()->detail);
-        $this->assertSame('3 deleted laps', $this->detect(PracticeMakesImperfectDetector::class, $practice)->sole()->detail);
+        $this->assertSame('25 laps', $this->detect('overtime', $practice)->sole()->detail);
+        $this->assertSame('3 deleted laps', $this->detect('practice_makes_imperfect', $practice)->sole()->detail);
     }
 
     public function test_overtime_lists_drivers_with_equal_lap_counts_in_a_fixed_order(): void
@@ -148,7 +146,7 @@ class SessionDetectorsTest extends TestCase
 
         $this->assertSame(
             [$busiest->driver->family_name, $first->driver->family_name, $second->driver->family_name],
-            array_column($this->detect(OvertimeDetector::class, $practice)->sole()->evidence['rows'], 'driver'),
+            array_column($this->detect('overtime', $practice)->sole()->evidence['rows'], 'driver'),
         );
     }
 
@@ -169,8 +167,8 @@ class SessionDetectorsTest extends TestCase
         $this->message($practice, 'CAR 16 (LEC) TIME 1:30.000 DELETED - TRACK LIMITS AT TURN 4 LAP 3 13:10:00');
         $this->message($practice, 'CAR 16 (LEC) TIME 1:30.100 DELETED - TRACK LIMITS AT TURN 4 LAP 5 13:12:00');
 
-        $this->assertCount(0, $this->detect(OvertimeDetector::class, $practice));
-        $this->assertCount(0, $this->detect(PracticeMakesImperfectDetector::class, $practice));
+        $this->assertCount(0, $this->detect('overtime', $practice));
+        $this->assertCount(0, $this->detect('practice_makes_imperfect', $practice));
     }
 
     public function test_a_shared_slowest_q1_time_gives_no_award(): void

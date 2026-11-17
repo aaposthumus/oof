@@ -93,16 +93,14 @@ return [
     |--------------------------------------------------------------------------
     |
     | took_the_lead_laps: laps the safety car ran in one race.
-    | second_helping: safety car deployments in one race. practice_deleted_laps: the fewest
-    | deleted laps for Practice Makes Imperfect. Set from the 2023–2026 test run.
+    | second_helping: safety car deployments in one race. Set from the
+    | 2023–2026 test run.
     |
     */
 
     'took_the_lead_laps' => 8,
 
     'second_helping' => 2,
-
-    'practice_deleted_laps' => 3,
 
     /*
     |--------------------------------------------------------------------------

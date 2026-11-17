@@ -28,6 +28,7 @@ class Facts
         'qualifying_result' => Providers\QualifyingResultFacts::class,
         'pit_stop' => Providers\PitStopFacts::class,
         'qualifying_knockout' => Providers\QualifyingKnockoutFacts::class,
+        'lap_count' => Providers\LapCountFacts::class,
     ];
 
     /**
