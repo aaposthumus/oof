@@ -38,7 +38,7 @@ class SensitivityTest extends TestCase
         parent::setUp();
 
         $this->catalogue();
-        config(['achievements.took_the_lead_laps' => 3]);
+        config(['achievement_catalogue.achievements.took_the_lead.trigger.at_least' => 3]);
     }
 
     /**

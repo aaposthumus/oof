@@ -4,10 +4,7 @@ use App\Achievements\Detectors\CalledTheTowTruckDetector;
 use App\Achievements\Detectors\ClassDismissedDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
 use App\Achievements\Detectors\NothingToSeeHereDetector;
-use App\Achievements\Detectors\SecondHelpingDetector;
-use App\Achievements\Detectors\TookTheLeadDetector;
 use App\Achievements\Detectors\ToTheRescueDetector;
-use App\Achievements\Detectors\VirtuallyThereDetector;
 use App\Achievements\Detectors\WholeClassDetentionDetector;
 
 /*
@@ -1006,7 +1003,10 @@ return [
             'recipient' => 'safety_car',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => TookTheLeadDetector::class],
+            'trigger' => [
+                'type' => 'count', 'fact' => 'safety_car_period', 'per' => 'session', 'sum' => 'laps', 'at_least' => 8,
+                'instance' => 'session', 'event' => 'safety_car', 'detail' => '{total} laps',
+            ],
         ],
 
         'second_helping' => [
@@ -1022,7 +1022,10 @@ return [
             'recipient' => 'safety_car',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => SecondHelpingDetector::class],
+            'trigger' => [
+                'type' => 'count', 'fact' => 'deployment', 'where' => [['kind', '=', 'safety_car']], 'per' => 'session', 'at_least' => 2,
+                'instance' => 'session', 'event' => 'safety_car', 'detail' => '{count} deployments',
+            ],
         ],
 
         'frequent_flyer' => [
@@ -1054,7 +1057,7 @@ return [
             'recipient' => 'safety_car',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => VirtuallyThereDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'deployment', 'where' => [['kind', '=', 'vsc']], 'detail' => '{lap_label}'],
         ],
 
         'nothing_to_see_here' => [

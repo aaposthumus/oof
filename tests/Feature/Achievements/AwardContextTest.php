@@ -131,7 +131,7 @@ class AwardContextTest extends TestCase
 
     public function test_a_safety_car_award_has_the_safety_car_as_recipient_and_no_tier(): void
     {
-        config(['achievements.took_the_lead_laps' => 3]);
+        config(['achievement_catalogue.achievements.took_the_lead.trigger.at_least' => 3]);
         $race = $this->raceSession();
         $this->resultFor($this->car($race, 1));
         $this->message($race, 'SAFETY CAR DEPLOYED', ['lap_number' => 3]);

@@ -3,9 +3,6 @@
 namespace Tests\Feature\Achievements\Detectors;
 
 use App\Achievements\Detectors\FrequentFlyerDetector;
-use App\Achievements\Detectors\SecondHelpingDetector;
-use App\Achievements\Detectors\TookTheLeadDetector;
-use App\Achievements\Detectors\VirtuallyThereDetector;
 use App\Enums\SessionType;
 use App\Models\DriverEntry;
 use App\Models\PitLaneVisit;
@@ -206,7 +203,7 @@ class SessionDetectorsTest extends TestCase
 
     public function test_safety_car_corner(): void
     {
-        config(['achievements.took_the_lead_laps' => 8, 'achievements.second_helping' => 2]);
+        config(['achievement_catalogue.achievements.took_the_lead.trigger.at_least' => 8, 'achievement_catalogue.achievements.second_helping.trigger.at_least' => 2]);
         $race = $this->raceSession();
         $this->car($race, 1);
         $this->resultFor(DriverEntry::first(), []);
@@ -216,10 +213,10 @@ class SessionDetectorsTest extends TestCase
         $this->message($race, 'SAFETY CAR DEPLOYED', ['lap_number' => 40]);
         $this->message($race, 'SAFETY CAR IN THIS LAP', ['lap_number' => 43]);
 
-        $this->assertSame('9 laps', $this->detect(TookTheLeadDetector::class, $race)->sole()->detail);
-        $this->assertSame('2 deployments', $this->detect(SecondHelpingDetector::class, $race)->sole()->detail);
-        $this->assertSame('lap 20', $this->detect(VirtuallyThereDetector::class, $race)->sole()->detail);
+        $this->assertSame('9 laps', $this->detect('took_the_lead', $race)->sole()->detail);
+        $this->assertSame('2 deployments', $this->detect('second_helping', $race)->sole()->detail);
+        $this->assertSame('lap 20', $this->detect('virtually_there', $race)->sole()->detail);
         $this->assertSame('2 deployments', $this->detect(FrequentFlyerDetector::class, $race)->sole()->detail);
-        $this->assertNull($this->detect(VirtuallyThereDetector::class, $race)->sole()->driverEntryId);
+        $this->assertNull($this->detect('virtually_there', $race)->sole()->driverEntryId);
     }
 }
