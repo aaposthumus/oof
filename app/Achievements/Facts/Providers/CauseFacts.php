@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Achievements\Detectors;
+namespace App\Achievements\Facts\Providers;
 
-use App\Achievements\Detection;
-use App\Achievements\Detector;
+use App\Achievements\Facts\Concerns\ReadsRaceControl;
+use App\Achievements\Facts\Fact;
+use App\Achievements\Facts\FactEvidence;
+use App\Achievements\Facts\FactProvider;
 use App\Achievements\SessionData;
 use App\Achievements\Support\ClassifiedMessage;
-use App\Achievements\Support\Evidence;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
 use App\Enums\SessionType;
@@ -14,35 +15,37 @@ use App\RaceControl\MessageType;
 use Illuminate\Support\Collection;
 
 /**
- * Who caused a red flag or safety car. Race control never says, so this is
+ * Who caused a red flag or a safety car. Race control never says, so it is
  * inferred from the one car named in an incident, stopped-car or off-track
- * message just before it: low confidence, always reviewed. Without exactly
- * one such car, a race or sprint sends a driverless case to the CMS to
- * assign or suppress; practice and qualifying give nothing (weather, debris
- * or track problems give no achievement).
+ * message in the cause window before it: low confidence, always reviewed.
+ * Without exactly one such car, a race or sprint gives a driverless case
+ * for the CMS to assign or suppress; practice and qualifying give nothing.
+ * A red flag just after the chequered flag only closes the session, so it
+ * is no cause at all.
+ *
+ * Attributes: kind (red_flag or safety_car).
  */
-abstract class CauseDetector implements Detector
+class CauseFacts implements FactProvider
 {
+    use ReadsRaceControl;
+
     private const CLUES = [MessageType::IncidentNoted, MessageType::CarStopped, MessageType::OffTrack];
 
-    abstract protected function type(): MessageType;
+    private const KINDS = ['red_flag' => MessageType::RedFlag, 'safety_car' => MessageType::SafetyCarDeployed];
 
-    /**
-     * Whether a deployment counts at all, before looking for its cause.
-     */
-    protected function counts(ClassifiedMessage $deployment, SessionData $data): bool
+    public function notes(): array
     {
-        return true;
+        return ['Inferred from a single-car message just before the deployment; always reviewed.'];
     }
 
-    public function detect(SessionData $data): Collection
+    public function facts(SessionData $data): Collection
     {
         $casesWithoutACar = in_array($data->type(), [SessionType::Race, SessionType::Sprint], true);
         $window = (int) config('achievements.cause_window_seconds');
         $clues = $data->messagesOfType(...self::CLUES)->filter(fn (ClassifiedMessage $message) => $message->soleEntryId() !== null);
 
-        return $data->messagesOfType($this->type())
-            ->filter(fn (ClassifiedMessage $deployment) => $this->counts($deployment, $data))
+        return $data->messagesOfType(...array_values(self::KINDS))
+            ->reject(fn (ClassifiedMessage $deployment) => $deployment->is(MessageType::RedFlag) && self::closesTheSession($deployment, $data))
             ->map(function (ClassifiedMessage $deployment) use ($clues, $window, $casesWithoutACar) {
                 $issuedAt = $deployment->message->issued_at;
                 $before = $clues->filter(fn (ClassifiedMessage $clue) => $clue->message->issued_at->betweenIncluded($issuedAt->copy()->subSeconds($window), $issuedAt))->values();
@@ -53,12 +56,13 @@ abstract class CauseDetector implements Detector
                     return null;
                 }
 
-                return new Detection(
-                    achievementKey: $this->key(),
-                    driverEntryId: $entryId,
+                return new Fact(
+                    type: 'cause',
+                    entryId: $entryId,
                     instanceKey: "rcm:{$deployment->message->id}",
                     eventKey: "rcm:{$deployment->message->id}",
-                    evidence: Evidence::messages([...$before, $deployment], $entryId === null
+                    attributes: ['kind' => array_search($deployment->type(), self::KINDS, true)],
+                    evidence: FactEvidence::messages([...$before, $deployment], $entryId === null
                         ? ($cars->isEmpty() ? 'No single car was named just before; check the cause.' : 'Several cars were named just before; pick one or suppress.')
                         : 'Inferred from the message just before; race control does not say who caused it.'),
                     confidence: AwardConfidence::Low,
@@ -67,5 +71,14 @@ abstract class CauseDetector implements Detector
             })
             ->filter()
             ->values();
+    }
+
+    private static function closesTheSession(ClassifiedMessage $redFlag, SessionData $data): bool
+    {
+        $issuedAt = $redFlag->message->issued_at;
+
+        return $data->messagesOfType(MessageType::ChequeredFlag)->contains(
+            fn (ClassifiedMessage $flag) => $flag->message->issued_at->betweenIncluded($issuedAt->copy()->subMinute(), $issuedAt),
+        );
     }
 }

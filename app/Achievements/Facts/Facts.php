@@ -31,6 +31,7 @@ class Facts
         'lap_count' => Providers\LapCountFacts::class,
         'safety_car_period' => Providers\SafetyCarPeriodFacts::class,
         'deployment' => Providers\DeploymentFacts::class,
+        'cause' => Providers\CauseFacts::class,
     ];
 
     /**

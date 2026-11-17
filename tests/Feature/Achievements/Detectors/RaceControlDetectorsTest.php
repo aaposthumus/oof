@@ -3,8 +3,6 @@
 namespace Tests\Feature\Achievements\Detectors;
 
 use App\Achievements\Detection;
-use App\Achievements\Detectors\CalledTheTowTruckDetector;
-use App\Achievements\Detectors\WholeClassDetentionDetector;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
 use App\Enums\SessionType;
@@ -205,7 +203,7 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($race, 'CAR 16 (LEC) STOPPED AT TURN 7');
         $this->message($race, 'RED FLAG', ['flag' => 'RED']);
 
-        $detection = $this->detect(WholeClassDetentionDetector::class, $race)->sole();
+        $detection = $this->detect('whole_class_detention', $race)->sole();
 
         $this->assertSame($car->id, $detection->driverEntryId);
         $this->assertSame(AwardConfidence::Low, $detection->confidence);
@@ -221,7 +219,7 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($race, 'CAR 55 (SAI) STOPPED AT TURN 8');
         $this->message($race, 'SAFETY CAR DEPLOYED', ['category' => 'SafetyCar']);
 
-        $detection = $this->detect(CalledTheTowTruckDetector::class, $race)->sole();
+        $detection = $this->detect('called_the_tow_truck', $race)->sole();
 
         $this->assertNull($detection->driverEntryId);
         $this->assertSame(AwardReviewReason::NoClearCause, $detection->reviewReason);
@@ -232,7 +230,7 @@ class RaceControlDetectorsTest extends TestCase
         $practice = $this->raceSession(SessionType::Practice2);
         $this->message($practice, 'RED FLAG', ['flag' => 'RED']);
 
-        $this->assertCount(0, $this->detect(WholeClassDetentionDetector::class, $practice));
+        $this->assertCount(0, $this->detect('whole_class_detention', $practice));
     }
 
     public function test_a_red_flag_just_after_the_chequered_flag_does_not_count(): void
@@ -241,6 +239,6 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($qualifying, 'CHEQUERED FLAG', ['flag' => 'CHEQUERED']);
         $this->message($qualifying, 'RED FLAG', ['flag' => 'RED', 'issued_at' => now()->setDate(2024, 5, 5)->setTime(20, 1, 30)]);
 
-        $this->assertSame([], $this->detect(WholeClassDetentionDetector::class, $qualifying)->map(fn (Detection $detection) => $detection->instanceKey)->all());
+        $this->assertSame([], $this->detect('whole_class_detention', $qualifying)->map(fn (Detection $detection) => $detection->instanceKey)->all());
     }
 }

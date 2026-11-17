@@ -1,11 +1,9 @@
 <?php
 
-use App\Achievements\Detectors\CalledTheTowTruckDetector;
 use App\Achievements\Detectors\ClassDismissedDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
 use App\Achievements\Detectors\NothingToSeeHereDetector;
 use App\Achievements\Detectors\ToTheRescueDetector;
-use App\Achievements\Detectors\WholeClassDetentionDetector;
 
 /*
 |--------------------------------------------------------------------------
@@ -503,7 +501,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => WholeClassDetentionDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'cause', 'where' => [['kind', '=', 'red_flag']]],
         ],
 
         'called_the_tow_truck' => [
@@ -519,7 +517,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => CalledTheTowTruckDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'cause', 'where' => [['kind', '=', 'safety_car']]],
         ],
 
         'lapped_dog' => [
