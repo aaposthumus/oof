@@ -32,8 +32,9 @@ class AchievementSeeder extends Seeder
 
     /**
      * Never awarded on a sensitive weekend: retirements, the DNS, causes,
-     * incidents, collisions, the Safety Car and Nothing to See Here, and the
-     * manual Built Different (2027 pack).
+     * incidents, collisions, unsafe releases, erratic driving, ignoring flags,
+     * offences under the safety car, the Safety Car and Nothing to See Here,
+     * and the manual Built Different (2027 pack).
      *
      * @var list<string>
      */
@@ -41,6 +42,7 @@ class AchievementSeeder extends Seeder
         'early_lunch', 'home_before_dinner', 'forgot_the_keys',
         'called_the_tow_truck', 'whole_class_detention',
         'it_was_like_that_when_i_got_there', 'bumper_cars',
+        'released_into_the_wild', 'failed_the_driving_test', 'selective_vision', 'queue_jumper',
         'took_the_lead', 'second_helping', 'frequent_flyer', 'virtually_there',
         'nothing_to_see_here', 'built_different',
     ];

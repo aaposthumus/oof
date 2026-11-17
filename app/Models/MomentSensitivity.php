@@ -20,12 +20,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * minor) decides whether it also flags stories that span the season: those
  * only take fatal entries and injuries to the drivers involved.
  *
- * The engine can propose one after a heavy crash (source engine). It acts
- * as sensitive until a person confirms it; once dismissed it is ignored
+ * The engine can propose one per round after a heavy crash (source engine),
+ * covering the whole round and listing the drivers involved. It acts as
+ * sensitive until a person confirms it; once dismissed it is ignored
  * everywhere, and the engine does not propose it again. Any change sends
- * the round's sessions back to the achievements engine.
+ * the round's sessions back to the achievements engine. When a dismissal or
+ * a deletion leaves the round without an active sensitivity, the decisions
+ * people had made on awards the system suppressed are given back.
  */
-#[Fillable(['round_id', 'driver_id', 'level', 'severity', 'source', 'confirmed_at', 'dismissed_at', 'note'])]
+#[Fillable(['round_id', 'driver_id', 'involved_driver_ids', 'level', 'severity', 'source', 'confirmed_at', 'dismissed_at', 'note'])]
 class MomentSensitivity extends Model
 {
     /** @use HasFactory<MomentSensitivityFactory> */
@@ -42,6 +45,7 @@ class MomentSensitivity extends Model
             'level' => SensitivityLevel::class,
             'severity' => SensitivitySeverity::class,
             'source' => SensitivitySource::class,
+            'involved_driver_ids' => 'array',
             'confirmed_at' => 'datetime',
             'dismissed_at' => 'datetime',
         ];
@@ -53,8 +57,29 @@ class MomentSensitivity extends Model
             ->whereIn('round_id', array_filter([$sensitivity->round_id, $sensitivity->getOriginal('round_id')]))
             ->update(['achievements_checked_at' => null]);
 
-        static::saved($recheckRound);
-        static::deleted($recheckRound);
+        static::saved(function (self $sensitivity) use ($recheckRound): void {
+            $recheckRound($sensitivity);
+
+            if ($sensitivity->wasChanged('dismissed_at') && $sensitivity->dismissed_at !== null) {
+                $sensitivity->releaseRoundIfClear();
+            }
+        });
+
+        static::deleted(function (self $sensitivity) use ($recheckRound): void {
+            $recheckRound($sensitivity);
+            $sensitivity->releaseRoundIfClear();
+        });
+    }
+
+    /**
+     * Once no active sensitivity covers the round any more, give back the
+     * decisions people had made on the awards the system suppressed.
+     */
+    private function releaseRoundIfClear(): void
+    {
+        if (! self::query()->active()->where('round_id', $this->round_id)->exists()) {
+            AchievementAward::releaseRound($this->round_id);
+        }
     }
 
     /**

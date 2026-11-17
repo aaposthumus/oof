@@ -5,6 +5,7 @@ namespace App\Filament\Resources\MomentSensitivities\Tables;
 use App\Enums\SensitivityLevel;
 use App\Enums\SensitivitySeverity;
 use App\Enums\SensitivitySource;
+use App\Models\Driver;
 use App\Models\MomentSensitivity;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteBulkAction;
@@ -27,7 +28,11 @@ class MomentSensitivitiesTable
                     ->formatStateUsing(fn ($state, $record): string => "{$record->round->season->year} {$state}"),
                 TextColumn::make('driver_name')
                     ->label('Driver')
-                    ->state(fn ($record): ?string => $record->driver ? "{$record->driver->given_name} {$record->driver->family_name}" : null)
+                    ->state(fn ($record): ?string => $record->driver
+                        ? "{$record->driver->given_name} {$record->driver->family_name}"
+                        : (filled($record->involved_driver_ids)
+                            ? 'Whole round: '.Driver::query()->whereKey($record->involved_driver_ids)->get()->map(fn (Driver $driver) => "{$driver->given_name} {$driver->family_name}")->implode(', ')
+                            : null))
                     ->placeholder('Whole round'),
                 TextColumn::make('level')
                     ->badge()
@@ -83,7 +88,7 @@ class MomentSensitivitiesTable
                     ->color('gray')
                     ->visible(fn (MomentSensitivity $record): bool => $record->source === SensitivitySource::Engine && $record->dismissed_at === null)
                     ->requiresConfirmation()
-                    ->modalDescription('The proposal no longer counts and is not proposed again. Awards already flagged keep their flag; withheld ones the engine left out come back on the next run.')
+                    ->modalDescription('The proposal no longer counts and is not proposed again. Awards already flagged keep their flag. Unless another sensitivity covers the round, decisions people had made on suppressed awards come back now, and awards the engine left out come back on its next run.')
                     ->action(fn (MomentSensitivity $record) => $record->dismiss()),
                 EditAction::make(),
             ])

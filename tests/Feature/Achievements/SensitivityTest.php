@@ -112,16 +112,22 @@ class SensitivityTest extends TestCase
         $this->assertSame(AwardStatus::Suppressed, $decided->fresh()->status);
     }
 
-    public function test_a_blocked_round_stores_nothing_not_even_what_a_person_decided(): void
+    public function test_a_blocked_round_stores_nothing_and_suppresses_what_a_person_decided(): void
     {
         $this->weekend();
         $this->runEngine($this->race);
-        $this->awards('did_the_thing')->sole()->confirm(User::factory()->create());
+        $win = $this->awards('did_the_thing')->sole();
+        $win->confirm(User::factory()->create());
 
         MomentSensitivity::factory()->blocked()->create(['round_id' => $this->race->round_id]);
         $this->runEngine($this->race);
 
-        $this->assertCount(0, $this->awards());
+        $this->assertSame([$win->id], $this->awards()->pluck('id')->all());
+        $win->refresh();
+        $this->assertSame(AwardStatus::Suppressed, $win->status);
+        $this->assertSame(Sensitivity::SYSTEM_NOTE, $win->decision_note);
+        $this->assertSame(AwardStatus::Final->value, $win->held_decision['status']);
+        $this->assertSame(0, AchievementAward::query()->publishable()->count());
     }
 
     public function test_a_blocked_driver_stores_nothing_for_that_driver_and_the_round_turns_sensitive(): void
@@ -240,11 +246,32 @@ class SensitivityTest extends TestCase
         $proposal = MomentSensitivity::query()->sole();
         $this->assertSame(SensitivitySource::Engine, $proposal->source);
         $this->assertSame(SensitivityLevel::Sensitive, $proposal->level);
+        $this->assertNull($proposal->driver_id);
+        $this->assertSame([$this->retired->driver_id], $proposal->involved_driver_ids);
         $this->assertTrue($proposal->isProposal());
         $this->assertStringContainsString('red flag and medical car', $proposal->note);
         $this->assertNotContains('took_the_lead', $this->keys());
         $this->assertTrue($this->awards('did_the_thing')->sole()->is_sensitive);
         $this->assertStringContainsString('Proposed, not yet confirmed', $this->awards('did_the_thing')->sole()->sensitivity_note);
+    }
+
+    public function test_one_proposal_per_round_names_every_driver_involved(): void
+    {
+        config(['achievements.sensitivity.propose_from' => '2024-01-01']);
+        $this->weekend();
+        $second = $this->car($this->race, 22);
+        $this->resultFor($second, ['position' => null, 'position_text' => 'R', 'classification_order' => 4, 'grid' => 4, 'is_classified' => false, 'status' => 'Accident', 'laps_completed' => 30]);
+        $this->heavyCrash(medicalCar: true);
+        $red = $this->race->raceControlMessages()->where('message', 'RED FLAG')->sole();
+        $this->message($this->race, 'CAR 22 (TSU) STOPPED AT TURN 7', ['issued_at' => $red->issued_at->subSeconds(20)]);
+
+        $this->runEngine($this->race);
+        $this->runEngine($this->race);
+
+        $proposal = MomentSensitivity::query()->sole();
+        $this->assertEqualsCanonicalizing([$this->retired->driver_id, $second->driver_id], $proposal->involved_driver_ids);
+        $this->assertStringContainsString($this->retired->driver->family_name, $proposal->note);
+        $this->assertStringContainsString($second->driver->family_name, $proposal->note);
     }
 
     public function test_a_long_red_flag_stoppage_proposes_a_sensitivity_and_a_short_one_does_not(): void
@@ -289,6 +316,94 @@ class SensitivityTest extends TestCase
         $this->assertContains('took_the_lead', $this->keys());
         $this->assertSame(AwardStatus::Final, $this->awards('lapped_dog')->sole()->status);
         $this->assertTrue($this->awards('did_the_thing')->sole()->is_sensitive, 'The flag never clears.');
+    }
+
+    public function test_dismissing_the_last_sensitivity_gives_back_what_a_person_had_decided(): void
+    {
+        config(['achievements.sensitivity.propose_from' => '2024-01-01']);
+        $this->weekend();
+        $this->runEngine($this->race);
+        $person = User::factory()->create();
+        $decided = $this->awards('home_before_dinner')->sole();
+        $decided->confirm($person);
+        $this->heavyCrash(medicalCar: true);
+        $this->runEngine($this->race);
+        $this->assertSame(AwardStatus::Suppressed, $decided->fresh()->status);
+
+        MomentSensitivity::query()->sole()->dismiss();
+
+        $decided->refresh();
+        $this->assertSame(AwardStatus::Final, $decided->status);
+        $this->assertSame($person->id, $decided->decided_by);
+        $this->assertNull($decided->held_decision);
+        $this->assertTrue($decided->is_sensitive, 'The flag never clears.');
+    }
+
+    public function test_dismissing_a_proposal_keeps_the_suppression_while_another_sensitivity_covers_the_round(): void
+    {
+        config(['achievements.sensitivity.propose_from' => '2024-01-01']);
+        $this->weekend();
+        $this->runEngine($this->race);
+        $decided = $this->awards('home_before_dinner')->sole();
+        $decided->confirm(User::factory()->create());
+        MomentSensitivity::factory()->create(['round_id' => $this->race->round_id]);
+        $this->heavyCrash(medicalCar: true);
+        $this->runEngine($this->race);
+
+        MomentSensitivity::query()->where('source', SensitivitySource::Engine)->sole()->dismiss();
+
+        $this->assertSame(AwardStatus::Suppressed, $decided->fresh()->status);
+        $this->assertNotNull($decided->fresh()->held_decision);
+    }
+
+    public function test_deleting_a_block_gives_back_what_a_person_had_decided(): void
+    {
+        $this->weekend();
+        $this->runEngine($this->race);
+        $win = $this->awards('did_the_thing')->sole();
+        $win->confirm(User::factory()->create());
+        $block = MomentSensitivity::factory()->blocked()->create(['round_id' => $this->race->round_id]);
+        $this->runEngine($this->race);
+
+        $block->delete();
+
+        $this->assertSame(AwardStatus::Final, $win->fresh()->status);
+    }
+
+    public function test_the_added_offences_are_withheld_and_the_others_are_not(): void
+    {
+        $withheld = Achievement::query()->where('withheld_on_sensitive_weekends', true)->pluck('key');
+
+        foreach (['released_into_the_wild', 'failed_the_driving_test', 'selective_vision', 'queue_jumper'] as $key) {
+            $this->assertContains($key, $withheld);
+        }
+
+        foreach (['reverse_gear', 'sent_to_your_room', 'expelled'] as $key) {
+            $this->assertNotContains($key, $withheld);
+        }
+    }
+
+    public function test_an_unsafe_release_is_not_awarded_on_a_sensitive_weekend(): void
+    {
+        $this->weekend();
+        $this->message($this->race, 'FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 1 (VER) - UNSAFE RELEASE');
+        $this->runEngine($this->race);
+        $this->assertContains('released_into_the_wild', $this->keys());
+
+        MomentSensitivity::factory()->create(['round_id' => $this->race->round_id]);
+        $this->runEngine($this->race);
+
+        $this->assertNotContains('released_into_the_wild', $this->keys());
+    }
+
+    public function test_only_final_awards_without_a_flag_are_publishable(): void
+    {
+        $final = AchievementAward::factory()->create();
+        AchievementAward::factory()->pending()->create();
+        AchievementAward::factory()->create(['status' => AwardStatus::Suppressed]);
+        AchievementAward::factory()->create(['is_sensitive' => true, 'sensitivity_note' => 'A marshal was injured.']);
+
+        $this->assertSame([$final->id], AchievementAward::query()->publishable()->pluck('id')->all());
     }
 
     public function test_a_confirmed_proposal_keeps_the_weekend_sensitive(): void

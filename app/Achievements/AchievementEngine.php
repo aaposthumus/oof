@@ -267,24 +267,17 @@ class AchievementEngine
             $blocked = $round['blocked_round'] || ($award->driver_id !== null && in_array($award->driver_id, $round['blocked_drivers'], true));
             $withheld = $achievement !== null && ! Sensitivity::allows($round, $achievement, $award->driver_id);
 
-            // A block stores nothing, whoever decided; a withheld award a person decided is suppressed by the system instead.
+            // What the engine made itself goes; what a person decided is suppressed by the system, keeping their decision.
             $outcome = match (true) {
-                $blocked, ! $award->isDecided() => 'delete',
-                $withheld && $award->decision_note !== Sensitivity::SYSTEM_NOTE => 'suppress',
+                ! $award->isDecided() => 'delete',
+                ($blocked || $withheld) && $award->decision_note !== Sensitivity::SYSTEM_NOTE => 'suppress',
                 default => null,
             };
 
             if ($outcome === 'delete') {
                 $award->delete();
             } elseif ($outcome === 'suppress') {
-                $award->update([
-                    'status' => AwardStatus::Suppressed,
-                    'decided_by' => null,
-                    'decided_at' => now(),
-                    'decision_note' => Sensitivity::SYSTEM_NOTE,
-                    'is_sensitive' => true,
-                    'sensitivity_note' => $round['note'],
-                ]);
+                $award->suppressBySystem($round['note']);
             }
 
             if ($outcome !== null) {

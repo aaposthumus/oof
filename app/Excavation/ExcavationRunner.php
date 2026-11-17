@@ -179,14 +179,14 @@ class ExcavationRunner
 
     /**
      * A sensitivity on a story's other rounds flags it only when it is fatal,
-     * or an injury to one of the drivers the story is about. Minor never does.
+     * or an injury to one of the drivers the story is about (its driver, or
+     * one of the drivers an engine proposal lists). Minor never does.
      */
     private function flagsRelatedRound(MomentSensitivity $sensitivity, Candidate $candidate): bool
     {
         return $sensitivity->severity === SensitivitySeverity::Fatal
             || ($sensitivity->severity === SensitivitySeverity::Injury
-                && $sensitivity->driver_id !== null
-                && in_array($sensitivity->driver_id, $candidate->relatedDriverIds, true));
+                && array_intersect(array_filter([$sensitivity->driver_id, ...($sensitivity->involved_driver_ids ?? [])]), $candidate->relatedDriverIds) !== []);
     }
 
     /**

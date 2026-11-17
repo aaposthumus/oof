@@ -334,6 +334,22 @@ class ExcavationRunnerTest extends TestCase
         $this->assertSame("{$related->season->year} Dutch Grand Prix: The champion was injured.", $involvedHit->sensitivityNote);
     }
 
+    public function test_an_engine_proposal_flags_a_related_round_for_every_driver_it_lists_until_it_is_dismissed(): void
+    {
+        $round = Round::factory()->create();
+        $related = Round::factory()->create(['name' => 'Dutch Grand Prix']);
+        [$involved, $other] = Driver::factory()->count(2)->create();
+        $proposal = MomentSensitivity::factory()->proposal()->for($related)->create(['involved_driver_ids' => [$other->id, $involved->id], 'note' => 'Heavy crash.']);
+
+        $hit = $this->runWith(new Candidate($round->id, null, null, 50.0, [], relatedRoundIds: [$related->id], relatedDriverIds: [$involved->id]));
+        $proposal->dismiss();
+        MomentCandidate::query()->delete();
+        $afterDismissal = $this->runWith(new Candidate($round->id, null, null, 50.0, [], relatedRoundIds: [$related->id], relatedDriverIds: [$involved->id]));
+
+        $this->assertTrue($hit->isSensitive);
+        $this->assertFalse($afterDismissal->isSensitive);
+    }
+
     public function test_a_fatal_entry_on_a_related_round_always_flags_but_the_own_round_flags_any_severity(): void
     {
         $round = Round::factory()->create();

@@ -646,6 +646,26 @@ Follow-ups decided by the owner on 17 November 2026, done the same day:
   2023 Australia (Ocon, Gasly, de Vries, Sargeant: red flag, 32 minutes) and 2023
   Netherlands (Zhou: red flag in the rain, 42 minutes); none had the medical car.
 
+Follow-ups decided by the owner on 17 November 2026, done the same day:
+
+- A block, like a withheld achievement, force-suppresses awards a person had decided
+  (system note "Withheld: sensitive or blocked weekend"); what the engine made itself is
+  removed. The person's decision is kept in `achievement_awards.held_decision`.
+- When a dismissal or a deletion leaves a round without an active sensitivity, the held
+  decisions come back (`AchievementAward::releaseRound()`); the flag stays.
+- One engine proposal per round: no driver, covering the round, with every driver
+  involved in `moment_sensitivities.involved_driver_ids` and named in the note; a later
+  crash that weekend is added while it is still a proposal. The excavators' span rule
+  reads the listed drivers like a named one. Long stoppage stays at 20 minutes.
+- Also withheld: Released Into the Wild, Failed the Driving Test, Selective Vision and
+  Queue Jumper. Reverse Gear, Sent to Your Room and Expelled are not.
+- `AchievementAward::query()->publishable()`: final and not flagged sensitive.
+
+**Hard requirement for any publishing work** (feeds, automatic posts, comedic formats,
+the public site, exports): read awards only through `publishable()`. Suppressed, pending
+and flagged awards never leave the CMS. A publishing change that reads awards another
+way is not done.
+
 **Phase 5: OOFscore.**
 Standings projection, a rebuild command, the standings event, a leaderboard page in the CMS.
 Done when the 2026 leaderboard can be rebuilt from scratch and matches a hand check of

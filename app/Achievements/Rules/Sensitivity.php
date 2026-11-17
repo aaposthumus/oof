@@ -28,7 +28,7 @@ use WeakMap;
  */
 class Sensitivity
 {
-    public const SYSTEM_NOTE = 'Withheld: sensitive weekend';
+    public const SYSTEM_NOTE = 'Withheld: sensitive or blocked weekend';
 
     /**
      * @var WeakMap<SessionData, array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, note: string|null}>|null
@@ -93,41 +93,54 @@ class Sensitivity
     }
 
     /**
-     * On a live weekend, propose a sensitivity for each car that retired from
-     * a race or sprint with strong heavy-crash signals, once per driver and
-     * round: a proposal a person dismissed is not proposed again.
-     *
-     * @return Collection<int, MomentSensitivity> The proposals created
+     * On a live weekend, propose one sensitivity for the round when cars
+     * retired from a race or sprint with strong heavy-crash signals. It
+     * covers the whole round and names every driver involved; a later crash
+     * the same weekend is added while it is still a proposal. Once a person
+     * confirmed or dismissed it, nothing changes and nothing new is proposed.
      */
-    public function propose(SessionData $data): Collection
+    public function propose(SessionData $data): ?MomentSensitivity
     {
         $round = $data->session->round;
 
         if (! in_array($data->type(), [SessionType::Race, SessionType::Sprint], true)
             || $round->date->lt(CarbonImmutable::parse(config('achievements.sensitivity.propose_from')))) {
-            return collect();
+            return null;
         }
 
-        $created = $this->heavyCrash->strongCrashes($data)
-            ->map(function (array $crash) use ($data, $round) {
-                $sensitivity = MomentSensitivity::firstOrCreate(
-                    ['round_id' => $round->id, 'driver_id' => $crash['entry']->driver_id, 'source' => SensitivitySource::Engine],
-                    [
-                        'level' => SensitivityLevel::Sensitive,
-                        'severity' => SensitivitySeverity::Injury,
-                        'note' => "{$crash['entry']->driver->given_name} {$crash['entry']->driver->family_name} retired from the {$data->type()->label()} in a heavy crash ({$crash['signal']}).",
-                    ],
-                );
+        $crashes = $this->heavyCrash->strongCrashes($data);
 
-                return $sensitivity->wasRecentlyCreated ? $sensitivity : null;
-            })
-            ->filter()
-            ->values();
+        if ($crashes->isEmpty()) {
+            return null;
+        }
+
+        $proposal = MomentSensitivity::firstOrNew(
+            ['round_id' => $round->id, 'driver_id' => null, 'source' => SensitivitySource::Engine],
+            ['level' => SensitivityLevel::Sensitive, 'severity' => SensitivitySeverity::Injury, 'involved_driver_ids' => [], 'note' => ''],
+        );
+
+        if ($proposal->exists && ! $proposal->isProposal()) {
+            return $proposal;
+        }
+
+        $lines = collect(explode("\n", $proposal->note))->filter();
+
+        foreach ($crashes as $crash) {
+            $driver = $crash['entry']->driver;
+            $lines->push("{$driver->given_name} {$driver->family_name} retired from the {$data->type()->label()} in a heavy crash ({$crash['signal']}).");
+        }
+
+        $proposal->involved_driver_ids = collect($proposal->involved_driver_ids)->concat($crashes->map(fn (array $crash) => $crash['entry']->driver_id))->unique()->sort()->values()->all();
+        $proposal->note = $lines->unique()->implode("\n");
+
+        if ($proposal->isDirty()) {
+            $proposal->save();
+        }
 
         if ($this->cache !== null) {
             unset($this->cache[$data]);
         }
 
-        return $created;
+        return $proposal;
     }
 }

@@ -36,7 +36,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property array{source: string, messages?: list<array<string, mixed>>, rows?: list<array<string, mixed>>, note?: string} $evidence
  */
-#[Fillable(['season_id', 'round_id', 'race_session_id', 'scope', 'context_key', 'recipient_type', 'driver_entry_id', 'driver_id', 'season_team_id', 'team_id', 'achievement_id', 'tier', 'shelf', 'points', 'instance_key', 'event_key', 'detail', 'subtitle', 'variant_name', 'achievement_variant_id', 'occurred_on', 'occurred_md', 'source', 'is_sensitive', 'sensitivity_note', 'evidence', 'confidence', 'status', 'review_reason', 'decided_by', 'decided_at', 'decision_note', 'finalized_at', 'handed_back_at'])]
+#[Fillable(['season_id', 'round_id', 'race_session_id', 'scope', 'context_key', 'recipient_type', 'driver_entry_id', 'driver_id', 'season_team_id', 'team_id', 'achievement_id', 'tier', 'shelf', 'points', 'instance_key', 'event_key', 'detail', 'subtitle', 'variant_name', 'achievement_variant_id', 'occurred_on', 'occurred_md', 'source', 'is_sensitive', 'sensitivity_note', 'evidence', 'confidence', 'status', 'review_reason', 'decided_by', 'decided_at', 'decision_note', 'held_decision', 'finalized_at', 'handed_back_at'])]
 class AchievementAward extends Model
 {
     /** @use HasFactory<AchievementAwardFactory> */
@@ -65,6 +65,7 @@ class AchievementAward extends Model
             'source' => AwardSource::class,
             'finalized_at' => 'datetime',
             'is_sensitive' => 'boolean',
+            'held_decision' => 'array',
             'evidence' => 'array',
             'confidence' => AwardConfidence::class,
             'status' => AwardStatus::class,
@@ -80,6 +81,73 @@ class AchievementAward extends Model
             $award->fillDerived();
             $award->guardSensitivity();
         });
+    }
+
+    /**
+     * Awards that may be published: final and not flagged sensitive. Any
+     * publishing (automatic posts, comedic formats, feeds) must go through
+     * this scope; suppressed, pending and flagged awards never leave the CMS.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopePublishable(Builder $query): void
+    {
+        $query->where('status', AwardStatus::Final)->where('is_sensitive', false);
+    }
+
+    /**
+     * Suppress it because a sensitive or blocked weekend does not allow it,
+     * keeping the decision a person had made so it can come back.
+     */
+    public function suppressBySystem(?string $sensitivityNote): void
+    {
+        $this->update([
+            'held_decision' => $this->decided_by === null ? null : [
+                'status' => $this->status->value,
+                'decided_by' => $this->decided_by,
+                'decided_at' => $this->decided_at?->toIso8601String(),
+                'decision_note' => $this->decision_note,
+            ],
+            'status' => AwardStatus::Suppressed,
+            'decided_by' => null,
+            'decided_at' => now(),
+            'decision_note' => Sensitivity::SYSTEM_NOTE,
+            'is_sensitive' => true,
+            'sensitivity_note' => $sensitivityNote,
+        ]);
+    }
+
+    /**
+     * Give back the decisions people had made on the awards of a round that
+     * the system suppressed. Awards the engine made itself and suppressed
+     * here are removed: the next run judges them again.
+     *
+     * @return int The awards given back or removed
+     */
+    public static function releaseRound(int $roundId): int
+    {
+        return self::query()
+            ->where('round_id', $roundId)
+            ->where('decision_note', Sensitivity::SYSTEM_NOTE)
+            ->get()
+            ->each(function (self $award): void {
+                $held = $award->held_decision;
+
+                if ($held === null) {
+                    $award->delete();
+
+                    return;
+                }
+
+                $award->update([
+                    'status' => AwardStatus::from($held['status']),
+                    'decided_by' => $held['decided_by'],
+                    'decided_at' => $held['decided_at'],
+                    'decision_note' => $held['decision_note'],
+                    'held_decision' => null,
+                ]);
+            })
+            ->count();
     }
 
     /**
