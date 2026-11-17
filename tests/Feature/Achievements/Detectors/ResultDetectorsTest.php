@@ -20,16 +20,18 @@ use App\Achievements\Detectors\SolidBronzeDetector;
 use App\Achievements\Detectors\TookTheScenicRouteDetector;
 use App\Achievements\Detectors\ToTheRescueDetector;
 use App\Achievements\Detectors\TurnedOffTheLightsDetector;
+use App\Achievements\Support\TeamForm;
 use App\Enums\AwardConfidence;
 use App\Enums\SessionType;
-use App\Models\ConstructorStanding;
 use App\Models\DriverEntry;
 use App\Models\DriverStanding;
 use App\Models\Position;
 use App\Models\RaceSession;
 use App\Models\Result;
+use App\Models\Season;
 use App\Models\SeasonTeam;
 use App\Models\SessionLap;
+use App\Models\Team;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\Concerns\BuildsSessions;
 use Tests\TestCase;
@@ -134,21 +136,120 @@ class ResultDetectorsTest extends TestCase
         $this->assertSame('from P12', $this->detect(TookTheScenicRouteDetector::class, $this->race)->sole()->detail);
     }
 
-    public function test_a_surprise_win_by_a_team_outside_the_top_four_before_the_round(): void
+    /**
+     * A finished Grand Prix before the test race in which each given team scores the given points.
+     *
+     * @param  array<int, float>  $pointsByTeam  Keyed by season team ID
+     */
+    private function earlierRace(int $year, int $roundNumber, array $pointsByTeam, SessionType $type = SessionType::Race, string $name = 'Miami Grand Prix'): RaceSession
     {
-        $previous = $this->round(2024, 4);
-        $surpriseTeam = SeasonTeam::factory()->create(['season_id' => $previous->season_id]);
-        $topTeam = SeasonTeam::factory()->create(['season_id' => $previous->season_id]);
-        ConstructorStanding::create(['round_id' => $previous->id, 'season_team_id' => $topTeam->id, 'position' => 1, 'position_text' => '1', 'points' => 100, 'wins' => 4]);
-        ConstructorStanding::create(['round_id' => $previous->id, 'season_team_id' => $surpriseTeam->id, 'position' => 7, 'position_text' => '7', 'points' => 6, 'wins' => 0]);
-        $winner = $this->finisher(10, 1, ['team' => $surpriseTeam]);
+        $round = $this->round($year, $roundNumber, ['name' => $name, 'jolpica_race_name' => $name]);
+        $race = $this->raceSession($type, $round);
 
-        $this->assertSame("Team P7 in the constructors' standings before the round", $this->detect(GiantSlayerDetector::class, $this->race)->sole()->detail);
+        foreach ($pointsByTeam as $seasonTeamId => $points) {
+            $this->resultFor($this->car($race, 1, SeasonTeam::find($seasonTeamId)), ['points' => $points]);
+        }
+
+        return $race;
+    }
+
+    /**
+     * Five lasting teams with a season team in both 2023 and 2024, best form first.
+     *
+     * @return list<array{2023: SeasonTeam, 2024: SeasonTeam}>
+     */
+    private function fiveTeams(): array
+    {
+        return collect(range(1, 5))->map(function () {
+            $team = Team::factory()->create();
+
+            return [
+                2023 => SeasonTeam::factory()->create(['team_id' => $team->id, 'season_id' => Season::firstOrCreate(['year' => 2023])->id]),
+                2024 => SeasonTeam::factory()->create(['team_id' => $team->id, 'season_id' => Season::firstOrCreate(['year' => 2024])->id]),
+            ];
+        })->all();
+    }
+
+    public function test_a_surprise_win_and_pole_by_a_team_outside_the_top_four_on_form(): void
+    {
+        $teams = $this->fiveTeams();
+        $this->earlierRace(2024, 4, [$teams[0][2024]->id => 25, $teams[1][2024]->id => 18, $teams[2][2024]->id => 15, $teams[3][2024]->id => 12, $teams[4][2024]->id => 10]);
+        $winner = $this->finisher(10, 1, ['team' => $teams[4][2024]]);
+
+        $detection = $this->detect(GiantSlayerDetector::class, $this->race)->sole();
+        $this->assertSame('Team P5 on form over the last race', $detection->detail);
+        $this->assertStringContainsString('P5 with 10 points per race', $detection->evidence['note']);
 
         $qualifying = $this->raceSession(SessionType::Qualifying, $this->race->round);
-        $pole = $this->car($qualifying, 10, $surpriseTeam, $winner->driver);
+        $pole = $this->car($qualifying, 10, $teams[4][2024], $winner->driver);
         $this->qualifying($pole, 1, 90_000, 89_000, 88_000);
-        $this->assertSame($pole->id, $this->detect(PlotTwistDetector::class, $qualifying)->sole()->driverEntryId);
+        $this->assertSame('Team P5 on form over the last race', $this->detect(PlotTwistDetector::class, $qualifying)->sole()->detail);
+    }
+
+    public function test_a_win_by_a_top_four_team_on_form_is_no_surprise(): void
+    {
+        $teams = $this->fiveTeams();
+        $this->earlierRace(2024, 4, [$teams[0][2024]->id => 25, $teams[1][2024]->id => 18, $teams[2][2024]->id => 15, $teams[3][2024]->id => 12, $teams[4][2024]->id => 10]);
+        $this->finisher(10, 1, ['team' => $teams[3][2024]]);
+
+        $this->assertCount(0, $this->detect(GiantSlayerDetector::class, $this->race));
+    }
+
+    public function test_in_round_one_the_window_reaches_into_the_previous_season_and_a_rename_keeps_the_form(): void
+    {
+        $this->race = $this->raceSession(SessionType::Race, $this->round(2024, 1));
+        $teams = $this->fiveTeams();
+        $this->earlierRace(2023, 22, [$teams[0][2023]->id => 1, $teams[1][2023]->id => 2, $teams[2][2023]->id => 3, $teams[3][2023]->id => 4, $teams[4][2023]->id => 5]);
+
+        // The 2023 season team of the lasting team with the best form is a different (renamed) season team in 2024.
+        $this->finisher(10, 1, ['team' => $teams[4][2024]]);
+        $this->assertCount(0, $this->detect(GiantSlayerDetector::class, $this->race));
+
+        Result::query()->whereHas('driverEntry', fn ($query) => $query->where('race_session_id', $this->race->id))->delete();
+        $this->finisher(11, 1, ['team' => $teams[0][2024]]);
+        $this->assertSame('Team P5 on form over the last race', $this->detect(GiantSlayerDetector::class, $this->race)->sole()->detail);
+    }
+
+    public function test_the_window_ranks_on_points_per_race_entered_and_skips_sprints_and_the_indianapolis_500(): void
+    {
+        $teams = $this->fiveTeams();
+        $ids = array_map(fn (array $team) => $team[2024]->id, $teams);
+        // Team 4 entered one race only and scored 20 in it: 20 per race beats team 0 with 30 over two.
+        $this->earlierRace(2024, 1, [$ids[0] => 15, $ids[1] => 6, $ids[2] => 4, $ids[3] => 2]);
+        $this->earlierRace(2024, 2, [$ids[0] => 15, $ids[1] => 6, $ids[2] => 4, $ids[3] => 2, $ids[4] => 20]);
+        $this->earlierRace(2024, 3, [$ids[3] => 100], SessionType::Sprint);
+        $this->earlierRace(2024, 4, [$ids[3] => 100], name: 'Indianapolis 500');
+
+        $form = TeamForm::before($this->race->round);
+
+        $this->assertCount(2, $form->races);
+        $this->assertSame(1, $form->rankOf($teams[4][2024]->team_id));
+        $this->assertSame(2, $form->rankOf($teams[0][2024]->team_id));
+        $this->assertSame(5, $form->rankOf($teams[3][2024]->team_id));
+        $this->assertNull($form->rankOf(Team::factory()->create()->id));
+    }
+
+    public function test_equal_form_shares_the_better_rank(): void
+    {
+        $teams = $this->fiveTeams();
+        $ids = array_map(fn (array $team) => $team[2024]->id, $teams);
+        $this->earlierRace(2024, 4, [$ids[0] => 25, $ids[1] => 18, $ids[2] => 15, $ids[3] => 10, $ids[4] => 10]);
+
+        $this->finisher(10, 1, ['team' => $teams[4][2024]]);
+
+        $this->assertSame(4, TeamForm::before($this->race->round)->rankOf($teams[4][2024]->team_id));
+        $this->assertCount(0, $this->detect(GiantSlayerDetector::class, $this->race));
+    }
+
+    public function test_a_team_without_a_race_in_the_window_is_a_surprise_but_the_first_race_ever_is_not(): void
+    {
+        $this->finisher(10, 1);
+        $this->assertCount(0, $this->detect(GiantSlayerDetector::class, $this->race));
+
+        $teams = $this->fiveTeams();
+        $this->earlierRace(2024, 4, [$teams[0][2024]->id => 25]);
+
+        $this->assertSame('No race for the team in the last race', $this->detect(GiantSlayerDetector::class, $this->race)->sole()->detail);
     }
 
     public function test_grand_chelem_needs_pole_win_fastest_lap_and_every_lap_led(): void

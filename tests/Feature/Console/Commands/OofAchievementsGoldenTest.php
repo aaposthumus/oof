@@ -128,10 +128,12 @@ class OofAchievementsGoldenTest extends TestCase
         $this->race();
         $this->export();
 
-        $this->race($this->raceSession(SessionType::Race, $this->round(2023)));
+        // A later season, because an earlier race would change the team form the exported race reads.
+        Date::setTestNow('2025-06-01 12:00:00');
+        $this->race($this->raceSession(SessionType::Race, $this->round(2025)));
 
         $this->artisan('oof:achievements:golden')
-            ->expectsOutputToContain('1 sessions were first run after the export and are not compared (2023-05-race to 2023-05-race).')
+            ->expectsOutputToContain('1 sessions were first run after the export and are not compared (2025-05-race to 2025-05-race).')
             ->expectsOutputToContain('No differences.')
             ->assertSuccessful();
     }

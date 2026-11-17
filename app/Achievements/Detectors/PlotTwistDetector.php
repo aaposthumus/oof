@@ -24,15 +24,15 @@ class PlotTwistDetector implements Detector
     {
         return $data->entries
             ->filter(fn (DriverEntry $entry) => $entry->qualifyingResult?->position === 1)
-            ->map(fn (DriverEntry $entry) => [$entry, Surprise::reason($entry, $data)])
+            ->map(fn (DriverEntry $entry) => [$entry, Surprise::of($entry, $data)])
             ->filter(fn (array $pole) => $pole[1] !== null)
             ->map(fn (array $pole) => new Detection(
                 achievementKey: $this->key(),
                 driverEntryId: $pole[0]->id,
                 instanceKey: 'pole',
                 eventKey: "pole:{$pole[0]->id}",
-                evidence: Evidence::results([$pole[0]], $pole[1]),
-                detail: $pole[1],
+                evidence: Evidence::results([$pole[0]], $pole[1]['note']),
+                detail: $pole[1]['detail'],
             ))
             ->values();
     }

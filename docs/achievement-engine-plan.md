@@ -15,7 +15,7 @@ and 4 for the design, and "Working notes" at the end.
 |---|---|---|
 | 0 | Safety net: golden master and comparison command | Done, 16 November 2026 |
 | 1 | Catalogue alignment, points in config, final-after wait per session type | Done, 16 November 2026 |
-| 2 | Surprise rule (rolling team form) and team lineage table | Not started |
+| 2 | Surprise rule (rolling team form) and team lineage table | Done, 17 November 2026 |
 | 3 | Award schema | Not started |
 | 4 | Sensitivity | Not started |
 | 5 | OOFscore | Not started |
@@ -429,9 +429,10 @@ come from general knowledge of the Ergast data, not from this database.
    2027 weekend unless a person or the heavy-crash proposal does.
 8. **Nicknames, mottos, props, reserves** are not in the database; the 2027 line-ups
    are not confirmed.
-9. **Team lineage** covers today's teams. Historic renames outside those lines
-   (Arrows and Footwork, Ligier and Prost, March and Leyton House) need adding, or the
-   renamed team reads as having no history.
+9. **Team lineage** covers today's teams and, since Phase 2, the main historic renames.
+   Jolpica's chassis-engine constructors of the 1950s to 1970s (Lotus-Climax beside Team
+   Lotus, Cooper-Climax, Brabham-Repco, McLaren-Ford and so on) are still separate teams,
+   which splits their form; that needs a decision before the historic backfill.
 10. **Session dates.** Old seasons have only the race date, in UTC; a night race can
     fall on the next calendar day locally.
 11. **Jolpica quirks.** No scheduled race distance, a few wrong 2025 lap counts, grid 0
@@ -500,12 +501,40 @@ younger than its final-after wait changes from pending to final by itself.
   database about 1.5 hours after the session ended, so qualifying awards can be final
   on Saturday evening. That is one observation, not a guarantee.
 
-**Phase 2: surprise rule and team lineage table.**
-Add `team_lineages`, seed it from `config/f1.php`, point the team resolver at it, add a
-CMS screen and the missing historic renames. Replace `Surprise` with the rolling team
-form of section 3. Apply decisions 5, 6 and 9 of section 2.
-Done when Plot Twist and Giant Slayer for 2023 to 2026 have been read through by hand,
-round 1 of a season works, and a renamed team keeps its form across the rename.
+**Phase 2: surprise rule and team lineage table. Done.**
+
+- Checked first: Leclerc's black-and-white flag in 2023 round 8 (Canada) qualifying.
+  He went out in Q2 (P11), so Deleted Scene, which needs a deleted Q3 lap, could not
+  apply. No car in 2023 to 2026 has both Teacher's Stare and Deleted Scene in one session.
+- `TeamForm` (`App\Achievements\Support`): the last `achievements.surprise.window_races`
+  (10) Grands Prix before the round, across seasons, without sprints and without the
+  Indianapolis 500. Points per race entered, per lasting team; equal figures share the
+  better rank. `Surprise::of()` returns the detail ("Team P6 on form over the last 10
+  races", "No race for the team in the last 10 races") and an evidence note with the
+  window and the top four. Giant Slayer now has that note too. `top_grid` and
+  `early_season_rounds` are gone from the config.
+- `team_lineages` (constructor ID, from year, to year, team slug, note) replaces
+  `f1.team_lineage`; `TeamResolver` reads it. Seeded by `TeamLineageSeeder` (create-only)
+  from the migration, with the historic renames added: Footwork to Arrows, Ligier to
+  Prost, Leyton House to March, Osella to Fondmetal, Lotus Racing to Caterham, Virgin
+  and Marussia to Manor. A lasting team takes the slug of its latest name.
+- `TeamLineageSync` re-points `season_teams.team_id` to what the rules give, renames a
+  team to its latest season's name and removes a team left without seasons. It runs in
+  the migration and after every create, edit or delete on the CMS screen (Team lineage),
+  in one transaction; a rule that would merge an unmapped constructor is refused and
+  rolled back. Overlapping ranges for one constructor are refused by the form.
+- On the local database the migration moved the season teams of those 7 constructors
+  and removed their 7 empty teams (188 to 181).
+- Read by hand: every pole and win of 2023 to 2026 with the winning team's form rank.
+  Only Gasly's pole (2026 round 13, Alpine P6 on form) is a surprise, as under the old
+  rule; the closest calls were teams at rank 4. Golden master: only that award's detail
+  and evidence changed. Re-exported: 4,156 awards in 450 sessions.
+- For comparison (not awarded yet, the engine starts in 2023), over 1990 to 2022 the
+  old and new rules agree on 31 poles and wins; the new rule adds 13 (Renault early 2005,
+  Mercedes 2013 rounds 5 and 6) and drops 22 (15 of them McLaren 2007, which the old
+  rule read as P11 after its exclusion from the constructors' standings).
+- Note: a session's surprise awards now depend on the ten races before it, so a late
+  result change in an earlier race does not re-run them under `--changed`.
 
 **Phase 3: award schema.**
 Add context, scope, recipient, snapshot, date, source and `finalized_at` columns;

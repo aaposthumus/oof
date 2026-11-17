@@ -3,6 +3,7 @@
 namespace App\Achievements\Detectors;
 
 use App\Achievements\SessionData;
+use App\Achievements\Support\Evidence;
 use App\Achievements\Support\Finish;
 use App\Achievements\Support\Surprise;
 use App\Models\DriverEntry;
@@ -23,6 +24,11 @@ class GiantSlayerDetector extends ResultDetector
             return false;
         }
 
-        return Surprise::reason($entry, $data) ?? false;
+        return Surprise::of($entry, $data)['detail'] ?? false;
+    }
+
+    protected function evidence(DriverEntry $entry, SessionData $data): array
+    {
+        return Evidence::results([$entry], Surprise::of($entry, $data)['note'] ?? null);
     }
 }

@@ -3,82 +3,49 @@
 namespace App\Achievements\Support;
 
 use App\Achievements\SessionData;
-use App\Enums\SessionType;
-use App\Models\ConstructorStanding;
 use App\Models\DriverEntry;
-use App\Models\Result;
-use App\Models\Round;
 
 /**
- * Whether a win or pole is a surprise: the team stands outside the top of
- * the constructors' championship before the round, or (after the first
- * rounds) the driver has not started in the top of the grid earlier that
- * season. In the first rounds the previous season's final standings count,
- * as in SurpriseWinnerExcavator.
+ * Whether a win or pole is a surprise: the lasting team stands outside the
+ * top of the rolling team form before the round (see TeamForm). A team with
+ * no race in the window counts as outside it. Before the very first race
+ * the window is empty and nothing is a surprise. Only the team decides; the
+ * driver's own history does not.
  */
 class Surprise
 {
     /**
-     * The reason it is a surprise, or null when it is not.
+     * The award's detail and the note for its evidence, or null when it is not a surprise.
+     *
+     * @return array{detail: string, note: string}|null
      */
-    public static function reason(DriverEntry $entry, SessionData $data): ?string
+    public static function of(DriverEntry $entry, SessionData $data): ?array
     {
         $topTeams = (int) config('achievements.surprise.top_teams');
-        $topGrid = (int) config('achievements.surprise.top_grid');
-        $earlyRounds = (int) config('achievements.surprise.early_season_rounds');
-        $round = $data->session->round;
-        $position = self::teamPositionBefore($entry, $round, $earlyRounds);
+        $form = TeamForm::before($data->session->round);
 
-        if ($position !== null && $position > $topTeams) {
-            return "Team P{$position} in the constructors' standings before the round";
-        }
-
-        if ($round->round_number > $earlyRounds && ! self::startedNearTheFront($entry, $round, $topGrid)) {
-            return "No start in the top {$topGrid} earlier this season";
-        }
-
-        return null;
-    }
-
-    private static function teamPositionBefore(DriverEntry $entry, Round $round, int $earlyRounds): ?int
-    {
-        $teamId = $entry->seasonTeam->team_id;
-        $previousSeason = $round->round_number <= $earlyRounds;
-        $standingsRound = Round::query()
-            ->whereRelation('season', 'year', $previousSeason ? $round->season->year - 1 : $round->season->year)
-            ->when(! $previousSeason, fn ($query) => $query->where('round_number', '<', $round->round_number))
-            ->whereHas('constructorStandings')
-            ->orderByDesc('round_number')
-            ->first();
-
-        if ($standingsRound === null) {
+        if ($form->isEmpty()) {
             return null;
         }
 
-        $standings = ConstructorStanding::query()
-            ->where('round_id', $standingsRound->id)
-            ->whereNotNull('position')
-            ->with('seasonTeam')
-            ->get();
-        $standing = $standings->first(fn (ConstructorStanding $standing) => $standing->seasonTeam->team_id === $teamId);
+        $races = $form->races->count();
+        $window = $races === 1 ? 'race' : "{$races} races";
+        $count = $races === 1 ? '1 race' : "{$races} races";
+        $teamId = $entry->seasonTeam->team_id;
+        $rank = $form->rankOf($teamId);
 
-        // A new or renamed team has no position from the season before; a pointless one stands below the rest.
-        return match (true) {
-            $standing !== null => (int) $standing->position,
-            $previousSeason => null,
-            default => $standings->count() + 1,
-        };
-    }
+        if ($rank !== null && $rank <= $topTeams) {
+            return null;
+        }
 
-    private static function startedNearTheFront(DriverEntry $entry, Round $round, int $topGrid): bool
-    {
-        return Result::query()
-            ->whereBetween('grid', [1, $topGrid])
-            ->whereHas('driverEntry', fn ($query) => $query
-                ->where('driver_id', $entry->driver_id)
-                ->whereHas('raceSession', fn ($query) => $query
-                    ->where('type', SessionType::Race)
-                    ->whereHas('round', fn ($query) => $query->where('season_id', $round->season_id)->where('round_number', '<', $round->round_number))))
-            ->exists();
+        $team = $form->teams->firstWhere('team_id', $teamId);
+        $standing = $team === null
+            ? 'no race in the window'
+            : "P{$rank} with ".TeamForm::figure($team['per_race']).' points per race';
+
+        return [
+            'detail' => $rank === null ? "No race for the team in the last {$window}" : "Team P{$rank} on form over the last {$window}",
+            'note' => "Team form over {$form->windowLabel()} ({$count}). Top {$topTeams} on points per race: {$form->summary($topTeams)}. {$entry->seasonTeam->name}: {$standing}.",
+        ];
     }
 }

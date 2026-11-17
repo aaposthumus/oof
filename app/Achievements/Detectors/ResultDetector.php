@@ -25,6 +25,14 @@ abstract class ResultDetector implements Detector
         return "result:{$entry->id}";
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    protected function evidence(DriverEntry $entry, SessionData $data): array
+    {
+        return Evidence::results([$entry]);
+    }
+
     public function detect(SessionData $data): Collection
     {
         return $data->resultEntries()
@@ -35,7 +43,7 @@ abstract class ResultDetector implements Detector
                 driverEntryId: $judged[0]->id,
                 instanceKey: 'result',
                 eventKey: $this->eventKey($judged[0]),
-                evidence: Evidence::results([$judged[0]]),
+                evidence: $this->evidence($judged[0], $data),
                 detail: $judged[1],
             ))
             ->values();

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Excavation\Support\CareerTimeline;
 use App\Jolpica\JolpicaClient;
+use App\Models\TeamLineage;
 use App\Normalizers\Jolpica\Support\CoreResolver;
 use App\Normalizers\Jolpica\Support\RoundNameResolver;
 use App\Normalizers\Jolpica\Support\TeamResolver;
@@ -25,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
             config('f1.round_overrides'),
         ));
 
-        $this->app->bind(TeamResolver::class, fn () => new TeamResolver(config('f1.team_lineage')));
+        $this->app->bind(TeamResolver::class, fn () => new TeamResolver(TeamLineage::rules()));
 
         $this->app->scoped(CoreResolver::class);
 

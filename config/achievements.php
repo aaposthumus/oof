@@ -136,17 +136,17 @@ return [
     | Surprises
     |--------------------------------------------------------------------------
     |
-    | A win or pole is a surprise when the team stands outside the top
-    | top_teams of the constructors' championship before the round (the
-    | previous season's final standings in the first early_season_rounds),
-    | or the driver has not started in the top top_grid earlier that season.
+    | A win or pole is a surprise when the lasting team stands outside the
+    | top top_teams on form: the points its cars scored in the last
+    | window_races Grands Prix before the round (across season boundaries,
+    | no sprints, no Indianapolis 500), divided by the window's races it
+    | entered. A team with no race in the window counts as outside the top.
     |
     */
 
     'surprise' => [
+        'window_races' => 10,
         'top_teams' => 4,
-        'top_grid' => 5,
-        'early_season_rounds' => 4,
     ],
 
     /*
