@@ -19,7 +19,7 @@ and 4 for the design, and "Working notes" at the end.
 | 3 | Award schema | Done, 17 November 2026 |
 | 4 | Sensitivity | Done, 17 November 2026 |
 | 5 | OOFscore | Done, 17 November 2026 |
-| 6 | Facts and triggers | Not started |
+| 6 | Facts and triggers | Done, 17 November 2026 |
 | 7 | Scopes, runs and the Oofies | Not started |
 | 8 | Recipients | Not started |
 | 9 | Nicknames and evolution events | Not started |
@@ -302,6 +302,9 @@ caching); `config/achievements.php` gains points, shelf_from, events_from, the
 final-after map and the surprise window.
 
 ## 5. Five achievements as rules
+
+Sketches from before Phase 6; the syntax as built (templates in braces, thresholds in
+the entry) is in `config/achievement_catalogue.php`.
 
 Grand Chelem. Its availability is derived: `won` and `took_pole` 1950,
 `set_fastest_lap` 2004, `led_every_lap` 2023, so 2023 today and 2004 after the lap import.
@@ -726,12 +729,54 @@ way is not done.
   745) match their final OOF awards by hand. 2023 to 2025 rebuilt as well; all three
   could be closed. Golden master: no differences.
 
-**Phase 6: facts and triggers.**
-Add the catalogue config, fact providers, predicates with data needs, trigger types and
-the sync and catalogue commands. Port one family at a time (offences and penalties,
-flags, results, pit, qualifying, Safety Car, causes), deleting each replaced detector.
-Done when the golden master is unchanged after every port and the catalogue command
-prints section 6 from code.
+**Phase 6: facts and triggers. Done.**
+
+- `config/achievement_catalogue.php`: the 56 achievements in run order. Editorial
+  defaults (name, section, shelf, tier, score category, description, supersedes) seed a
+  new row once and belong to the CMS after that. Mechanics (sessions, stacks, recipient,
+  scope, withheld on sensitive weekends, trigger) belong to the file. `planned` keeps
+  the settings decided for the 2027 pack (Built Different withheld; Economy Class,
+  Peaked Too Soon and Led Astray in the surprise score category). It replaces the
+  seeder's lists and `AchievementEngine::DETECTORS`; the two migrations that read the
+  seeder's lists have them written out.
+- Facts (`App\Achievements\Facts`): one provider per fact type (penalised_offence,
+  penalty, offence_noted, incident_involvement, flag, track_limit_deletion, result,
+  qualifying_result, qualifying_knockout, pit_stop, lap_count, safety_car_period,
+  deployment, cause), built once per session. A fact carries the recipient, instance and
+  event keys, evidence and attributes (lazy where costly, such as `surprise`).
+  Predicates: did_not_start, retired, disqualified, not_disqualified,
+  classified_finisher, last_classified_finisher, is_surprise, took_pole, led_every_lap.
+- Triggers (`App\Achievements\Triggers`): `match`, `count`, `extreme` and `custom`.
+  Conditions are a predicate name, `[attribute, operator, value]` or `['any' => [...]]`.
+  Templates use `{attribute}`, `{count}`, `{total}`, `{value}` and `{count:one|other}`;
+  an empty value renders as nothing. Unknown trigger options are refused. `aggregate`
+  waits for Phase 7.
+- 52 achievements are config. Custom (`Triggers\Custom`, moved unchanged): Class
+  Dismissed, To the Rescue, Frequent Flyer (until Phase 7) and Nothing to See Here
+  (late). `app/Achievements/Detectors` is gone.
+- Per-achievement thresholds moved from `config/achievements.php` into their entries
+  (`at_least`, or a condition): Blue Carpet 8, Took the Lead 8 laps, Second Helping 2,
+  Table for One 5 s, By a Whisker 15 ms, Took the Scenic Route P10, Practice Makes
+  Imperfect 3. Global settings (surprise, multipliers, cause window, heavy crash,
+  sensitivity, max points) stay there.
+- Data needs (`Requirements`) are derived from the provider, the predicates and the
+  attributes a trigger's conditions read (fastest lap rank from 2004), or declared by a
+  custom class. The engine skips an achievement in a session before its first year, or
+  when the session has no rows in a source its facts are built from.
+  `oof:achievements:catalogue [--each]` prints them (section 6, from code).
+- `oof:achievements:sync [--dry-run]` creates missing achievements and writes the
+  mechanics and the derived `data_sources` and `available_from` (new columns) over the
+  row; rows outside the catalogue are reported, never deleted. The seeder creates rows
+  the same way. The CMS shows sessions, stacks and the data needs read-only (decided by
+  the owner).
+- Years follow the local data, which differs from section 6 in places: measured pit
+  stationary time starts in 2024; Jolpica qualifying in 1994 (Holding the Door from
+  1994, the knockout achievements from 2006); practice deletions are sparse before 2026
+  (one session in 2023, one in 2024, five in 2025), so Practice Makes Imperfect is
+  declared from 2023, which keeps its one 2023 award.
+- Sync dry run on the local database before the switch: no differences in sessions,
+  stacks or withheld; only the 112 new derived fields, which the sync then wrote.
+- Golden master: no differences after every step (13 commits); not re-exported.
 
 **Phase 7: scopes, runs and the Oofies.**
 Weekend scope (combined practice awards, Fine Dining, Nothing to See Here), season scope
@@ -791,11 +836,15 @@ Decided for this phase on 17 November 2026:
 
 When the `achievement-engine` branch is deployed to production (decided 17 November 2026):
 
-1. `php artisan migrate` (lineages, award schema and snapshot, sensitivity columns).
-2. `php artisan oof:achievements --season=2023 --season=2024 --season=2025 --season=2026`,
+1. `php artisan migrate` (lineages, award schema and snapshot, sensitivity columns,
+   data needs).
+2. `php artisan oof:achievements:sync --dry-run`, then, if it lists no differences in
+   sessions or stacks the owner wants kept, `php artisan oof:achievements:sync` (writes
+   the catalogue's mechanics and the derived data needs).
+3. `php artisan oof:achievements --season=2023 --season=2024 --season=2025 --season=2026`,
    to bring the stored awards up to date, as was done locally. Decisions made by people
    stay as they are.
-3. `php artisan oof:oofscore`, to build the standings of every season (step 2 already
+4. `php artisan oof:oofscore`, to build the standings of every season (step 3 already
    rebuilds the seasons it ran; this makes sure).
-4. Do not run `oof:dig` yet; it waits for the chassis-engine merge in Phase 11.
-5. Do not close any season until the owner says so.
+5. Do not run `oof:dig` yet; it waits for the chassis-engine merge in Phase 11.
+6. Do not close any season until the owner says so.
