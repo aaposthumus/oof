@@ -22,19 +22,19 @@ class PitStopFacts implements FactProvider
 {
     public function sources(): array
     {
-        return [DataSource::OpenF1Pit, DataSource::OpenF1RaceControl];
+        return [DataSource::OpenF1Pit];
     }
 
     public function availableFrom(): int
     {
-        return 2023;
+        return 2024;
     }
 
     public function notes(): array
     {
         return [
-            'Stationary time is filled for only a small share of visits.',
-            '"Penalty served" exists in race control only from 2025.',
+            'Stationary time is measured from 2024, and only for a small share of visits.',
+            'Stops serving a penalty are left out through race control, whose "penalty served" exists only from 2025.',
         ];
     }
 

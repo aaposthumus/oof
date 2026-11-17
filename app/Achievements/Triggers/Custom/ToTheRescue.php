@@ -4,6 +4,7 @@ namespace App\Achievements\Triggers\Custom;
 
 use App\Achievements\Detection;
 use App\Achievements\Detector;
+use App\Achievements\Facts\DataSource;
 use App\Achievements\SessionData;
 use App\Achievements\Support\Evidence;
 use App\Achievements\Support\RaceStarts;
@@ -20,6 +21,21 @@ use Illuminate\Support\Collection;
  */
 class ToTheRescue implements Detector
 {
+    public function sources(): array
+    {
+        return [DataSource::JolpicaResults];
+    }
+
+    public function availableFrom(): int
+    {
+        return 1950;
+    }
+
+    public function notes(): array
+    {
+        return ['Only meaningful with fixed line-ups; seat swaps are reviewed.'];
+    }
+
     public function key(): string
     {
         return 'to_the_rescue';

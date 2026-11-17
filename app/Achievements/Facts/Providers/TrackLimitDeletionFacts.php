@@ -28,7 +28,7 @@ class TrackLimitDeletionFacts implements FactProvider
         return [
             'Re-issued deletions are deduplicated on car and time.',
             'From 2024 most deletions carry no lap time.',
-            'Practice deletions are published only from 2026.',
+            'Practice deletions are sparse before 2026 (one session in 2023, one in 2024, five in 2025).',
         ];
     }
 

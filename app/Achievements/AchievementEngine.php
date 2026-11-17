@@ -2,6 +2,7 @@
 
 namespace App\Achievements;
 
+use App\Achievements\Facts\Requirements;
 use App\Achievements\Rules\Cascade;
 use App\Achievements\Rules\CrossCheck;
 use App\Achievements\Rules\Fairness;
@@ -26,6 +27,9 @@ use Throwable;
  * stores the awards. Re-running a session updates its awards in place,
  * never duplicates them, and never changes what a person decided.
  *
+ * An achievement is only looked for in a session its data supports (see
+ * Requirements).
+ *
  * Order: propose sensitivities, detect, fairness, cross-check, cascade,
  * sensitivity, stacking, the late triggers, sensitivity again, then
  * finality.
@@ -34,6 +38,7 @@ class AchievementEngine
 {
     public function __construct(
         private TriggerFactory $triggers,
+        private Requirements $requirements,
         private MessageClassifier $classifier,
         private Fairness $fairness,
         private CrossCheck $crossCheck,
@@ -65,7 +70,7 @@ class AchievementEngine
     {
         $catalogue = $this->catalogue();
         $triggers = collect($this->triggers())
-            ->filter(fn (Trigger $trigger, string $key) => $catalogue->has($key) && $catalogue[$key]->appliesTo($data->type()));
+            ->filter(fn (Trigger $trigger, string $key) => $catalogue->has($key) && $catalogue[$key]->appliesTo($data->type()) && $this->requirements->allows($key, $data));
 
         $detections = $triggers
             ->reject(fn (Trigger $trigger) => $trigger->isLate())

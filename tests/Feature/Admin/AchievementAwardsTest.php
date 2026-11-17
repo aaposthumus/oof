@@ -231,15 +231,31 @@ class AchievementAwardsTest extends TestCase
         Livewire::test(ListAchievements::class)->searchTable($achievement->name)->assertCanSeeTableRecords([$achievement]);
 
         Livewire::test(EditAchievement::class, ['record' => $achievement->getRouteKey()])
-            ->fillForm(['name' => 'Lapped Pup', 'tier' => 'silver', 'session_types' => ['race'], 'supersedes' => ['good_boy']])
+            ->fillForm(['name' => 'Lapped Pup', 'tier' => 'silver', 'supersedes' => ['good_boy']])
             ->call('save')
             ->assertHasNoFormErrors();
 
         $achievement->refresh();
         $this->assertSame('Lapped Pup', $achievement->name);
         $this->assertSame(25, $achievement->points());
-        $this->assertSame(['race'], $achievement->session_types);
+        $this->assertSame(['good_boy'], $achievement->supersedes);
         $this->assertFalse(AchievementResource::canCreate());
+    }
+
+    public function test_the_mechanics_the_catalogue_owns_are_read_only(): void
+    {
+        $achievement = Achievement::firstWhere('key', 'lapped_dog');
+
+        Livewire::test(EditAchievement::class, ['record' => $achievement->getRouteKey()])
+            ->assertFormFieldIsDisabled('session_types')
+            ->assertFormFieldIsDisabled('stacks')
+            ->fillForm(['session_types' => ['race'], 'stacks' => true])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $achievement->refresh();
+        $this->assertSame(['race', 'sprint'], $achievement->session_types);
+        $this->assertFalse($achievement->stacks);
     }
 
     public function test_handing_back_an_award_withheld_on_a_sensitive_weekend_is_refused(): void

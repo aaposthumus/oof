@@ -2,6 +2,7 @@
 
 namespace App\Achievements;
 
+use App\Achievements\Facts\DataNeeds;
 use Illuminate\Support\Collection;
 
 /**
@@ -9,7 +10,7 @@ use Illuminate\Support\Collection;
  * declarative types do not cover. It only reads data; the engine applies
  * the rules and stores the awards.
  */
-interface Detector
+interface Detector extends DataNeeds
 {
     /**
      * The key of the achievement in the catalogue.

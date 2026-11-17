@@ -4,6 +4,7 @@ namespace App\Achievements\Triggers\Custom;
 
 use App\Achievements\Detection;
 use App\Achievements\Detector;
+use App\Achievements\Facts\DataSource;
 use App\Achievements\SessionData;
 use App\Achievements\Support\Evidence;
 use App\Enums\SessionType;
@@ -19,6 +20,21 @@ use Illuminate\Support\Collection;
  */
 class ClassDismissed implements Detector
 {
+    public function sources(): array
+    {
+        return [DataSource::JolpicaResults];
+    }
+
+    public function availableFrom(): int
+    {
+        return 1991;
+    }
+
+    public function notes(): array
+    {
+        return ['Driver standings per round and the most points per race of each era (achievements.max_points); dropped-score seasons before 1991 break the clinch maths.'];
+    }
+
     public function key(): string
     {
         return 'class_dismissed';

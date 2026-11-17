@@ -2,13 +2,14 @@
 
 namespace App\Achievements;
 
+use App\Achievements\Facts\DataNeeds;
 use Illuminate\Support\Collection;
 
 /**
  * A custom trigger's class that depends on what the others found, so it
  * runs after the rules have settled the session's other detections.
  */
-interface LateDetector
+interface LateDetector extends DataNeeds
 {
     public function key(): string;
 

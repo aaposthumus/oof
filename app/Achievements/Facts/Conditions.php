@@ -62,6 +62,25 @@ class Conditions
     }
 
     /**
+     * The fact attributes a where list compares.
+     *
+     * @param  list<string|array<int|string, mixed>>  $where
+     * @return list<string>
+     */
+    public static function attributeNames(array $where): array
+    {
+        return collect($where)
+            ->flatMap(fn (string|array $condition) => match (true) {
+                is_string($condition) => [],
+                isset($condition['any']) => self::attributeNames($condition['any']),
+                default => [explode('.', $condition[0])[0]],
+            })
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
      * The predicates a where list names.
      *
      * @param  list<string|array<int|string, mixed>>  $where

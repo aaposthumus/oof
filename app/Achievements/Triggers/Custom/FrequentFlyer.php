@@ -4,6 +4,7 @@ namespace App\Achievements\Triggers\Custom;
 
 use App\Achievements\Detection;
 use App\Achievements\Detector;
+use App\Achievements\Facts\DataSource;
 use App\Achievements\SessionData;
 use App\Enums\SessionType;
 use App\Models\RaceControlMessage;
@@ -19,6 +20,21 @@ use Illuminate\Support\Collection;
 class FrequentFlyer implements Detector
 {
     public function __construct(private MessageClassifier $classifier) {}
+
+    public function sources(): array
+    {
+        return [DataSource::OpenF1RaceControl];
+    }
+
+    public function availableFrom(): int
+    {
+        return 2023;
+    }
+
+    public function notes(): array
+    {
+        return ['The season\'s safety car deployments in races and sprints, awarded at the final race.'];
+    }
 
     public function key(): string
     {

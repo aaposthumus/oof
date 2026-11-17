@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Achievements\Schemas;
 
+use App\Achievements\Facts\DataSource;
 use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
@@ -17,6 +18,8 @@ use Filament\Schemas\Schema;
 
 class AchievementForm
 {
+    private const CATALOGUE_OWNED = 'Set in config/achievement_catalogue.php and written by oof:achievements:sync.';
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -48,7 +51,9 @@ class AchievementForm
                     ->label('Sessions')
                     ->options(collect(SessionType::cases())->mapWithKeys(fn (SessionType $type) => [$type->value => $type->label()])->all())
                     ->columns(4)
-                    ->required()
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText(self::CATALOGUE_OWNED)
                     ->columnSpanFull(),
                 Select::make('supersedes')
                     ->multiple()
@@ -65,9 +70,22 @@ class AchievementForm
                     ->rows(2)
                     ->columnSpanFull(),
                 Toggle::make('stacks')
-                    ->helperText('Awarded once per instance; otherwise once per driver per session.'),
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText('Awarded once per instance; otherwise once per driver per session. '.self::CATALOGUE_OWNED),
                 Toggle::make('is_enabled')
                     ->label('Enabled'),
+                TextInput::make('data_sources')
+                    ->label('Data')
+                    ->formatStateUsing(fn (?array $state): string => collect($state ?? [])->map(fn (string $source) => DataSource::tryFrom($source)?->label() ?? $source)->implode(', '))
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText('Derived from the trigger by oof:achievements:sync.'),
+                TextInput::make('available_from')
+                    ->label('Data from')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText('The first season its data supports; the engine skips earlier sessions.'),
             ]);
     }
 }

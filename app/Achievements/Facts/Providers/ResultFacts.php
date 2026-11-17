@@ -3,6 +3,7 @@
 namespace App\Achievements\Facts\Providers;
 
 use App\Achievements\Facts\Concerns\ReadsResults;
+use App\Achievements\Facts\DescribesAttributes;
 use App\Achievements\Facts\Fact;
 use App\Achievements\Facts\FactEvidence;
 use App\Achievements\Facts\FactProvider;
@@ -23,16 +24,18 @@ use Illuminate\Support\Collection;
  * fastest_lap_rank, surprise (detail and note when the team's result is a
  * surprise on form, else null; see Surprise).
  */
-class ResultFacts implements FactProvider
+class ResultFacts implements DescribesAttributes, FactProvider
 {
     use ReadsResults;
 
-    public function notes(): array
+    public function attributeYears(): array
     {
-        return [
-            'From 2025 the retirement reason is only "Retired", so illness and injury cannot be filtered automatically.',
-            'Grid 0 meant a pit lane start until 2024.',
-        ];
+        return ['fastest_lap_rank' => 2004];
+    }
+
+    public function attributeNotes(): array
+    {
+        return ['grid' => 'Grid 0 meant a pit lane start until 2024.'];
     }
 
     public function facts(SessionData $data): Collection

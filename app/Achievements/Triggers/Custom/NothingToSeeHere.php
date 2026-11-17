@@ -3,6 +3,7 @@
 namespace App\Achievements\Triggers\Custom;
 
 use App\Achievements\Detection;
+use App\Achievements\Facts\DataSource;
 use App\Achievements\LateDetector;
 use App\Achievements\SessionData;
 use App\Achievements\Support\Evidence;
@@ -21,6 +22,21 @@ use Illuminate\Support\Collection;
  */
 class NothingToSeeHere implements LateDetector
 {
+    public function sources(): array
+    {
+        return [DataSource::JolpicaResults];
+    }
+
+    public function availableFrom(): int
+    {
+        return 2023;
+    }
+
+    public function notes(): array
+    {
+        return ['Reads the weekend\'s awards, so it starts with the OOF shelf.'];
+    }
+
     public function key(): string
     {
         return 'nothing_to_see_here';
