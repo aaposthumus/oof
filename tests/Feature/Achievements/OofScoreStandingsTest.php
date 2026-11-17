@@ -81,17 +81,40 @@ class OofScoreStandingsTest extends TestCase
         $this->assertSame([$alice->id, $bob->id, $carol->id], array_keys($this->after($second)), 'Drivers in ID order, for the comparison.');
     }
 
-    public function test_equal_points_share_a_place(): void
+    public function test_equal_points_are_split_like_a_medal_table_and_only_full_equals_share_a_place(): void
     {
-        [$alice, $bob, $carol] = Driver::factory()->count(3)->create();
+        [$platinum, $gold, $silvers, $bronzes, $twin] = Driver::factory()->count(5)->create();
         $race = $this->race(1);
-        $this->award($race, $alice, 'good_boy');
-        $this->award($race, $bob, 'good_boy');
-        $this->award($race, $carol, 'lapped_dog');
+        $this->award($race, $platinum, 'selective_hearing');   // one platinum: 100
+        $this->award($race, $gold, 'forgot_the_keys');        // two golds: 100
+        $this->award($race, $gold, 'forgot_the_keys');
+        $this->award($race, $silvers, 'good_boy');            // four silvers: 100
+        $this->award($race, $silvers, 'good_boy');
+        $this->award($race, $silvers, 'good_boy');
+        $this->award($race, $silvers, 'good_boy');
+        foreach ([$bronzes, $twin] as $driver) {              // ten bronzes each: 100
+            foreach (range(1, 10) as $ignored) {
+                $this->award($race, $driver, 'lapped_dog');
+            }
+        }
 
         app(OofScoreStandings::class)->rebuild($race->round->season);
 
-        $this->assertSame([1, 1, 3], array_column(array_values($this->after($race)), 2));
+        $places = array_map(fn (array $row) => $row[2], $this->after($race));
+        $this->assertSame([$platinum->id => 1, $gold->id => 2, $silvers->id => 3, $bronzes->id => 4, $twin->id => 4], $places);
+    }
+
+    public function test_a_nothing_to_see_here_counts_as_a_bronze_in_the_medal_count(): void
+    {
+        [$more, $fewer] = Driver::factory()->count(2)->create();
+        $race = $this->race(1);
+        $this->award($race, $more, 'lapped_dog');
+        $this->award($race, $more, 'nothing_to_see_here');   // bronze, worth 0 points
+        $this->award($race, $fewer, 'lapped_dog');
+
+        app(OofScoreStandings::class)->rebuild($race->round->season);
+
+        $this->assertSame([1, 2], [$this->after($race)[$more->id][2], $this->after($race)[$fewer->id][2]]);
     }
 
     public function test_a_rebuild_from_scratch_gives_the_same_standings_and_changes_nothing(): void
@@ -141,6 +164,50 @@ class OofScoreStandingsTest extends TestCase
         $this->assertNull($standings->rebuild($race->round->season->fresh()));
         $this->assertSame([$alice->id => [10, 1, 1, null]], $this->after($race));
         $this->assertSame(10, $award->fresh()->points);
+    }
+
+    public function test_reopening_a_season_brings_its_points_back_to_the_catalogue_and_rebuilds_it(): void
+    {
+        $alice = Driver::factory()->create();
+        $race = $this->race(1);
+        $award = $this->award($race, $alice, 'lapped_dog');
+        $standings = app(OofScoreStandings::class);
+        $standings->close($race->round->season, CarbonImmutable::parse('2024-12-31'));
+        $award->achievement->update(['tier' => AchievementTier::Silver]);
+        $this->award($race, $alice, 'good_boy');
+
+        $standings->reopen($race->round->season->fresh());
+
+        $this->assertFalse($race->round->season->fresh()->isClosed());
+        $this->assertSame(25, $award->fresh()->points);
+        $this->assertSame([$alice->id => [50, 2, 1, null]], $this->after($race));
+
+        $this->expectException(SeasonNotClosable::class);
+        $standings->reopen($race->round->season->fresh());
+    }
+
+    public function test_the_reopen_command_asks_for_the_year(): void
+    {
+        $alice = Driver::factory()->create();
+        $race = $this->race(1);
+        $this->award($race, $alice, 'lapped_dog');
+        app(OofScoreStandings::class)->close($race->round->season, CarbonImmutable::parse('2024-12-31'));
+
+        $this->artisan('oof:oofscore:reopen', ['season' => 2024])
+            ->expectsQuestion("Reopening 2024 gives its awards the catalogue's current points and rebuilds its OOFscore. Type the year to go on", '2023')
+            ->expectsOutputToContain('Not reopened.')
+            ->assertFailed();
+        $this->assertTrue($race->round->season->fresh()->isClosed());
+
+        $this->artisan('oof:oofscore:reopen', ['season' => 2024])
+            ->expectsQuestion("Reopening 2024 gives its awards the catalogue's current points and rebuilds its OOFscore. Type the year to go on", '2024')
+            ->expectsOutputToContain('2024 is open again.')
+            ->assertSuccessful();
+        $this->assertFalse($race->round->season->fresh()->isClosed());
+
+        $this->artisan('oof:oofscore:reopen', ['season' => 2024, '--force' => true])
+            ->expectsOutputToContain('it is not closed')
+            ->assertFailed();
     }
 
     public function test_a_season_cannot_be_closed_before_its_last_race_is_final_or_while_awards_wait(): void

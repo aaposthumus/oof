@@ -6,6 +6,7 @@ use App\Enums\AwardStatus;
 use App\Enums\RecipientType;
 use App\Enums\SessionType;
 use App\Events\OofScoreStandingsUpdated;
+use App\Models\Achievement;
 use App\Models\AchievementAward;
 use App\Models\OofscoreStanding;
 use App\Models\Round;
@@ -24,6 +25,11 @@ use Illuminate\Support\Facades\DB;
  */
 class OofScoreStandings
 {
+    /**
+     * Tiers in the order they break a tie on points, as in a medal table.
+     */
+    private const TIERS = ['platinum', 'gold', 'silver', 'bronze'];
+
     /**
      * Rebuild a season from scratch. Returns null for a closed season.
      *
@@ -80,6 +86,31 @@ class OofScoreStandings
     }
 
     /**
+     * Reopen a closed season: its awards take the catalogue's current tier,
+     * shelf and points again, and its standings are rebuilt and follow its
+     * awards from then on.
+     *
+     * @throws SeasonNotClosable
+     */
+    public function reopen(Season $season): void
+    {
+        if (! $season->isClosed()) {
+            throw new SeasonNotClosable("{$season->year} cannot be reopened: it is not closed.");
+        }
+
+        DB::transaction(function () use ($season) {
+            $season->update(['oofscore_closed_at' => null]);
+
+            foreach (Achievement::query()->whereIn('id', AchievementAward::query()->where('season_id', $season->id)->select('achievement_id'))->get() as $achievement) {
+                AchievementAward::query()->where('season_id', $season->id)->where('achievement_id', $achievement->id)
+                    ->update(['tier' => $achievement->tier?->value, 'shelf' => $achievement->shelf->value, 'points' => $achievement->points(), 'updated_at' => now()]);
+            }
+
+            $this->rebuild($season->fresh());
+        });
+    }
+
+    /**
      * @return list<string>
      */
     public function reasonsNotToClose(Season $season, CarbonImmutable $now): array
@@ -120,7 +151,7 @@ class OofScoreStandings
             ->whereNotNull('round_id')
             ->whereIn('shelf', config('achievements.points.scoring_shelves'))
             ->toBase()
-            ->get(['round_id', 'driver_id', 'points'])
+            ->get(['round_id', 'driver_id', 'points', 'tier'])
             ->groupBy('round_id');
 
         // A round counts once it has any award, whatever its status: one without data so far adds no row.
@@ -136,15 +167,20 @@ class OofScoreStandings
 
         foreach ($rounds as $roundId) {
             foreach ($awards->get($roundId, collect()) as $award) {
-                $totals[$award->driver_id] ??= ['points' => 0, 'awards_count' => 0];
+                $totals[$award->driver_id] ??= ['points' => 0, 'awards_count' => 0, 'tiers' => array_fill_keys(self::TIERS, 0)];
                 $totals[$award->driver_id]['points'] += (int) $award->points;
                 $totals[$award->driver_id]['awards_count']++;
+
+                if (isset($totals[$award->driver_id]['tiers'][$award->tier])) {
+                    $totals[$award->driver_id]['tiers'][$award->tier]++;
+                }
             }
 
             $positions = [];
 
             foreach ($totals as $driverId => $total) {
-                $positions[$driverId] = 1 + count(array_filter($totals, fn (array $other) => $other['points'] > $total['points']));
+                $key = self::rankKey($total);
+                $positions[$driverId] = 1 + count(array_filter($totals, fn (array $other) => self::rankKey($other) > $key));
             }
 
             foreach ($totals as $driverId => $total) {
@@ -163,6 +199,18 @@ class OofScoreStandings
         }
 
         return $rows;
+    }
+
+    /**
+     * What decides a place, compared as an array: points, then the number of
+     * Platinum, Gold, Silver and Bronze awards, then the number of awards.
+     *
+     * @param  array{points: int, awards_count: int, tiers: array<string, int>}  $total
+     * @return list<int>
+     */
+    private static function rankKey(array $total): array
+    {
+        return [$total['points'], ...array_values($total['tiers']), $total['awards_count']];
     }
 
     /**

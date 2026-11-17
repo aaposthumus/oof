@@ -688,7 +688,14 @@ way is not done.
   season is closed already. Otherwise it rebuilds the standings a last time and sets
   `seasons.oofscore_closed_at`. From then on the season is never rebuilt, a tier change
   no longer reaches its awards, and a new award there takes the season's snapshot.
-  There is no reopening yet. No season has been closed.
+  No season has been closed (the owner decides when).
+- Decided afterwards: final awards of sensitive weekends count. Equal points are split
+  like a medal table: more Platinum, then Gold, Silver, Bronze, then more awards; only
+  drivers equal on all of that share a place. Every OOF award has a tier (Nothing to See
+  Here is a 0-point Bronze), so the award count never decides on its own today.
+- Reopening, owner only: `oof:oofscore:reopen {year}`, no CMS action; it asks for the
+  year to be typed (`--force` does not). Its awards take the catalogue's current tier,
+  shelf and points again and the standings are rebuilt.
 - CMS: an OOFscore page with the leaderboard after a chosen round (latest by default),
   change arrows, and the Rebuild and Close season actions.
 - Checked on the local database: 2026 rebuilt from scratch (19 rounds with data, 425 rows),

@@ -15,7 +15,7 @@ class OofscoreStandingsTable
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['driver', 'round.season']))
-            ->defaultSort(fn (Builder $query) => $query->orderBy('position')->orderByDesc('awards_count'))
+            ->defaultSort(fn (Builder $query) => $query->orderBy('position')->orderBy('driver_id'))
             ->paginated([25, 50, 100])
             ->columns([
                 TextColumn::make('position')
