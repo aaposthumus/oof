@@ -8,11 +8,31 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['year', 'wikipedia_url'])]
+#[Fillable(['year', 'wikipedia_url', 'oofscore_closed_at'])]
 class Season extends Model
 {
     /** @use HasFactory<SeasonFactory> */
     use HasFactory;
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'oofscore_closed_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * Whether its OOFscore is closed: its awards' tier and points are frozen.
+     */
+    public function isClosed(): bool
+    {
+        return $this->oofscore_closed_at !== null;
+    }
 
     /**
      * The ID of the season of the current year, or else the latest one.

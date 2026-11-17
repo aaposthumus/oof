@@ -592,6 +592,22 @@ Follow-ups decided by the owner on 17 November 2026, done the same day:
   the schema change cannot run inside the test transaction.
 - Golden master: no differences; not re-exported.
 
+Follow-ups decided by the owner on 17 November 2026, done the same day:
+
+- Points freeze per season: a tier or shelf change on an achievement (the CMS) updates
+  the tier, shelf and points of its awards in every season that is not closed
+  (`Achievement::updateOpenSeasonAwards()`); a closed season keeps its snapshot, and an
+  award created later in a closed season takes the snapshot already there, so within
+  one season an achievement is always worth the same. `seasons.oofscore_closed_at`
+  (planned for Phase 5) was added for this; nothing closes a season yet, so every
+  season is open until Phase 5 does. A change to the points in config does not reach
+  stored awards by itself.
+- Stored awards brought up to date with `oof:achievements` over 2023 to 2026: 4,126 to
+  4,156. Created 31 Teacher's Stare (16 races, 15 qualifying), removed 1 Nothing to See
+  Here (Leclerc, 2023 round 8), updated the evidence of 1 Overtime; nothing else
+  changed. No award had been decided by a person; the 132 historic suppressions are
+  unchanged. Golden master: no differences.
+
 **Phase 4: sensitivity.**
 Add the `withheld_on_sensitive_weekends` flag and the Sensitivity rule (withhold, block,
 flag), glory flagged rather than pending, engine-proposed sensitivities, the Built

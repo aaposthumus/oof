@@ -44,6 +44,27 @@ class Achievement extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::updated(function (self $achievement): void {
+            if ($achievement->wasChanged(['tier', 'shelf'])) {
+                $achievement->updateOpenSeasonAwards();
+            }
+        });
+    }
+
+    /**
+     * Give the awards of every season that is not closed the current tier,
+     * shelf and points, so within a season the achievement is worth the same
+     * everywhere. Closed seasons keep their snapshot.
+     */
+    public function updateOpenSeasonAwards(): int
+    {
+        return $this->awards()
+            ->whereHas('season', fn ($query) => $query->whereNull('oofscore_closed_at'))
+            ->update(['tier' => $this->tier?->value, 'shelf' => $this->shelf->value, 'points' => $this->points(), 'updated_at' => now()]);
+    }
+
     /**
      * OOFscore points for one award, from config: the tier's points on a
      * scoring shelf, unless the achievement has its own value.

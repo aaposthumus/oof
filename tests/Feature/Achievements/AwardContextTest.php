@@ -57,20 +57,47 @@ class AwardContextTest extends TestCase
         $this->assertNotNull($award->finalized_at);
     }
 
-    public function test_the_snapshot_stays_when_the_catalogue_changes_and_a_re_run_follows(): void
+    public function test_a_tier_change_updates_awards_in_open_seasons_and_leaves_closed_seasons_frozen(): void
+    {
+        $achievement = Achievement::firstWhere('key', 'smile_for_the_camera');
+        $closed = $this->round(2023, 3);
+        $closed->season->update(['oofscore_closed_at' => now()]);
+        $old = AchievementAward::factory()->create(['achievement_id' => $achievement->id, 'race_session_id' => $this->raceSession(round: $closed)->id]);
+        $open = AchievementAward::factory()->create(['achievement_id' => $achievement->id, 'race_session_id' => $this->raceSession()->id]);
+        $before = [$old->tier, $old->points];
+
+        $achievement->update(['tier' => AchievementTier::Platinum]);
+
+        $this->assertSame([AchievementTier::Platinum, $achievement->points()], [$open->fresh()->tier, $open->fresh()->points]);
+        $this->assertSame($before, [$old->fresh()->tier, $old->fresh()->points]);
+    }
+
+    public function test_a_new_award_in_a_closed_season_takes_the_snapshot_already_there(): void
+    {
+        $achievement = Achievement::firstWhere('key', 'smile_for_the_camera');
+        $round = $this->round(2023, 3);
+        AchievementAward::factory()->create(['achievement_id' => $achievement->id, 'race_session_id' => $this->raceSession(round: $round)->id]);
+        $round->season->update(['oofscore_closed_at' => now()]);
+        $before = [$achievement->tier, $achievement->points()];
+        $achievement->update(['tier' => AchievementTier::Platinum]);
+
+        $late = AchievementAward::factory()->create(['achievement_id' => $achievement->id, 'race_session_id' => $this->raceSession(round: $this->round(2023, 4))->id]);
+
+        $this->assertSame($before, [$late->tier, $late->points]);
+    }
+
+    public function test_a_re_run_keeps_the_snapshot_of_an_existing_award(): void
     {
         $race = $this->raceSession();
         $this->car($race, 44);
         $this->message($race, 'FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 44 (HAM) - SPEEDING IN THE PIT LANE');
         $this->runEngine($race);
         $award = $this->awards('smile_for_the_camera')->sole();
-        $before = [$award->tier, $award->points];
+        $award->update(['points' => 7]);
 
-        $award->achievement->update(['tier' => AchievementTier::Platinum]);
         $this->runEngine($race);
 
-        $this->assertSame($before, [$award->fresh()->tier, $award->fresh()->points]);
-        $this->assertNotSame($before[1], $award->achievement->fresh()->points());
+        $this->assertSame(7, $award->fresh()->points);
     }
 
     public function test_finalized_at_is_set_once_and_never_cleared(): void

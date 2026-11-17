@@ -27,8 +27,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Saving fills what follows from the rest: the context (scope, key, season,
  * round, calendar date) from the session, the season team and team from
  * the driver entry, and finalized_at the first time it is final. Tier,
- * shelf and points are a snapshot taken when the award is created, so a
- * later catalogue change does not rewrite it.
+ * shelf and points are a snapshot taken when the award is created. A tier
+ * change in the catalogue updates the snapshot in seasons that are not
+ * closed (Achievement::updateOpenSeasonAwards()); in a closed season it is
+ * frozen, and a new award there takes the season's existing snapshot.
  *
  * @property array{source: string, messages?: list<array<string, mixed>>, rows?: list<array<string, mixed>>, note?: string} $evidence
  */
@@ -119,11 +121,14 @@ class AchievementAward extends Model
 
         if (! $this->exists && $this->shelf === null) {
             $achievement = Achievement::query()->findOrFail($this->achievement_id);
+            $frozen = Season::query()->find($this->season_id)?->isClosed()
+                ? self::query()->where('season_id', $this->season_id)->where('achievement_id', $this->achievement_id)->first(['tier', 'shelf', 'points'])
+                : null;
 
             $this->fill([
-                'tier' => $achievement->tier,
-                'shelf' => $achievement->shelf,
-                'points' => $achievement->points(),
+                'tier' => $frozen === null ? $achievement->tier : $frozen->tier,
+                'shelf' => $frozen === null ? $achievement->shelf : $frozen->shelf,
+                'points' => $frozen === null ? $achievement->points() : $frozen->points,
                 'recipient_type' => $this->recipient_type ?? $achievement->recipientType(),
             ]);
         }
