@@ -2,8 +2,6 @@
 
 namespace Tests\Feature\Achievements\Detectors;
 
-use App\Achievements\Detectors\ClassDismissedDetector;
-use App\Achievements\Detectors\ToTheRescueDetector;
 use App\Achievements\Support\TeamForm;
 use App\Enums\AwardConfidence;
 use App\Enums\SessionType;
@@ -274,7 +272,7 @@ class ResultDetectorsTest extends TestCase
         DriverStanding::create(['round_id' => $this->race->round_id, 'driver_id' => $champion->driver_id, 'position' => 1, 'position_text' => '1', 'points' => 125, 'wins' => 5]);
         DriverStanding::create(['round_id' => $this->race->round_id, 'driver_id' => $rival->driver_id, 'position' => 2, 'position_text' => '2', 'points' => 98, 'wins' => 0]);
 
-        $this->assertSame($champion->id, $this->detect(ClassDismissedDetector::class, $this->race)->sole()->driverEntryId);
+        $this->assertSame($champion->id, $this->detect('class_dismissed', $this->race)->sole()->driverEntryId);
     }
 
     public function test_a_driver_without_an_earlier_start_that_season_is_a_genuine_call_up(): void
@@ -285,7 +283,7 @@ class ResultDetectorsTest extends TestCase
         $this->finisher(55, 3, ['team' => $team])->update(['driver_id' => $regular->driver_id]);
         $standIn = $this->finisher(38, 7, ['team' => $team]);
 
-        $detection = $this->detect(ToTheRescueDetector::class, $this->race)->sole();
+        $detection = $this->detect('to_the_rescue', $this->race)->sole();
 
         $this->assertSame($standIn->id, $detection->driverEntryId);
         $this->assertSame(AwardConfidence::High, $detection->confidence);
@@ -301,7 +299,7 @@ class ResultDetectorsTest extends TestCase
         $this->resultFor($otherTeamEntry, ['position' => 9, 'position_text' => '9']);
         $otherTeamEntry->update(['driver_id' => $swapper->driver_id]);
 
-        $detection = $this->detect(ToTheRescueDetector::class, $this->race)->sole();
+        $detection = $this->detect('to_the_rescue', $this->race)->sole();
 
         $this->assertSame($swapper->id, $detection->driverEntryId);
         $this->assertSame(AwardConfidence::Low, $detection->confidence);

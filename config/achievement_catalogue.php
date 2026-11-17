@@ -1,9 +1,9 @@
 <?php
 
-use App\Achievements\Detectors\ClassDismissedDetector;
-use App\Achievements\Detectors\FrequentFlyerDetector;
-use App\Achievements\Detectors\NothingToSeeHereDetector;
-use App\Achievements\Detectors\ToTheRescueDetector;
+use App\Achievements\Triggers\Custom\ClassDismissed;
+use App\Achievements\Triggers\Custom\FrequentFlyer;
+use App\Achievements\Triggers\Custom\NothingToSeeHere;
+use App\Achievements\Triggers\Custom\ToTheRescue;
 
 /*
 |--------------------------------------------------------------------------
@@ -969,7 +969,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => ClassDismissedDetector::class],
+            'trigger' => ['type' => 'custom', 'class' => ClassDismissed::class],
         ],
 
         'to_the_rescue' => [
@@ -985,7 +985,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => ToTheRescueDetector::class],
+            'trigger' => ['type' => 'custom', 'class' => ToTheRescue::class],
         ],
 
         'took_the_lead' => [
@@ -1039,7 +1039,7 @@ return [
             'recipient' => 'safety_car',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => FrequentFlyerDetector::class],
+            'trigger' => ['type' => 'custom', 'class' => FrequentFlyer::class],
         ],
 
         'virtually_there' => [
@@ -1071,7 +1071,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => NothingToSeeHereDetector::class],
+            'trigger' => ['type' => 'custom', 'class' => NothingToSeeHere::class],
         ],
     ],
 

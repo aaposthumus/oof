@@ -18,7 +18,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /**
- * Everything the detectors read about one session, loaded once and shared.
+ * Everything the fact providers and triggers read about one session, loaded once and shared.
  */
 class SessionData
 {

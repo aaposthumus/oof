@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Achievements\Detectors;
+namespace App\Achievements\Triggers\Custom;
 
 use App\Achievements\Detection;
 use App\Achievements\Detector;
@@ -18,7 +18,7 @@ use Illuminate\Support\Collection;
  * genuine call-up (high confidence). One who already raced for another team
  * that season is a seat swap, which is low confidence and always reviewed.
  */
-class ToTheRescueDetector implements Detector
+class ToTheRescue implements Detector
 {
     public function key(): string
     {

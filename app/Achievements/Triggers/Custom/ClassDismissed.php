@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Achievements\Detectors;
+namespace App\Achievements\Triggers\Custom;
 
 use App\Achievements\Detection;
 use App\Achievements\Detector;
@@ -17,7 +17,7 @@ use Illuminate\Support\Collection;
  * Championship clinched in this race or sprint: the leader's margin is more
  * than the points still to be won, and was not before the session.
  */
-class ClassDismissedDetector implements Detector
+class ClassDismissed implements Detector
 {
     public function key(): string
     {

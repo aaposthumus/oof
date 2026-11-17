@@ -5,8 +5,9 @@ namespace App\Achievements;
 use Illuminate\Support\Collection;
 
 /**
- * Finds one achievement in a session. Detectors only read data; the engine
- * applies the rules and stores the awards.
+ * A custom trigger's class (catalogue trigger type custom), for logic the
+ * declarative types do not cover. It only reads data; the engine applies
+ * the rules and stores the awards.
  */
 interface Detector
 {

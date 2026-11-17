@@ -24,7 +24,7 @@ class AchievementForm
             ->components([
                 TextInput::make('key')
                     ->disabled()
-                    ->helperText('Ties the achievement to its detector.'),
+                    ->helperText('Ties the achievement to its entry in the catalogue (config/achievement_catalogue.php).'),
                 TextInput::make('name')
                     ->required()
                     ->maxLength(255),

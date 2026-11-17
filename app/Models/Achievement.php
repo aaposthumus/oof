@@ -16,8 +16,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * An achievement in the catalogue. The key ties it to its detector; the rest
- * is seeded from docs/achievements.md and can be edited in the CMS.
+ * An achievement in the catalogue. The key ties it to its entry in
+ * config/achievement_catalogue.php, which seeds the row: editorial fields
+ * are edited in the CMS, mechanics are written by oof:achievements:sync.
  *
  * @property list<string> $session_types SessionType values it applies to
  * @property list<string> $supersedes Keys of achievements it replaces for the same event

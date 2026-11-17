@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Achievements\Detectors;
 
-use App\Achievements\Detectors\FrequentFlyerDetector;
 use App\Enums\SessionType;
 use App\Models\DriverEntry;
 use App\Models\PitLaneVisit;
@@ -216,7 +215,7 @@ class SessionDetectorsTest extends TestCase
         $this->assertSame('9 laps', $this->detect('took_the_lead', $race)->sole()->detail);
         $this->assertSame('2 deployments', $this->detect('second_helping', $race)->sole()->detail);
         $this->assertSame('lap 20', $this->detect('virtually_there', $race)->sole()->detail);
-        $this->assertSame('2 deployments', $this->detect(FrequentFlyerDetector::class, $race)->sole()->detail);
+        $this->assertSame('2 deployments', $this->detect('frequent_flyer', $race)->sole()->detail);
         $this->assertNull($this->detect('virtually_there', $race)->sole()->driverEntryId);
     }
 }

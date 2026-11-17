@@ -23,7 +23,7 @@ use WeakMap;
  * A block stores nothing at all for its scope: the round, or the driver.
  *
  * Runs after Cascade, so a withheld offence takes its absorbed penalty with
- * it, and again after the late detectors. The state of a round is read once
+ * it, and again after the late triggers. The state of a round is read once
  * per loaded session, after the engine has made its proposals.
  */
 class Sensitivity

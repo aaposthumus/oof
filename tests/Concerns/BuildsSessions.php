@@ -4,7 +4,6 @@ namespace Tests\Concerns;
 
 use App\Achievements\AchievementEngine;
 use App\Achievements\Detection;
-use App\Achievements\Detector;
 use App\Achievements\SessionData;
 use App\Enums\SessionType;
 use App\Models\AchievementAward;
@@ -108,14 +107,12 @@ trait BuildsSessions
     /**
      * What one achievement's trigger finds in a session, before the rules run.
      *
-     * @param  string|class-string<Detector>  $achievement  Catalogue key, or a detector class not ported yet
+     * @param  string  $achievement  Catalogue key
      * @return Collection<int, Detection>
      */
     protected function detect(string $achievement, RaceSession $session): Collection
     {
-        return class_exists($achievement)
-            ? app($achievement)->detect($this->data($session))
-            : app(AchievementEngine::class)->trigger($achievement)->detect($this->data($session), collect());
+        return app(AchievementEngine::class)->trigger($achievement)->detect($this->data($session), collect());
     }
 
     /**

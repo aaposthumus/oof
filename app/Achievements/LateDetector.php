@@ -5,8 +5,8 @@ namespace App\Achievements;
 use Illuminate\Support\Collection;
 
 /**
- * A detector that depends on what the others found, so it runs after the
- * rules have settled the session's other detections.
+ * A custom trigger's class that depends on what the others found, so it
+ * runs after the rules have settled the session's other detections.
  */
 interface LateDetector
 {

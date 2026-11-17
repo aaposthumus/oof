@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Achievements\Detectors;
+namespace App\Achievements\Triggers\Custom;
 
 use App\Achievements\Detection;
 use App\Achievements\LateDetector;
@@ -19,7 +19,7 @@ use Illuminate\Support\Collection;
  * only one a person suppressed does not. Runs on the race, after the
  * weekend's other sessions. A driver's first ever start never gets it.
  */
-class NothingToSeeHereDetector implements LateDetector
+class NothingToSeeHere implements LateDetector
 {
     public function key(): string
     {

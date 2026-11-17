@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Achievements\Detectors;
+namespace App\Achievements\Triggers\Custom;
 
 use App\Achievements\Detection;
 use App\Achievements\Detector;
@@ -16,7 +16,7 @@ use Illuminate\Support\Collection;
  * Safety Car corner: the season's count of deployments in races and sprints,
  * for the end-of-season awards. Awarded at the final race once it has results.
  */
-class FrequentFlyerDetector implements Detector
+class FrequentFlyer implements Detector
 {
     public function __construct(private MessageClassifier $classifier) {}
 

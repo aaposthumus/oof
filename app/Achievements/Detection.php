@@ -6,7 +6,7 @@ use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
 
 /**
- * An achievement a detector found in a session, before the rules run.
+ * An achievement a trigger found in a session, before the rules run.
  *
  * The instance key tells instances of the same achievement apart within the
  * session (e.g. one per penalty message). The event key ties together
