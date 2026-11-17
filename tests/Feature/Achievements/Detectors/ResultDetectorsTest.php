@@ -3,13 +3,6 @@
 namespace Tests\Feature\Achievements\Detectors;
 
 use App\Achievements\Detectors\ClassDismissedDetector;
-use App\Achievements\Detectors\CleanSweepDetector;
-use App\Achievements\Detectors\DidTheThingDetector;
-use App\Achievements\Detectors\GiantSlayerDetector;
-use App\Achievements\Detectors\PlotTwistDetector;
-use App\Achievements\Detectors\SilverLiningDetector;
-use App\Achievements\Detectors\SolidBronzeDetector;
-use App\Achievements\Detectors\TookTheScenicRouteDetector;
 use App\Achievements\Detectors\ToTheRescueDetector;
 use App\Achievements\Support\TeamForm;
 use App\Enums\AwardConfidence;
@@ -91,7 +84,7 @@ class ResultDetectorsTest extends TestCase
         $detection = $this->detect('sent_to_your_room', $this->race)->sole();
         $this->assertSame($disqualified->id, $detection->driverEntryId);
         $this->assertSame("disqualification:{$disqualified->id}", $detection->eventKey);
-        $this->assertSame([], $this->detect(SilverLiningDetector::class, $this->race)->where('driverEntryId', $disqualified->id)->all());
+        $this->assertSame([], $this->detect('silver_lining', $this->race)->where('driverEntryId', $disqualified->id)->all());
     }
 
     public function test_most_places_lost_last_finisher_and_fastest_lap_without_points(): void
@@ -121,10 +114,10 @@ class ResultDetectorsTest extends TestCase
         $third = $this->finisher(3, 3);
         $this->finisher(4, 4);
 
-        $this->assertSame($winner->id, $this->detect(DidTheThingDetector::class, $this->race)->sole()->driverEntryId);
-        $this->assertSame($second->id, $this->detect(SilverLiningDetector::class, $this->race)->sole()->driverEntryId);
-        $this->assertSame($third->id, $this->detect(SolidBronzeDetector::class, $this->race)->sole()->driverEntryId);
-        $this->assertSame('from P12', $this->detect(TookTheScenicRouteDetector::class, $this->race)->sole()->detail);
+        $this->assertSame($winner->id, $this->detect('did_the_thing', $this->race)->sole()->driverEntryId);
+        $this->assertSame($second->id, $this->detect('silver_lining', $this->race)->sole()->driverEntryId);
+        $this->assertSame($third->id, $this->detect('solid_bronze', $this->race)->sole()->driverEntryId);
+        $this->assertSame('from P12', $this->detect('took_the_scenic_route', $this->race)->sole()->detail);
     }
 
     /**
@@ -167,14 +160,14 @@ class ResultDetectorsTest extends TestCase
         $this->earlierRace(2024, 4, [$teams[0][2024]->id => 25, $teams[1][2024]->id => 18, $teams[2][2024]->id => 15, $teams[3][2024]->id => 12, $teams[4][2024]->id => 10]);
         $winner = $this->finisher(10, 1, ['team' => $teams[4][2024]]);
 
-        $detection = $this->detect(GiantSlayerDetector::class, $this->race)->sole();
+        $detection = $this->detect('giant_slayer', $this->race)->sole();
         $this->assertSame('Team P5 on form over the last race', $detection->detail);
         $this->assertStringContainsString('P5 with 10 points per race', $detection->evidence['note']);
 
         $qualifying = $this->raceSession(SessionType::Qualifying, $this->race->round);
         $pole = $this->car($qualifying, 10, $teams[4][2024], $winner->driver);
         $this->qualifying($pole, 1, 90_000, 89_000, 88_000);
-        $this->assertSame('Team P5 on form over the last race', $this->detect(PlotTwistDetector::class, $qualifying)->sole()->detail);
+        $this->assertSame('Team P5 on form over the last race', $this->detect('plot_twist', $qualifying)->sole()->detail);
     }
 
     public function test_a_win_by_a_top_four_team_on_form_is_no_surprise(): void
@@ -183,7 +176,7 @@ class ResultDetectorsTest extends TestCase
         $this->earlierRace(2024, 4, [$teams[0][2024]->id => 25, $teams[1][2024]->id => 18, $teams[2][2024]->id => 15, $teams[3][2024]->id => 12, $teams[4][2024]->id => 10]);
         $this->finisher(10, 1, ['team' => $teams[3][2024]]);
 
-        $this->assertCount(0, $this->detect(GiantSlayerDetector::class, $this->race));
+        $this->assertCount(0, $this->detect('giant_slayer', $this->race));
     }
 
     public function test_in_round_one_the_window_reaches_into_the_previous_season_and_a_rename_keeps_the_form(): void
@@ -194,11 +187,11 @@ class ResultDetectorsTest extends TestCase
 
         // The 2023 season team of the lasting team with the best form is a different (renamed) season team in 2024.
         $this->finisher(10, 1, ['team' => $teams[4][2024]]);
-        $this->assertCount(0, $this->detect(GiantSlayerDetector::class, $this->race));
+        $this->assertCount(0, $this->detect('giant_slayer', $this->race));
 
         Result::query()->whereHas('driverEntry', fn ($query) => $query->where('race_session_id', $this->race->id))->delete();
         $this->finisher(11, 1, ['team' => $teams[0][2024]]);
-        $this->assertSame('Team P5 on form over the last race', $this->detect(GiantSlayerDetector::class, $this->race)->sole()->detail);
+        $this->assertSame('Team P5 on form over the last race', $this->detect('giant_slayer', $this->race)->sole()->detail);
     }
 
     public function test_the_window_ranks_on_points_per_race_entered_and_skips_sprints_and_the_indianapolis_500(): void
@@ -229,18 +222,18 @@ class ResultDetectorsTest extends TestCase
         $this->finisher(10, 1, ['team' => $teams[4][2024]]);
 
         $this->assertSame(4, TeamForm::before($this->race->round)->rankOf($teams[4][2024]->team_id));
-        $this->assertCount(0, $this->detect(GiantSlayerDetector::class, $this->race));
+        $this->assertCount(0, $this->detect('giant_slayer', $this->race));
     }
 
     public function test_a_team_without_a_race_in_the_window_is_a_surprise_but_the_first_race_ever_is_not(): void
     {
         $this->finisher(10, 1);
-        $this->assertCount(0, $this->detect(GiantSlayerDetector::class, $this->race));
+        $this->assertCount(0, $this->detect('giant_slayer', $this->race));
 
         $teams = $this->fiveTeams();
         $this->earlierRace(2024, 4, [$teams[0][2024]->id => 25]);
 
-        $this->assertSame('No race for the team in the last race', $this->detect(GiantSlayerDetector::class, $this->race)->sole()->detail);
+        $this->assertSame('No race for the team in the last race', $this->detect('giant_slayer', $this->race)->sole()->detail);
     }
 
     public function test_an_indianapolis_500_is_never_a_surprise(): void
@@ -250,7 +243,7 @@ class ResultDetectorsTest extends TestCase
         $this->earlierRace(1955, 4, [$teams[0][2024]->id => 8]);
         $this->finisher(10, 1);
 
-        $this->assertCount(0, $this->detect(GiantSlayerDetector::class, $this->race));
+        $this->assertCount(0, $this->detect('giant_slayer', $this->race));
     }
 
     public function test_grand_chelem_needs_pole_win_fastest_lap_and_every_lap_led(): void
@@ -263,10 +256,10 @@ class ResultDetectorsTest extends TestCase
         }
 
         Position::factory()->create(['race_session_id' => $this->race->id, 'driver_number' => 1, 'driver_entry_id' => $winner->id, 'recorded_at' => '2024-05-05 19:55:00', 'position' => 1]);
-        $this->assertCount(1, $this->detect(CleanSweepDetector::class, $this->race));
+        $this->assertCount(1, $this->detect('clean_sweep', $this->race));
 
         Position::factory()->create(['race_session_id' => $this->race->id, 'driver_number' => 1, 'driver_entry_id' => $winner->id, 'recorded_at' => '2024-05-05 20:02:30', 'position' => 2]);
-        $this->assertCount(0, $this->detect(CleanSweepDetector::class, $this->race));
+        $this->assertCount(0, $this->detect('clean_sweep', $this->race));
     }
 
     public function test_title_clinched_when_the_lead_beats_the_points_left(): void

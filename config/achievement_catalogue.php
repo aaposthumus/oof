@@ -3,24 +3,17 @@
 use App\Achievements\Detectors\ByAWhiskerDetector;
 use App\Achievements\Detectors\CalledTheTowTruckDetector;
 use App\Achievements\Detectors\ClassDismissedDetector;
-use App\Achievements\Detectors\CleanSweepDetector;
 use App\Achievements\Detectors\DeletedSceneDetector;
-use App\Achievements\Detectors\DidTheThingDetector;
 use App\Achievements\Detectors\FineDiningDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
-use App\Achievements\Detectors\GiantSlayerDetector;
 use App\Achievements\Detectors\HoldingTheDoorDetector;
 use App\Achievements\Detectors\MirrorMatchDetector;
 use App\Achievements\Detectors\NothingToSeeHereDetector;
 use App\Achievements\Detectors\OvertimeDetector;
-use App\Achievements\Detectors\PlotTwistDetector;
 use App\Achievements\Detectors\PracticeMakesImperfectDetector;
 use App\Achievements\Detectors\SecondHelpingDetector;
-use App\Achievements\Detectors\SilverLiningDetector;
-use App\Achievements\Detectors\SolidBronzeDetector;
 use App\Achievements\Detectors\TableForOneDetector;
 use App\Achievements\Detectors\TookTheLeadDetector;
-use App\Achievements\Detectors\TookTheScenicRouteDetector;
 use App\Achievements\Detectors\ToTheRescueDetector;
 use App\Achievements\Detectors\VirtuallyThereDetector;
 use App\Achievements\Detectors\WholeClassDetentionDetector;
@@ -829,7 +822,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => DidTheThingDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => [['position', '=', 1], 'not_disqualified']],
         ],
 
         'silver_lining' => [
@@ -845,7 +838,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => SilverLiningDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => [['position', '=', 2], 'not_disqualified']],
         ],
 
         'solid_bronze' => [
@@ -861,7 +854,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => SolidBronzeDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => [['position', '=', 3], 'not_disqualified']],
         ],
 
         'plot_twist' => [
@@ -877,7 +870,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => PlotTwistDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'qualifying_result',
+                'where' => [['position', '=', 1], 'is_surprise'],
+                'instance' => 'pole', 'event' => 'pole:{entry}',
+                'detail' => '{surprise.detail}', 'note' => '{surprise.note}',
+            ],
         ],
 
         'giant_slayer' => [
@@ -893,7 +891,11 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => GiantSlayerDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'result',
+                'where' => [['position', '=', 1], 'not_disqualified', 'is_surprise'],
+                'detail' => '{surprise.detail}', 'note' => '{surprise.note}',
+            ],
         ],
 
         'took_the_scenic_route' => [
@@ -909,7 +911,11 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => TookTheScenicRouteDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'result',
+                'where' => [['position', '=', 1], 'not_disqualified', ['any' => [['grid', '=', 0], ['grid', '>=', 10]]]],
+                'detail' => 'from {start}',
+            ],
         ],
 
         'clean_sweep' => [
@@ -925,7 +931,10 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => CleanSweepDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'result',
+                'where' => [['position', '=', 1], 'not_disqualified', ['fastest_lap_rank', '=', 1], 'took_pole', 'led_every_lap'],
+            ],
         ],
 
         'class_dismissed' => [

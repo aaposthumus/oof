@@ -21,6 +21,9 @@ class Predicates
         'not_disqualified' => Predicates\NotDisqualified::class,
         'classified_finisher' => Predicates\ClassifiedFinisher::class,
         'last_classified_finisher' => Predicates\LastClassifiedFinisher::class,
+        'is_surprise' => Predicates\IsSurprise::class,
+        'took_pole' => Predicates\TookPole::class,
+        'led_every_lap' => Predicates\LedEveryLap::class,
     ];
 
     /**

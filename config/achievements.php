@@ -95,8 +95,7 @@ return [
     | took_the_lead_laps: laps the safety car ran in one race.
     | second_helping: safety car deployments in one race. pit_stop_millis:
     | stationary time for Table for One. whisker_millis: the gap to the
-    | cut-off for By a Whisker. scenic_route_grid: the grid slot a win must
-    | come from for Took the Scenic Route. practice_deleted_laps: the fewest
+    | cut-off for By a Whisker. practice_deleted_laps: the fewest
     | deleted laps for Practice Makes Imperfect. Set from the 2023–2026 test run.
     |
     */
@@ -108,8 +107,6 @@ return [
     'pit_stop_millis' => 5_000,
 
     'whisker_millis' => 15,
-
-    'scenic_route_grid' => 10,
 
     'practice_deleted_laps' => 3,
 

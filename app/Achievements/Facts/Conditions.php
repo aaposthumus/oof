@@ -7,7 +7,8 @@ use InvalidArgumentException;
 
 /**
  * A trigger's where list: every item must hold. An item is a predicate
- * name, or [attribute, operator, value] with one of the operators below.
+ * name, [attribute, operator, value] with one of the operators below, or
+ * ['any' => [items]], which holds when one of its items does.
  */
 class Conditions
 {
@@ -16,21 +17,29 @@ class Conditions
     public function __construct(private Predicates $predicates) {}
 
     /**
-     * @param  list<string|array{0: string, 1: string, 2: mixed}>  $where
+     * @param  list<string|array<int|string, mixed>>  $where
      */
     public function pass(array $where, Fact $fact, SessionData $data): bool
     {
         foreach ($where as $condition) {
-            $holds = is_string($condition)
-                ? $this->predicates->test($condition, $fact, $data)
-                : self::compare($fact->get($condition[0]), $condition[1], $condition[2]);
-
-            if (! $holds) {
+            if (! $this->holds($condition, $fact, $data)) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    /**
+     * @param  string|array<int|string, mixed>  $condition
+     */
+    private function holds(string|array $condition, Fact $fact, SessionData $data): bool
+    {
+        return match (true) {
+            is_string($condition) => $this->predicates->test($condition, $fact, $data),
+            isset($condition['any']) => collect($condition['any'])->contains(fn (string|array $item) => $this->holds($item, $fact, $data)),
+            default => self::compare($fact->get($condition[0]), $condition[1], $condition[2]),
+        };
     }
 
     /**
@@ -55,11 +64,19 @@ class Conditions
     /**
      * The predicates a where list names.
      *
-     * @param  list<string|array<int, mixed>>  $where
+     * @param  list<string|array<int|string, mixed>>  $where
      * @return list<string>
      */
     public static function predicateNames(array $where): array
     {
-        return array_values(array_filter($where, 'is_string'));
+        return collect($where)
+            ->flatMap(fn (string|array $condition) => match (true) {
+                is_string($condition) => [$condition],
+                isset($condition['any']) => self::predicateNames($condition['any']),
+                default => [],
+            })
+            ->unique()
+            ->values()
+            ->all();
     }
 }

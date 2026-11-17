@@ -25,6 +25,7 @@ class Facts
         'flag' => Providers\FlagFacts::class,
         'track_limit_deletion' => Providers\TrackLimitDeletionFacts::class,
         'result' => Providers\ResultFacts::class,
+        'qualifying_result' => Providers\QualifyingResultFacts::class,
     ];
 
     /**
