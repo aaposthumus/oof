@@ -16,7 +16,7 @@ and 4 for the design, and "Working notes" at the end.
 | 0 | Safety net: golden master and comparison command | Done, 16 November 2026 |
 | 1 | Catalogue alignment, points in config, final-after wait per session type | Done, 16 November 2026 |
 | 2 | Surprise rule (rolling team form) and team lineage table | Done, 17 November 2026 |
-| 3 | Award schema | Not started |
+| 3 | Award schema | Done, 17 November 2026 |
 | 4 | Sensitivity | Not started |
 | 5 | OOFscore | Not started |
 | 6 | Facts and triggers | Not started |
@@ -566,11 +566,31 @@ Follow-ups decided by the owner on 17 November 2026, done the same day:
 - Golden master: no differences (all of it is before 2023 or Indianapolis);
   re-exported, 4,156 awards in 450 sessions.
 
-**Phase 3: award schema.**
-Add context, scope, recipient, snapshot, date, source and `finalized_at` columns;
-backfill them; switch the unique index to the context key. Add the calendar-window
-query scope.
-Done when every existing award has a season, a date and a snapshot, and behavior is unchanged.
+**Phase 3: award schema. Done.**
+
+- `achievement_awards` gained `season_id` (required), `round_id`, `scope`, `context_key`
+  (`session:12`), `recipient_type`, `season_team_id`, `team_id`, `tier`, `shelf`,
+  `points`, `achievement_variant_id`, `occurred_on`, `occurred_md`, `source` and
+  `finalized_at`; `race_session_id` is now nullable. The unique index is context key +
+  achievement + instance key. Enums: `AwardScope`, `RecipientType`, `AwardSource`.
+- Saving an award fills what follows from the rest (`AchievementAward::fillDerived()`):
+  the context and calendar date from the session (scheduled date, else the round's
+  date), season team and team from the driver entry (so a person picking another car
+  moves the team too), source `engine`, and `finalized_at` the first time it is final,
+  never cleared. Tier, shelf and points are snapshotted only when the award is created.
+  The engine finds a session's awards by context key and stores the variant's ID
+  beside its name.
+- Recipient until Phase 8: `Achievement::recipientType()` gives the Safety Car for its
+  own shelf and a driver otherwise.
+- Calendar window: `AchievementAward::query()->inCalendarWindow($from, $to)` returns
+  awards of every year whose month and day fall in the window, wrapping at New Year.
+- Backfill checked on the local database: all 4,126 stored awards have a season, round,
+  context, date, shelf, points and source; tier is empty only on the 90 Safety Car
+  awards, which have no tier; every final award has `finalized_at` (its decision time,
+  else its last update); 4,036 driver and 90 Safety Car recipients. The migration was
+  rolled back and applied again without loss. Not covered by an automated test, because
+  the schema change cannot run inside the test transaction.
+- Golden master: no differences; not re-exported.
 
 **Phase 4: sensitivity.**
 Add the `withheld_on_sensitive_weekends` flag and the Sensitivity rule (withhold, block,

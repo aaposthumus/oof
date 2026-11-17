@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
+use App\Enums\RecipientType;
 use App\Enums\SessionType;
 use Database\Factories\AchievementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -54,6 +55,15 @@ class Achievement extends Model
         }
 
         return config("achievements.points.overrides.{$this->key}") ?? config("achievements.points.tiers.{$this->tier->value}");
+    }
+
+    /**
+     * Who receives it. Until the catalogue states it (Phase 8): the Safety Car
+     * for its own shelf, a driver for everything else.
+     */
+    public function recipientType(): RecipientType
+    {
+        return $this->shelf === AchievementShelf::SafetyCar ? RecipientType::SafetyCar : RecipientType::Driver;
     }
 
     public function appliesTo(SessionType $type): bool

@@ -2,23 +2,37 @@
 
 namespace App\Models;
 
+use App\Enums\AchievementShelf;
+use App\Enums\AchievementTier;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
+use App\Enums\AwardScope;
+use App\Enums\AwardSource;
 use App\Enums\AwardStatus;
+use App\Enums\RecipientType;
+use Carbon\CarbonInterface;
 use Database\Factories\AchievementAwardFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * An achievement unlocked in a session, with the evidence it came from.
- * Safety Car awards have no driver entry. Once a person has decided on an
- * award (decided_at), re-running the engine never changes that decision.
+ * An achievement unlocked in a context (today always a session), with the
+ * evidence it came from. Safety Car awards have no driver entry. Once a
+ * person has decided on an award (decided_at), re-running the engine never
+ * changes that decision.
+ *
+ * Saving fills what follows from the rest: the context (scope, key, season,
+ * round, calendar date) from the session, the season team and team from
+ * the driver entry, and finalized_at the first time it is final. Tier,
+ * shelf and points are a snapshot taken when the award is created, so a
+ * later catalogue change does not rewrite it.
  *
  * @property array{source: string, messages?: list<array<string, mixed>>, rows?: list<array<string, mixed>>, note?: string} $evidence
  */
-#[Fillable(['race_session_id', 'driver_entry_id', 'driver_id', 'achievement_id', 'instance_key', 'event_key', 'detail', 'subtitle', 'variant_name', 'evidence', 'confidence', 'status', 'review_reason', 'decided_by', 'decided_at', 'decision_note', 'handed_back_at'])]
+#[Fillable(['season_id', 'round_id', 'race_session_id', 'scope', 'context_key', 'recipient_type', 'driver_entry_id', 'driver_id', 'season_team_id', 'team_id', 'achievement_id', 'tier', 'shelf', 'points', 'instance_key', 'event_key', 'detail', 'subtitle', 'variant_name', 'achievement_variant_id', 'occurred_on', 'occurred_md', 'source', 'evidence', 'confidence', 'status', 'review_reason', 'decided_by', 'decided_at', 'decision_note', 'finalized_at', 'handed_back_at'])]
 class AchievementAward extends Model
 {
     /** @use HasFactory<AchievementAwardFactory> */
@@ -37,6 +51,15 @@ class AchievementAward extends Model
     protected function casts(): array
     {
         return [
+            'scope' => AwardScope::class,
+            'recipient_type' => RecipientType::class,
+            'tier' => AchievementTier::class,
+            'shelf' => AchievementShelf::class,
+            'points' => 'integer',
+            'occurred_on' => 'date',
+            'occurred_md' => 'integer',
+            'source' => AwardSource::class,
+            'finalized_at' => 'datetime',
             'evidence' => 'array',
             'confidence' => AwardConfidence::class,
             'status' => AwardStatus::class,
@@ -44,6 +67,78 @@ class AchievementAward extends Model
             'decided_at' => 'datetime',
             'handed_back_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $award): void {
+            $award->fillDerived();
+        });
+    }
+
+    /**
+     * month * 100 + day of a date, the form occurred_md is stored in.
+     */
+    public static function monthDay(CarbonInterface $date): int
+    {
+        return $date->month * 100 + $date->day;
+    }
+
+    /**
+     * Awards of every year whose calendar date falls in the window, both
+     * ends included. A window that runs past New Year (28 December to
+     * 3 January) wraps.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeInCalendarWindow(Builder $query, CarbonInterface $from, CarbonInterface $to): void
+    {
+        $start = self::monthDay($from);
+        $end = self::monthDay($to);
+
+        $start <= $end
+            ? $query->whereBetween('occurred_md', [$start, $end])
+            : $query->where(fn (Builder $query) => $query->where('occurred_md', '>=', $start)->orWhere('occurred_md', '<=', $end));
+    }
+
+    private function fillDerived(): void
+    {
+        if ($this->race_session_id !== null && ($this->context_key === null || $this->isDirty('race_session_id'))) {
+            $session = RaceSession::query()->with('round')->findOrFail($this->race_session_id);
+            $date = $session->scheduled_date ?? $session->round->date;
+
+            $this->fill([
+                'scope' => AwardScope::Session,
+                'context_key' => "session:{$session->id}",
+                'season_id' => $session->round->season_id,
+                'round_id' => $session->round_id,
+                'occurred_on' => $date,
+                'occurred_md' => self::monthDay($date),
+            ]);
+        }
+
+        if (! $this->exists && $this->shelf === null) {
+            $achievement = Achievement::query()->findOrFail($this->achievement_id);
+
+            $this->fill([
+                'tier' => $achievement->tier,
+                'shelf' => $achievement->shelf,
+                'points' => $achievement->points(),
+                'recipient_type' => $this->recipient_type ?? $achievement->recipientType(),
+            ]);
+        }
+
+        if (! $this->exists || $this->isDirty('driver_entry_id')) {
+            $entry = $this->driver_entry_id === null ? null : DriverEntry::query()->with('seasonTeam')->find($this->driver_entry_id);
+            $this->season_team_id = $entry?->season_team_id;
+            $this->team_id = $entry?->seasonTeam?->team_id;
+        }
+
+        $this->source ??= AwardSource::Engine;
+
+        if ($this->status === AwardStatus::Final && $this->finalized_at === null) {
+            $this->finalized_at = now();
+        }
     }
 
     /**
@@ -102,6 +197,46 @@ class AchievementAward extends Model
     public function restore(): void
     {
         $this->update(['status' => AwardStatus::Pending, 'decided_by' => null, 'decided_at' => null, 'decision_note' => null, 'handed_back_at' => now()]);
+    }
+
+    /**
+     * @return BelongsTo<Season, $this>
+     */
+    public function season(): BelongsTo
+    {
+        return $this->belongsTo(Season::class);
+    }
+
+    /**
+     * @return BelongsTo<Round, $this>
+     */
+    public function round(): BelongsTo
+    {
+        return $this->belongsTo(Round::class);
+    }
+
+    /**
+     * @return BelongsTo<SeasonTeam, $this>
+     */
+    public function seasonTeam(): BelongsTo
+    {
+        return $this->belongsTo(SeasonTeam::class);
+    }
+
+    /**
+     * @return BelongsTo<Team, $this>
+     */
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * @return BelongsTo<AchievementVariant, $this>
+     */
+    public function achievementVariant(): BelongsTo
+    {
+        return $this->belongsTo(AchievementVariant::class);
     }
 
     /**

@@ -184,7 +184,7 @@ class AchievementEngine
         $catalogue = $this->catalogue();
         $variants = AchievementVariant::query()->get()->keyBy(fn (AchievementVariant $variant) => "{$variant->achievement_id}|{$variant->driver_id}");
         $existing = AchievementAward::query()
-            ->where('race_session_id', $data->session->id)
+            ->where('context_key', "session:{$data->session->id}")
             ->get()
             ->keyBy(fn (AchievementAward $award) => "{$award->achievement_id}|{$award->instance_key}");
         $isHistoric = $data->session->round->date->lt(CarbonImmutable::parse(config('achievements.review_from')));
@@ -233,7 +233,9 @@ class AchievementEngine
                 ]);
             }
 
-            $award->variant_name = $award->driver_id === null ? null : $variants->get("{$achievement->id}|{$award->driver_id}")?->name;
+            $variant = $award->driver_id === null ? null : $variants->get("{$achievement->id}|{$award->driver_id}");
+            $award->variant_name = $variant?->name;
+            $award->achievement_variant_id = $variant?->id;
 
             if (! $award->exists) {
                 $stat['created']++;
