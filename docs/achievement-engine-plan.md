@@ -651,8 +651,10 @@ Follow-ups decided by the owner on 17 November 2026, done the same day:
 - A block, like a withheld achievement, force-suppresses awards a person had decided
   (system note "Withheld: sensitive or blocked weekend"); what the engine made itself is
   removed. The person's decision is kept in `achievement_awards.held_decision`.
-- When a dismissal or a deletion leaves a round without an active sensitivity, the held
-  decisions come back (`AchievementAward::releaseRound()`); the flag stays.
+- After a dismissal or a deletion, the held decisions come back wherever the round's
+  remaining sensitivities allow the award (`AchievementAward::releaseRound()`): a win
+  suppressed by a driver block returns, flagged, while an ordinary sensitivity stays; a
+  withheld retirement does not. The flag stays.
 - One engine proposal per round: no driver, covering the round, with every driver
   involved in `moment_sensitivities.involved_driver_ids` and named in the note; a later
   crash that weekend is added while it is still a proposal. The excavators' span rule

@@ -370,6 +370,29 @@ class SensitivityTest extends TestCase
         $this->assertSame(AwardStatus::Final, $win->fresh()->status);
     }
 
+    public function test_removing_a_driver_block_gives_back_what_the_remaining_sensitivity_allows(): void
+    {
+        $this->weekend();
+        $this->runEngine($this->race);
+        $person = User::factory()->create();
+        $win = $this->awards('did_the_thing')->sole();
+        $win->confirm($person);
+        $retirement = $this->awards('home_before_dinner')->sole();
+        $retirement->confirm($person);
+        $block = MomentSensitivity::factory()->blocked()->create(['round_id' => $this->race->round_id, 'driver_id' => $this->winner->driver_id]);
+        MomentSensitivity::factory()->create(['round_id' => $this->race->round_id]);
+        $this->runEngine($this->race);
+        $this->assertSame(AwardStatus::Suppressed, $win->fresh()->status);
+        $this->assertSame(AwardStatus::Suppressed, $retirement->fresh()->status);
+
+        $block->delete();
+
+        $this->assertSame(AwardStatus::Final, $win->fresh()->status, 'A win is allowed on a sensitive weekend.');
+        $this->assertTrue($win->fresh()->is_sensitive);
+        $this->assertSame(0, AchievementAward::query()->publishable()->whereKey($win->id)->count());
+        $this->assertSame(AwardStatus::Suppressed, $retirement->fresh()->status, 'A retirement stays withheld while the weekend is sensitive.');
+    }
+
     public function test_the_added_offences_are_withheld_and_the_others_are_not(): void
     {
         $withheld = Achievement::query()->where('withheld_on_sensitive_weekends', true)->pluck('key');

@@ -118,18 +118,23 @@ class AchievementAward extends Model
     }
 
     /**
-     * Give back the decisions people had made on the awards of a round that
-     * the system suppressed. Awards the engine made itself and suppressed
-     * here are removed: the next run judges them again.
+     * Give back the decisions people had made on awards of a round that the
+     * system suppressed, wherever the round's remaining sensitivities allow
+     * the award (it stays flagged). Ones the engine made itself and that are
+     * now allowed are removed: the next run judges them again.
      *
      * @return int The awards given back or removed
      */
     public static function releaseRound(int $roundId): int
     {
+        $remaining = Sensitivity::forRound($roundId);
+
         return self::query()
+            ->with('achievement')
             ->where('round_id', $roundId)
             ->where('decision_note', Sensitivity::SYSTEM_NOTE)
             ->get()
+            ->filter(fn (self $award) => Sensitivity::allows($remaining, $award->achievement, $award->driver_id))
             ->each(function (self $award): void {
                 $held = $award->held_decision;
 

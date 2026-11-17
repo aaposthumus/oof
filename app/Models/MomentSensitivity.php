@@ -24,9 +24,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * covering the whole round and listing the drivers involved. It acts as
  * sensitive until a person confirms it; once dismissed it is ignored
  * everywhere, and the engine does not propose it again. Any change sends
- * the round's sessions back to the achievements engine. When a dismissal or
- * a deletion leaves the round without an active sensitivity, the decisions
- * people had made on awards the system suppressed are given back.
+ * the round's sessions back to the achievements engine. After a dismissal or
+ * a deletion, the decisions people had made on awards the system suppressed
+ * are given back wherever the remaining sensitivities allow them.
  */
 #[Fillable(['round_id', 'driver_id', 'involved_driver_ids', 'level', 'severity', 'source', 'confirmed_at', 'dismissed_at', 'note'])]
 class MomentSensitivity extends Model
@@ -61,25 +61,23 @@ class MomentSensitivity extends Model
             $recheckRound($sensitivity);
 
             if ($sensitivity->wasChanged('dismissed_at') && $sensitivity->dismissed_at !== null) {
-                $sensitivity->releaseRoundIfClear();
+                $sensitivity->releaseRound();
             }
         });
 
         static::deleted(function (self $sensitivity) use ($recheckRound): void {
             $recheckRound($sensitivity);
-            $sensitivity->releaseRoundIfClear();
+            $sensitivity->releaseRound();
         });
     }
 
     /**
-     * Once no active sensitivity covers the round any more, give back the
-     * decisions people had made on the awards the system suppressed.
+     * Give back the decisions people had made on awards the system
+     * suppressed, as far as the round's remaining sensitivities allow.
      */
-    private function releaseRoundIfClear(): void
+    private function releaseRound(): void
     {
-        if (! self::query()->active()->where('round_id', $this->round_id)->exists()) {
-            AchievementAward::releaseRound($this->round_id);
-        }
+        AchievementAward::releaseRound($this->round_id);
     }
 
     /**
