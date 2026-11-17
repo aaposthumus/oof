@@ -778,6 +778,14 @@ way is not done.
   stacks or withheld; only the 112 new derived fields, which the sync then wrote.
 - Golden master: no differences after every step (13 commits); not re-exported.
 
+Decided by the owner on 17 November 2026:
+
+- Practice Makes Imperfect stays available from 2023, so its 2023 award is kept.
+- The years taken from the local data stand (pit stationary time 2024, Jolpica
+  qualifying 1994, knockout achievements 2006).
+- Deploy: sync dry run first, then the sync (deploy step 2). Nobody has edited sessions
+  or stacks in the production CMS, so the sync overwrites nothing a person set.
+
 **Phase 7: scopes, runs and the Oofies.**
 Weekend scope (combined practice awards, Fine Dining, Nothing to See Here), season scope
 (Frequent Flyer and the three Oofies), the run log and `--stale`. Apply decisions 2, 3
