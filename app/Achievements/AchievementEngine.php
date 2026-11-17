@@ -8,6 +8,8 @@ use App\Achievements\Rules\Fairness;
 use App\Achievements\Rules\Finality;
 use App\Achievements\Rules\Sensitivity;
 use App\Achievements\Rules\Stacking;
+use App\Achievements\Triggers\Trigger;
+use App\Achievements\Triggers\TriggerFactory;
 use App\Enums\AwardStatus;
 use App\Models\Achievement;
 use App\Models\AchievementAward;
@@ -15,94 +17,23 @@ use App\Models\AchievementVariant;
 use App\Models\RaceSession;
 use App\RaceControl\MessageClassifier;
 use Carbon\CarbonImmutable;
-use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * Runs the detectors on a session, applies the rules from the spec and
+ * Runs the catalogue's triggers on a session, applies the rules and
  * stores the awards. Re-running a session updates its awards in place,
  * never duplicates them, and never changes what a person decided.
  *
  * Order: propose sensitivities, detect, fairness, cross-check, cascade,
- * sensitivity, stacking, the late detectors, sensitivity again, then
+ * sensitivity, stacking, the late triggers, sensitivity again, then
  * finality.
  */
 class AchievementEngine
 {
-    /**
-     * @var list<class-string<Detector|LateDetector>>
-     */
-    public const DETECTORS = [
-        // Race control: offences with a penalty, penalties and flags
-        Detectors\BumperCarsDetector::class,
-        Detectors\EarlyBirdDetector::class,
-        Detectors\SelectiveHearingDetector::class,
-        Detectors\ShortcutTaxDetector::class,
-        Detectors\LineDancingDetector::class,
-        Detectors\SmileForTheCameraDetector::class,
-        Detectors\ExtraWideDetector::class,
-        Detectors\ForgotToIndicateDetector::class,
-        Detectors\SelectiveVisionDetector::class,
-        Detectors\QueueJumperDetector::class,
-        Detectors\FailedTheDrivingTestDetector::class,
-        Detectors\ReleasedIntoTheWildDetector::class,
-        Detectors\SundayDriverDetector::class,
-        Detectors\HighFiveDetector::class,
-        Detectors\PerfectTenDetector::class,
-        Detectors\DriveThruDetector::class,
-        Detectors\RedLightGreenLightDetector::class,
-        Detectors\ItWasLikeThatDetector::class,
-        Detectors\MeatballSubDetector::class,
-        Detectors\ExpelledDetector::class,
-        Detectors\OutsideTheLinesDetector::class,
-        Detectors\TeachersStareDetector::class,
-        Detectors\BlueCarpetDetector::class,
-        Detectors\WholeClassDetentionDetector::class,
-        Detectors\CalledTheTowTruckDetector::class,
-        // Results
-        Detectors\LappedDogDetector::class,
-        Detectors\GoodBoyDetector::class,
-        Detectors\ForgotTheKeysDetector::class,
-        Detectors\EarlyLunchDetector::class,
-        Detectors\HomeBeforeDinnerDetector::class,
-        Detectors\SentToYourRoomDetector::class,
-        Detectors\ReverseGearDetector::class,
-        Detectors\AllDressedUpDetector::class,
-        Detectors\TurnedOffTheLightsDetector::class,
-        // Pit stops
-        Detectors\TableForOneDetector::class,
-        Detectors\FineDiningDetector::class,
-        // Qualifying
-        Detectors\MirrorMatchDetector::class,
-        Detectors\ByAWhiskerDetector::class,
-        Detectors\DeletedSceneDetector::class,
-        Detectors\HoldingTheDoorDetector::class,
-        // Practice
-        Detectors\OvertimeDetector::class,
-        Detectors\PracticeMakesImperfectDetector::class,
-        // Glory
-        Detectors\DidTheThingDetector::class,
-        Detectors\SilverLiningDetector::class,
-        Detectors\SolidBronzeDetector::class,
-        Detectors\PlotTwistDetector::class,
-        Detectors\GiantSlayerDetector::class,
-        Detectors\TookTheScenicRouteDetector::class,
-        Detectors\CleanSweepDetector::class,
-        Detectors\ClassDismissedDetector::class,
-        Detectors\ToTheRescueDetector::class,
-        // Safety Car
-        Detectors\TookTheLeadDetector::class,
-        Detectors\SecondHelpingDetector::class,
-        Detectors\FrequentFlyerDetector::class,
-        Detectors\VirtuallyThereDetector::class,
-        // After the others
-        Detectors\NothingToSeeHereDetector::class,
-    ];
-
     public function __construct(
-        private Container $container,
+        private TriggerFactory $triggers,
         private MessageClassifier $classifier,
         private Fairness $fairness,
         private CrossCheck $crossCheck,
@@ -113,14 +44,16 @@ class AchievementEngine
     ) {}
 
     /**
-     * @return array<string, Detector|LateDetector> Keyed by achievement key
+     * @return array<string, Trigger> Keyed by achievement key, in run order
      */
-    public function detectors(): array
+    public function triggers(): array
     {
-        return collect(self::DETECTORS)
-            ->map(fn (string $class) => $this->container->make($class))
-            ->keyBy(fn (Detector|LateDetector $detector) => $detector->key())
-            ->all();
+        return $this->triggers->all();
+    }
+
+    public function trigger(string $key): Trigger
+    {
+        return $this->triggers->for($key);
     }
 
     /**
@@ -131,12 +64,12 @@ class AchievementEngine
     public function detect(SessionData $data): Collection
     {
         $catalogue = $this->catalogue();
-        $detectors = collect($this->detectors())
-            ->filter(fn ($detector, string $key) => $catalogue->has($key) && $catalogue[$key]->appliesTo($data->type()));
+        $triggers = collect($this->triggers())
+            ->filter(fn (Trigger $trigger, string $key) => $catalogue->has($key) && $catalogue[$key]->appliesTo($data->type()));
 
-        $detections = $detectors
-            ->filter(fn ($detector) => $detector instanceof Detector)
-            ->flatMap(fn (Detector $detector) => $detector->detect($data))
+        $detections = $triggers
+            ->reject(fn (Trigger $trigger) => $trigger->isLate())
+            ->flatMap(fn (Trigger $trigger) => $trigger->detect($data, collect()))
             ->values();
 
         $detections = $this->fairness->apply($detections, $catalogue);
@@ -145,8 +78,8 @@ class AchievementEngine
         $detections = $this->sensitivity->apply($detections, $catalogue, $data);
         $detections = $this->stacking->apply($detections, $catalogue);
 
-        foreach ($detectors->filter(fn ($detector) => $detector instanceof LateDetector) as $detector) {
-            $detections = $detections->concat($detector->detectAfter($data, $detections))->values();
+        foreach ($triggers->filter(fn (Trigger $trigger) => $trigger->isLate()) as $trigger) {
+            $detections = $detections->concat($trigger->detect($data, $detections))->values();
         }
 
         return $this->sensitivity->apply($detections, $catalogue, $data);

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Seeders;
 
 use App\Achievements\AchievementEngine;
+use App\Achievements\Catalogue;
 use App\Enums\AchievementShelf;
 use App\Models\Achievement;
 use Database\Seeders\AchievementSeeder;
@@ -13,11 +14,12 @@ class AchievementSeederTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    public function test_seeds_one_achievement_per_detector(): void
+    public function test_seeds_one_achievement_per_catalogue_entry_each_with_a_trigger(): void
     {
         $this->seed(AchievementSeeder::class);
 
-        $this->assertEqualsCanonicalizing(array_keys(app(AchievementEngine::class)->detectors()), Achievement::pluck('key')->all());
+        $this->assertEqualsCanonicalizing(app(Catalogue::class)->keys(), Achievement::pluck('key')->all());
+        $this->assertSame(app(Catalogue::class)->keys(), array_keys(app(AchievementEngine::class)->triggers()));
     }
 
     public function test_every_superseded_key_exists_and_only_oofs_earn_points(): void
@@ -49,6 +51,6 @@ class AchievementSeederTest extends TestCase
         $this->seed(AchievementSeeder::class);
 
         $this->assertSame(['Lapped Pup', 'gold'], Achievement::where('key', 'lapped_dog')->get()->map(fn (Achievement $row) => [$row->name, $row->tier->value])->sole());
-        $this->assertSame(count(AchievementSeeder::keys()), Achievement::count());
+        $this->assertSame(count(app(Catalogue::class)->keys()), Achievement::count());
     }
 }

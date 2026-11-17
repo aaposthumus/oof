@@ -106,12 +106,16 @@ trait BuildsSessions
     }
 
     /**
-     * @param  class-string<Detector>  $detector
+     * What one achievement's trigger finds in a session, before the rules run.
+     *
+     * @param  string|class-string<Detector>  $achievement  Catalogue key, or a detector class not ported yet
      * @return Collection<int, Detection>
      */
-    protected function detect(string $detector, RaceSession $session): Collection
+    protected function detect(string $achievement, RaceSession $session): Collection
     {
-        return app($detector)->detect($this->data($session));
+        return class_exists($achievement)
+            ? app($achievement)->detect($this->data($session))
+            : app(AchievementEngine::class)->trigger($achievement)->detect($this->data($session), collect());
     }
 
     /**

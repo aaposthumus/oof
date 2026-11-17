@@ -228,7 +228,7 @@ class AchievementAwardsTest extends TestCase
     {
         $achievement = Achievement::firstWhere('key', 'lapped_dog');
 
-        Livewire::test(ListAchievements::class)->assertCanSeeTableRecords([$achievement]);
+        Livewire::test(ListAchievements::class)->searchTable($achievement->name)->assertCanSeeTableRecords([$achievement]);
 
         Livewire::test(EditAchievement::class, ['record' => $achievement->getRouteKey()])
             ->fillForm(['name' => 'Lapped Pup', 'tier' => 'silver', 'session_types' => ['race'], 'supersedes' => ['good_boy']])
