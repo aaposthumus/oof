@@ -1,7 +1,6 @@
 <?php
 
 use App\Achievements\Detectors\AllDressedUpDetector;
-use App\Achievements\Detectors\BlueCarpetDetector;
 use App\Achievements\Detectors\ByAWhiskerDetector;
 use App\Achievements\Detectors\CalledTheTowTruckDetector;
 use App\Achievements\Detectors\ClassDismissedDetector;
@@ -9,7 +8,6 @@ use App\Achievements\Detectors\CleanSweepDetector;
 use App\Achievements\Detectors\DeletedSceneDetector;
 use App\Achievements\Detectors\DidTheThingDetector;
 use App\Achievements\Detectors\EarlyLunchDetector;
-use App\Achievements\Detectors\ExpelledDetector;
 use App\Achievements\Detectors\FineDiningDetector;
 use App\Achievements\Detectors\ForgotTheKeysDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
@@ -18,10 +16,8 @@ use App\Achievements\Detectors\GoodBoyDetector;
 use App\Achievements\Detectors\HoldingTheDoorDetector;
 use App\Achievements\Detectors\HomeBeforeDinnerDetector;
 use App\Achievements\Detectors\LappedDogDetector;
-use App\Achievements\Detectors\MeatballSubDetector;
 use App\Achievements\Detectors\MirrorMatchDetector;
 use App\Achievements\Detectors\NothingToSeeHereDetector;
-use App\Achievements\Detectors\OutsideTheLinesDetector;
 use App\Achievements\Detectors\OvertimeDetector;
 use App\Achievements\Detectors\PlotTwistDetector;
 use App\Achievements\Detectors\PracticeMakesImperfectDetector;
@@ -31,7 +27,6 @@ use App\Achievements\Detectors\SentToYourRoomDetector;
 use App\Achievements\Detectors\SilverLiningDetector;
 use App\Achievements\Detectors\SolidBronzeDetector;
 use App\Achievements\Detectors\TableForOneDetector;
-use App\Achievements\Detectors\TeachersStareDetector;
 use App\Achievements\Detectors\TookTheLeadDetector;
 use App\Achievements\Detectors\TookTheScenicRouteDetector;
 use App\Achievements\Detectors\ToTheRescueDetector;
@@ -450,7 +445,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => MeatballSubDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'flag', 'where' => [['flag', '=', 'black_and_orange_flag']]],
         ],
 
         'expelled' => [
@@ -466,7 +461,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => ExpelledDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'flag', 'where' => [['flag', '=', 'black_flag']]],
         ],
 
         'outside_the_lines' => [
@@ -482,7 +477,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => OutsideTheLinesDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'track_limit_deletion'],
         ],
 
         'teachers_stare' => [
@@ -498,7 +493,7 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => TeachersStareDetector::class],
+            'trigger' => ['type' => 'match', 'fact' => 'flag', 'where' => [['flag', '=', 'black_and_white_flag']]],
         ],
 
         'blue_carpet' => [
@@ -514,7 +509,12 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => BlueCarpetDetector::class],
+            'trigger' => [
+                'type' => 'count', 'fact' => 'flag', 'where' => [['flag', '=', 'blue_flag']],
+                'per' => 'entry', 'at_least' => 8,
+                'instance' => 'session', 'event' => 'blue_flags:{entry}',
+                'detail' => '{count} blue flags',
+            ],
         ],
 
         'whole_class_detention' => [

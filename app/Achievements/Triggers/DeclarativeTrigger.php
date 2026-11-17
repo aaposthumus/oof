@@ -89,8 +89,9 @@ abstract class DeclarativeTrigger implements Trigger
      * A detection for one fact, or for a group of facts it represents.
      *
      * @param  array<string, mixed>  $values  Computed values for the templates
+     * @param  bool  $fromSeveral  Whether it rests on several facts, so on no single message naming cars
      */
-    protected function detection(Fact $fact, SessionData $data, array $values = [], ?FactEvidence $evidence = null): Detection
+    protected function detection(Fact $fact, SessionData $data, array $values = [], ?FactEvidence $evidence = null, bool $fromSeveral = false): Detection
     {
         $evidence ??= $fact->evidence;
 
@@ -108,7 +109,7 @@ abstract class DeclarativeTrigger implements Trigger
             detail: Template::render($this->definition['detail'] ?? null, $fact, $values),
             reviewReason: $fact->reviewReason,
             isOpen: $fact->isOpen,
-            carsNamed: $fact->carsNamed,
+            carsNamed: $fromSeveral ? null : $fact->carsNamed,
         );
     }
 

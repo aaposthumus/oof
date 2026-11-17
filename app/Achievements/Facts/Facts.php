@@ -22,6 +22,8 @@ class Facts
         'penalty' => Providers\PenaltyFacts::class,
         'offence_noted' => Providers\OffenceNotedFacts::class,
         'incident_involvement' => Providers\IncidentInvolvementFacts::class,
+        'flag' => Providers\FlagFacts::class,
+        'track_limit_deletion' => Providers\TrackLimitDeletionFacts::class,
     ];
 
     /**

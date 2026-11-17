@@ -46,6 +46,7 @@ class TriggerFactory
         return match ($definition['type']) {
             'custom' => new CustomTrigger($this->container->make($definition['class'])),
             'match' => new MatchTrigger($key, $definition, $this->facts, $this->conditions),
+            'count' => new CountTrigger($key, $definition, $this->facts, $this->conditions),
             default => throw new InvalidArgumentException("Unknown trigger type [{$definition['type']}] for [{$key}]."),
         };
     }

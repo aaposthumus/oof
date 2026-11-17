@@ -3,12 +3,7 @@
 namespace Tests\Feature\Achievements\Detectors;
 
 use App\Achievements\Detection;
-use App\Achievements\Detectors\BlueCarpetDetector;
 use App\Achievements\Detectors\CalledTheTowTruckDetector;
-use App\Achievements\Detectors\ExpelledDetector;
-use App\Achievements\Detectors\MeatballSubDetector;
-use App\Achievements\Detectors\OutsideTheLinesDetector;
-use App\Achievements\Detectors\TeachersStareDetector;
 use App\Achievements\Detectors\WholeClassDetentionDetector;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
@@ -167,10 +162,10 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($race, 'BLACK AND WHITE FLAG FOR CAR 18 (STR) - TRACK LIMITS', ['flag' => 'BLACK AND WHITE']);
         $this->message($race, 'BLACK AND WHITE FLAG FOR CAR 27 (HUL) - MOVING UNDER BRAKING', ['flag' => 'BLACK AND WHITE']);
 
-        $this->assertCount(1, $this->detect(MeatballSubDetector::class, $race));
-        $this->assertStringStartsWith('disqualification:', $this->detect(ExpelledDetector::class, $race)->sole()->eventKey);
+        $this->assertCount(1, $this->detect('meatball_sub', $race));
+        $this->assertStringStartsWith('disqualification:', $this->detect('expelled', $race)->sole()->eventKey);
 
-        $stares = $this->detect(TeachersStareDetector::class, $race)->keyBy(fn (Detection $stare) => $this->data($race)->entry($stare->driverEntryId)->car_number);
+        $stares = $this->detect('teachers_stare', $race)->keyBy(fn (Detection $stare) => $this->data($race)->entry($stare->driverEntryId)->car_number);
         $this->assertStringStartsWith('track_limits:', $stares[18]->eventKey);
         $this->assertStringStartsWith('rcm:', $stares[27]->eventKey);
     }
@@ -183,12 +178,12 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($race, 'CAR 14 (ALO) TIME 1:31.617 DELETED - TRACK LIMITS AT TURN 13 LAP 3 18:15:32');
         $this->message($race, 'CAR 14 (ALO) TIME 1:32.001 DELETED - TRACK LIMITS AT TURN 4 LAP 9 18:25:00');
 
-        $this->assertCount(2, $this->detect(OutsideTheLinesDetector::class, $race));
+        $this->assertCount(2, $this->detect('outside_the_lines', $race));
     }
 
     public function test_blue_flags_count_from_the_threshold(): void
     {
-        config(['achievements.blue_flags' => 3]);
+        config(['achievement_catalogue.achievements.blue_carpet.trigger.at_least' => 3]);
         $race = $this->raceSession();
         $this->car($race, 2);
         $this->car($race, 21);
@@ -199,7 +194,7 @@ class RaceControlDetectorsTest extends TestCase
 
         $this->message($race, 'WAVED BLUE FLAG FOR CAR 21 (DEV) TIMED AT 15:10:00', ['flag' => 'BLUE']);
 
-        $detection = $this->detect(BlueCarpetDetector::class, $race)->sole();
+        $detection = $this->detect('blue_carpet', $race)->sole();
         $this->assertSame('3 blue flags', $detection->detail);
     }
 

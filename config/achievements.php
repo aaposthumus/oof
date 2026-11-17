@@ -92,7 +92,6 @@ return [
     | Thresholds
     |--------------------------------------------------------------------------
     |
-    | blue_flags: blue flags shown to one car in a race for Blue Carpet.
     | took_the_lead_laps: laps the safety car ran in one race.
     | second_helping: safety car deployments in one race. pit_stop_millis:
     | stationary time for Table for One. whisker_millis: the gap to the
@@ -101,8 +100,6 @@ return [
     | deleted laps for Practice Makes Imperfect. Set from the 2023–2026 test run.
     |
     */
-
-    'blue_flags' => 8,
 
     'took_the_lead_laps' => 8,
 
