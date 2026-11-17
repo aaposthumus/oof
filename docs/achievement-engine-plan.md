@@ -715,6 +715,10 @@ way is not done.
   so standings hold halves; a closed season keeps the stored values. A change of an
   achievement's tier, shelf or score category rebuilds the open seasons it appears in.
   The tie-break is unchanged: medals on tiers, then award count.
+- Decided: pending awards get a rank and multiplier stored too (they count once final);
+  an award without a known car is ×1; a CMS change of tier, shelf or score category
+  rebuilds the open seasons immediately. If that gets slow, move the rebuild to a
+  background job.
 - CMS: an OOFscore page with the leaderboard after a chosen round (latest by default),
   change arrows, and the Rebuild and Close season actions.
 - Checked on the local database: 2026 rebuilt from scratch (19 rounds with data, 425 rows),
