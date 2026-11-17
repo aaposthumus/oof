@@ -1,12 +1,8 @@
 <?php
 
-use App\Achievements\Detectors\ByAWhiskerDetector;
 use App\Achievements\Detectors\CalledTheTowTruckDetector;
 use App\Achievements\Detectors\ClassDismissedDetector;
-use App\Achievements\Detectors\DeletedSceneDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
-use App\Achievements\Detectors\HoldingTheDoorDetector;
-use App\Achievements\Detectors\MirrorMatchDetector;
 use App\Achievements\Detectors\NothingToSeeHereDetector;
 use App\Achievements\Detectors\OvertimeDetector;
 use App\Achievements\Detectors\PracticeMakesImperfectDetector;
@@ -729,7 +725,11 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => MirrorMatchDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'qualifying_knockout',
+                'where' => [['first_out', '=', true], ['through_is_teammate', '=', true]],
+                'detail' => 'Q{phase}', 'note' => 'Q{phase}: the teammate took the last place through.',
+            ],
         ],
 
         'by_a_whisker' => [
@@ -745,7 +745,11 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => ByAWhiskerDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'qualifying_knockout',
+                'where' => [['gap_millis', '>=', 0], ['gap_millis', '<', 15]],
+                'detail' => 'Q{phase} · +{gap} s', 'note' => 'Q{phase}: the gap to the last car through.',
+            ],
         ],
 
         'deleted_scene' => [
@@ -761,7 +765,13 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => DeletedSceneDetector::class],
+            'trigger' => [
+                'type' => 'match', 'fact' => 'track_limit_deletion',
+                'where' => [['phase', '=', 3], ['beats_classified_q3', '=', true]],
+                'order_by' => 'millis', 'distinct' => ['entry'],
+                'instance' => 'q3', 'event' => 'q3_deletion:{entry}',
+                'detail' => '{time}', 'note' => 'Classified Q3 time: {q3_time}',
+            ],
         ],
 
         'holding_the_door' => [
@@ -777,7 +787,11 @@ return [
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'custom', 'class' => HoldingTheDoorDetector::class],
+            'trigger' => [
+                'type' => 'extreme', 'fact' => 'qualifying_result', 'where' => [['q1_millis', '!=', null]],
+                'measure' => 'q1_millis', 'pick' => 'max', 'ties' => 'none',
+                'instance' => 'q1', 'event' => 'knocked_out:{entry}', 'detail' => '{q1_time}',
+            ],
         ],
 
         'overtime' => [

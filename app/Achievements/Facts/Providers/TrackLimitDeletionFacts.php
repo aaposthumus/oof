@@ -16,7 +16,8 @@ use Illuminate\Support\Collection;
  * deletions are left out). It belongs to the car's track-limits event.
  *
  * Attributes: phase (qualifying phase), time (as worded, or null), millis,
- * q3_millis and q3_time (the car's classified Q3 time).
+ * q3_millis and q3_time (the car's classified Q3 time), beats_classified_q3
+ * (a deleted time faster than the one the car is classified with).
  */
 class TrackLimitDeletionFacts implements FactProvider
 {
@@ -45,6 +46,9 @@ class TrackLimitDeletionFacts implements FactProvider
                     'millis' => $deletion['time'] === null ? null : TrackLimitDeletions::toMillis($deletion['time']),
                     'q3_millis' => fn () => $data->entry($deletion['entry_id'])?->qualifyingResult?->q3_millis,
                     'q3_time' => fn () => ($q3 = $data->entry($deletion['entry_id'])?->qualifyingResult?->q3_millis) === null ? null : QualifyingPhases::seconds($q3),
+                    'beats_classified_q3' => fn () => $deletion['time'] !== null
+                        && ($q3 = $data->entry($deletion['entry_id'])?->qualifyingResult?->q3_millis) !== null
+                        && TrackLimitDeletions::toMillis($deletion['time']) < $q3,
                 ],
                 evidence: FactEvidence::messages([$deletion['message']]),
             ))

@@ -2,11 +2,7 @@
 
 namespace Tests\Feature\Achievements\Detectors;
 
-use App\Achievements\Detectors\ByAWhiskerDetector;
-use App\Achievements\Detectors\DeletedSceneDetector;
 use App\Achievements\Detectors\FrequentFlyerDetector;
-use App\Achievements\Detectors\HoldingTheDoorDetector;
-use App\Achievements\Detectors\MirrorMatchDetector;
 use App\Achievements\Detectors\OvertimeDetector;
 use App\Achievements\Detectors\PracticeMakesImperfectDetector;
 use App\Achievements\Detectors\SecondHelpingDetector;
@@ -57,7 +53,7 @@ class SessionDetectorsTest extends TestCase
         $team = SeasonTeam::factory()->create(['season_id' => $qualifying->round->season_id]);
         $field = $this->qualifyingField($qualifying, [15 => ['team' => $team], 16 => ['team' => $team]]);
 
-        $detection = $this->detect(MirrorMatchDetector::class, $qualifying)->sole();
+        $detection = $this->detect('mirror_match', $qualifying)->sole();
 
         $this->assertSame($field[16]->id, $detection->driverEntryId);
         $this->assertSame('Q1', $detection->detail);
@@ -68,7 +64,7 @@ class SessionDetectorsTest extends TestCase
         $qualifying = $this->raceSession(SessionType::Qualifying);
         $field = $this->qualifyingField($qualifying, [11 => ['q2' => 90_012], 12 => ['q2' => 89_990], 13 => ['q2' => 90_015]]);
 
-        $detection = $this->detect(ByAWhiskerDetector::class, $qualifying)->sole();
+        $detection = $this->detect('by_a_whisker', $qualifying)->sole();
 
         $this->assertSame($field[11]->id, $detection->driverEntryId);
         $this->assertSame('Q2 · +0.012 s', $detection->detail);
@@ -79,7 +75,7 @@ class SessionDetectorsTest extends TestCase
         $qualifying = $this->raceSession(SessionType::Qualifying);
         $field = $this->qualifyingField($qualifying, [10 => ['q3' => null], 11 => ['q2' => 90_010]]);
 
-        $detection = $this->detect(ByAWhiskerDetector::class, $qualifying)->sole();
+        $detection = $this->detect('by_a_whisker', $qualifying)->sole();
 
         $this->assertSame($field[11]->id, $detection->driverEntryId);
         $this->assertSame('Q2 · +0.010 s', $detection->detail);
@@ -90,7 +86,7 @@ class SessionDetectorsTest extends TestCase
         $qualifying = $this->raceSession(SessionType::Qualifying);
         $field = $this->qualifyingField($qualifying);
 
-        $this->assertSame($field[20]->id, $this->detect(HoldingTheDoorDetector::class, $qualifying)->sole()->driverEntryId);
+        $this->assertSame($field[20]->id, $this->detect('holding_the_door', $qualifying)->sole()->driverEntryId);
     }
 
     public function test_so_close_when_a_deleted_q3_time_beats_the_classified_one(): void
@@ -101,7 +97,7 @@ class SessionDetectorsTest extends TestCase
         $this->message($qualifying, 'CAR 2 (VER) TIME 1:27.950 DELETED - TRACK LIMITS AT TURN 4 LAP 17 19:04:00');
         $this->message($qualifying, 'CAR 2 (VER) TIME 1:28.500 DELETED - TRACK LIMITS AT TURN 4 LAP 19 19:06:00');
 
-        $detection = $this->detect(DeletedSceneDetector::class, $qualifying)->sole();
+        $detection = $this->detect('deleted_scene', $qualifying)->sole();
 
         $this->assertSame($field[1]->id, $detection->driverEntryId);
         $this->assertSame('1:27.950', $detection->detail);
@@ -182,7 +178,7 @@ class SessionDetectorsTest extends TestCase
         $qualifying = $this->raceSession(SessionType::Qualifying);
         $this->qualifyingField($qualifying, [19 => ['q1' => 92_000], 20 => ['q1' => 92_000]]);
 
-        $this->assertCount(0, $this->detect(HoldingTheDoorDetector::class, $qualifying));
+        $this->assertCount(0, $this->detect('holding_the_door', $qualifying));
     }
 
     public function test_slow_stops_by_measured_stationary_time_only(): void
