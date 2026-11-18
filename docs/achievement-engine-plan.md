@@ -705,7 +705,8 @@ way is not done.
   offences, track limits, flags, collisions, Sunday Driver, By a Whisker, It Was Like
   That When I Got There, Called the Tow Truck, Whole Class Detention; also the default),
   `pace` (Lapped Dog, Good Boy, Blue Carpet, Holding the Door, Turned Off the Lights,
-  Reverse Gear, Overtime, Nearly Famous, Mirror Match, All Dressed Up Nowhere to Go),
+  Reverse Gear, Nearly Famous, Mirror Match, All Dressed Up Nowhere to Go; Overtime until
+  18 November 2026, now driver),
   `reliability` (Forgot the Keys, Early Lunch, Home Before Dinner, Sent to Your Room,
   Table for One, Fine Dining, Released Into the Wild, Meatball Sub) and `surprise` (×1:
   Economy Class, Peaked Too Soon, Led Astray, when added). `achievements.points.multipliers`
@@ -884,6 +885,12 @@ Decided by the owner on 18 November 2026, done the same day:
   2 changed (the shared Overtime points: 2023 Piastri 685 to 725, 2025 Antonelli 1,210 to
   1,230, and 2024 goes from Albon 727.5 to Hamilton 745). Re-exported: 4,222 awards in 453
   contexts.
+- Overtime moved from the pace to the driver score category (×1 for every team), decided
+  the same day: catalogue default and, by migration, the stored row (only where it was
+  still pace). OOFscore rebuilt for 2023 to 2026. Champions: 2023 Piastri 725 to 715, 2024
+  Hamilton 745 to Magnussen 742.5, 2025 Antonelli 1,230 to 1,180. 2024 top 5: Magnussen
+  742.5, Albon 727.5, Hamilton 715, Gasly 635, Stroll 620. Golden master: only OOFscore
+  Champion differs (2023 and 2025 points, 2024 the driver); re-exported.
 
 **Phase 8: recipients.**
 Recipient value on detections, team columns in use, Safety Car explicit; trophy queries

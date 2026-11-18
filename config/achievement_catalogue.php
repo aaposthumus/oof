@@ -797,7 +797,7 @@ return [
             'section' => 'practice',
             'shelf' => 'oof',
             'tier' => 'bronze',
-            'score_category' => 'pace',
+            'score_category' => 'driver',
             'description' => 'Most laps driven in practice over the whole weekend.',
             'supersedes' => [],
             'sessions' => ['practice_1', 'practice_2', 'practice_3'],
