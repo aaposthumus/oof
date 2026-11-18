@@ -808,7 +808,7 @@ return [
             'withheld_on_sensitive_weekends' => false,
             'trigger' => [
                 'type' => 'extreme', 'fact' => 'lap_count',
-                'measure' => 'laps', 'per' => 'driver', 'pick' => 'max', 'at_least' => 1, 'ties' => 'none', 'among' => 'race_drivers',
+                'measure' => 'laps', 'per' => 'driver', 'pick' => 'max', 'at_least' => 1, 'ties' => 'share', 'among' => 'race_drivers',
                 'instance' => 'weekend', 'event' => 'weekend',
                 'evidence' => 'leaderboard', 'detail' => '{value} laps',
             ],
@@ -830,7 +830,7 @@ return [
             'withheld_on_sensitive_weekends' => false,
             'trigger' => [
                 'type' => 'extreme', 'fact' => 'track_limit_deletion',
-                'measure' => 'count', 'per' => 'driver', 'pick' => 'max', 'at_least' => 3, 'ties' => 'none', 'among' => 'race_drivers',
+                'measure' => 'count', 'per' => 'driver', 'pick' => 'max', 'at_least' => 3, 'ties' => 'share', 'among' => 'race_drivers',
                 'instance' => 'weekend', 'event' => 'weekend',
                 'detail' => '{count} deleted {count:lap|laps}',
             ],
@@ -1100,7 +1100,7 @@ return [
             'shelf' => 'oofies',
             'tier' => null,
             'score_category' => 'driver',
-            'description' => 'Most final awards of one OOF achievement in the season (at least 2; a tie is shared).',
+            'description' => 'Most final awards of one OOF achievement in the season, Nothing to See Here aside (at least 2; a tie is shared).',
             'supersedes' => [],
             'sessions' => [],
             'stacks' => true,
@@ -1108,7 +1108,7 @@ return [
             'scope' => 'season',
             'withheld_on_sensitive_weekends' => false,
             'trigger' => [
-                'type' => 'aggregate', 'source' => 'awards', 'shelf' => 'oof',
+                'type' => 'aggregate', 'source' => 'awards', 'shelf' => 'oof', 'except' => ['nothing_to_see_here'],
                 'per' => 'achievement', 'group' => 'driver', 'measure' => 'count', 'pick' => 'max', 'at_least' => 2, 'ties' => 'share',
                 'detail' => '{achievement} ×{value}', 'note' => 'The most {achievement} awards of the season.',
             ],

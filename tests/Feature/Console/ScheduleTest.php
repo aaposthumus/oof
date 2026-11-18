@@ -29,7 +29,7 @@ class ScheduleTest extends TestCase
 
     public function test_unlocks_achievements_hourly_after_normalizing(): void
     {
-        $achievements = collect(app(Schedule::class)->events())->sole(fn (Event $event) => str_contains($event->command, 'oof:achievements --changed'));
+        $achievements = collect(app(Schedule::class)->events())->sole(fn (Event $event) => str_contains($event->command, 'oof:achievements --changed --stale'));
 
         $this->assertSame('50 * * * *', $achievements->expression);
         $this->assertTrue($achievements->withoutOverlapping);

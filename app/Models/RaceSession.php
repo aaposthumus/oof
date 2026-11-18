@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\SessionType;
+use Carbon\CarbonImmutable;
 use Database\Factories\RaceSessionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -29,6 +30,24 @@ class RaceSession extends Model
             'scheduled_date' => 'date',
             'achievements_checked_at' => 'datetime',
         ];
+    }
+
+    /**
+     * When the session ended: OpenF1's end time, or else its scheduled start
+     * (the round's date and time when it has none) plus three hours.
+     */
+    public function endsAt(): CarbonImmutable
+    {
+        $this->loadMissing(['round', 'openF1Session']);
+
+        if ($this->openF1Session?->date_end !== null) {
+            return CarbonImmutable::parse($this->openF1Session->date_end);
+        }
+
+        $date = $this->scheduled_date ?? $this->round->date;
+        $time = $this->scheduled_time ?? $this->round->time ?? '23:59:59';
+
+        return CarbonImmutable::parse($date->format('Y-m-d').' '.$time, 'UTC')->addHours(3);
     }
 
     /**

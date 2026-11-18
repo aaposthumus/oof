@@ -19,7 +19,7 @@ use InvalidArgumentException;
  * - measure: the attribute to compare, or count
  * - pick: max or min
  * - at_least: the smallest value that can win (max only)
- * - ties: none (a shared extreme gives nothing; the only policy so far)
+ * - ties: none (a shared extreme gives nothing) or share (every candidate on it wins)
  * - among: race_drivers, to leave out practice-only drivers and FP1 rookies
  * - per: driver, to total a driver's facts over the weekend's sessions
  * - evidence: fact (default: the winner's) or leaderboard (the top five values)
@@ -39,14 +39,18 @@ class ExtremeTrigger extends DeclarativeTrigger
         $best = $this->definition['pick'] === 'max' ? $eligible->max('value') : $eligible->min('value');
         $winners = $eligible->filter(fn (array $candidate) => $candidate['value'] === $best);
 
-        if ($best === null || $winners->count() !== 1 || (isset($this->definition['at_least']) && $best < $this->definition['at_least'])) {
+        $shared = ($this->definition['ties'] ?? 'none') === 'share';
+
+        if ($best === null || ($winners->count() !== 1 && ! $shared) || (isset($this->definition['at_least']) && $best < $this->definition['at_least'])) {
             return collect();
         }
 
-        $winner = $winners->first();
-        $evidence = ($this->definition['evidence'] ?? 'fact') === 'leaderboard' ? $this->leaderboard($candidates, $data) : $winner['evidence'];
+        $leaderboard = ($this->definition['evidence'] ?? 'fact') === 'leaderboard' ? $this->leaderboard($candidates, $data) : null;
 
-        return collect([$this->detection($winner['fact'], $data, ['value' => $best, 'count' => $winner['count']], $evidence, fromSeveral: $grouped)]);
+        return $winners
+            ->sortBy(fn (array $winner) => $winner['fact']->entryId)
+            ->map(fn (array $winner) => $this->detection($winner['fact'], $data, ['value' => $best, 'count' => $winner['count']], $leaderboard ?? $winner['evidence'], fromSeveral: $grouped))
+            ->values();
     }
 
     /**

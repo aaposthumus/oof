@@ -861,7 +861,29 @@ Decided by the owner on 17 November 2026:
   Bearman (Red Light, Green Light, once, over Queue Jumper on tier); 32 Most Collected,
   for example Antonelli Outside the Lines ×15, Ocon Nothing to See Here ×9.
 - Stored awards on the local database were not brought up to date (only dry runs); deploy
-  step 3 does that.
+  step 4 does that.
+
+Decided by the owner on 18 November 2026, done the same day:
+
+- Ties on a weekend total are shared: everyone on the top total gets Overtime or Practice
+  Makes Imperfect (extreme trigger `ties: share`).
+- Most Collected leaves Nothing to See Here out (aggregate option `except`); its
+  description says so (migration, only where it still equals the seeded text).
+- The hourly schedule runs `oof:achievements --changed --stale`.
+- Live weekends: a session runs once it has ended (OpenF1's end time, else its scheduled
+  start plus three hours, `RaceSession::endsAt()`), no longer only from the round's race
+  date. Practice and qualifying are decided on Friday and Saturday and become final after
+  their own final-after hours through `--changed`; a weekend achievement still waits for
+  its deciding session.
+- The production check of decided awards stays deploy step 3.
+- Golden master: 86 differences, all intended. Overtime 55 added (shared on the 22 tied
+  weekends); Practice Makes Imperfect 6 added (2026 rounds 1, 11, 14); Nothing to See Here
+  8 missing (drivers who now share Overtime); Most Collected 9 missing, 3 added, 1 changed
+  (Nothing to See Here out: 5; Overtime counts moved with the sharing, e.g. 2023 Bottas
+  Overtime ×5 alone instead of three drivers on ×2); OOFscore Champion 1 missing, 1 added,
+  2 changed (the shared Overtime points: 2023 Piastri 685 to 725, 2025 Antonelli 1,210 to
+  1,230, and 2024 goes from Albon 727.5 to Hamilton 745). Re-exported: 4,222 awards in 453
+  contexts.
 
 **Phase 8: recipients.**
 Recipient value on detections, team columns in use, Safety Car explicit; trophy queries

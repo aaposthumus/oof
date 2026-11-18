@@ -149,7 +149,7 @@ class SessionDetectorsTest extends TestCase
         );
     }
 
-    public function test_a_shared_top_spot_or_too_few_deleted_laps_gives_no_practice_award(): void
+    public function test_a_shared_top_spot_is_shared_and_too_few_deleted_laps_give_nothing(): void
     {
         $race = $this->raceSession();
         $practice = $this->raceSession(SessionType::Practice2, $race->round);
@@ -166,7 +166,9 @@ class SessionDetectorsTest extends TestCase
         $this->message($practice, 'CAR 16 (LEC) TIME 1:30.000 DELETED - TRACK LIMITS AT TURN 4 LAP 3 13:10:00');
         $this->message($practice, 'CAR 16 (LEC) TIME 1:30.100 DELETED - TRACK LIMITS AT TURN 4 LAP 5 13:12:00');
 
-        $this->assertCount(0, $this->detect('overtime', $practice));
+        $shared = $this->detect('overtime', $practice);
+        $this->assertCount(2, $shared);
+        $this->assertSame(['20 laps'], $shared->pluck('detail')->unique()->all());
         $this->assertCount(0, $this->detect('practice_makes_imperfect', $practice));
     }
 

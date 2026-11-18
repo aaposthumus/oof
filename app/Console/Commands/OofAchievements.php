@@ -213,15 +213,21 @@ class OofAchievements extends Command
      */
     private function select(?SessionType $type, RunLog $log): array
     {
+        // A session runs once it has ended, so practice and qualifying are decided on a live
+        // weekend before the race; their awards wait for their own final-after hours.
         $sessions = RaceSession::query()
-            ->with('round.season')
+            ->with(['round.season', 'openF1Session'])
+            ->where(fn (Builder $query) => $query
+                ->where('scheduled_date', '<=', now()->toDateString())
+                ->orWhere(fn (Builder $query) => $query->whereNull('scheduled_date')->whereHas('round', fn (Builder $round) => $round->where('date', '<=', now()->toDateString()))))
             ->whereHas('round', fn (Builder $round) => $round
-                ->where('date', '<=', now()->toDateString())
                 ->when($this->option('round'), fn (Builder $query, $number) => $query->where('round_number', (int) $number))
                 ->whereHas('season', fn (Builder $season) => $season
                     ->where('year', '>=', config('achievements.first_season'))
                     ->when($this->option('season'), fn (Builder $query, array $years) => $query->whereIn('year', array_map('intval', $years)))))
-            ->get();
+            ->get()
+            ->filter(fn (RaceSession $session) => $session->endsAt()->lessThanOrEqualTo(CarbonImmutable::now()))
+            ->values();
 
         // A session filter narrows the session scope only, so the round must keep a session to hang its weekend on.
         if ($type !== null) {

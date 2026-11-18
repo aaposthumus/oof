@@ -4,11 +4,13 @@ namespace Tests\Feature\Console\Commands;
 
 use App\Achievements\Catalogue;
 use App\Enums\AwardScope;
+use App\Enums\AwardStatus;
 use App\Enums\SessionType;
 use App\Models\AchievementAward;
 use App\Models\AchievementRun;
 use App\Models\RaceSession;
 use App\Models\Result;
+use App\Models\SessionLap;
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Date;
@@ -81,6 +83,38 @@ class OofAchievementsTest extends TestCase
 
         $this->assertTrue($changed->fresh()->achievements_checked_at->isSameDay('2024-06-02'));
         $this->assertTrue($unchanged->fresh()->achievements_checked_at->isSameDay('2024-06-01'));
+    }
+
+    public function test_on_a_live_weekend_practice_and_qualifying_are_decided_and_final_by_saturday_evening(): void
+    {
+        $round = $this->round(2024, 8, ['date' => '2024-06-09', 'time' => '13:00:00']);
+        $practice = RaceSession::factory()->for($round)->create(['type' => SessionType::Practice1, 'scheduled_date' => '2024-06-07', 'scheduled_time' => '11:30:00']);
+        $qualifying = RaceSession::factory()->for($round)->create(['type' => SessionType::Qualifying, 'scheduled_date' => '2024-06-08', 'scheduled_time' => '14:00:00']);
+        $race = RaceSession::factory()->for($round)->create(['type' => SessionType::Race, 'scheduled_date' => '2024-06-09', 'scheduled_time' => '13:00:00']);
+        $practiceCar = $this->car($practice, 16);
+        $this->car($race, 16, null, $practiceCar->driver);
+        $this->qualifying($this->car($qualifying, 16, null, $practiceCar->driver), 1, 90_000, 89_000, 88_000);
+        $this->message($qualifying, 'FIA STEWARDS: 3 PLACE GRID PENALTY FOR CAR 16 (LEC) - CAUSING A COLLISION');
+
+        foreach (range(1, 20) as $lap) {
+            SessionLap::factory()->create(['race_session_id' => $practice->id, 'driver_number' => 16, 'driver_entry_id' => $practiceCar->id, 'lap_number' => $lap]);
+        }
+
+        // Qualifying ended at 17:00 (start plus three hours); its two-hour wait runs to 19:00.
+        Date::setTestNow('2024-06-08 17:30:00');
+        $this->artisan('oof:achievements', ['--changed' => true, '--stale' => true])
+            ->expectsOutputToContain('2 sessions, 1 weekends, 0 seasons')
+            ->assertSuccessful();
+
+        $this->assertNull($race->fresh()->achievements_checked_at);
+        $this->assertSame(AwardStatus::Final, AchievementAward::whereRelation('achievement', 'key', 'overtime')->sole()->status);
+        $this->assertSame(AwardStatus::Pending, AchievementAward::whereRelation('achievement', 'key', 'bumper_cars')->sole()->status);
+
+        Date::setTestNow('2024-06-08 19:50:00');
+        $this->artisan('oof:achievements', ['--changed' => true, '--stale' => true])->assertSuccessful();
+
+        $this->assertSame(AwardStatus::Final, AchievementAward::whereRelation('achievement', 'key', 'bumper_cars')->sole()->status);
+        $this->assertNull($race->fresh()->achievements_checked_at);
     }
 
     public function test_never_runs_seasons_before_the_first_one_or_rounds_still_to_come(): void

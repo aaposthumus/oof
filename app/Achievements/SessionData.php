@@ -247,14 +247,7 @@ class SessionData
      */
     public function endsAt(): CarbonImmutable
     {
-        if ($this->session->openF1Session?->date_end !== null) {
-            return CarbonImmutable::parse($this->session->openF1Session->date_end);
-        }
-
-        $date = $this->session->scheduled_date ?? $this->session->round->date;
-        $time = $this->session->scheduled_time ?? $this->session->round->time ?? '23:59:59';
-
-        return CarbonImmutable::parse($date->format('Y-m-d').' '.$time, 'UTC')->addHours(3);
+        return $this->session->endsAt();
     }
 
     /**

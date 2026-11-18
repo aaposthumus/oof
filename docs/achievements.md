@@ -108,8 +108,8 @@ give nothing.
 
 Practice achievements only count for race drivers (not FP1 rookies or
 practice-only drivers). They are decided once per weekend, after the last
-practice session, over the totals of every practice session; an equal top
-total gives nothing.
+practice session, over the totals of every practice session; everyone on
+an equal top total shares it.
 
 ### Weekend achievements
 
@@ -152,7 +152,7 @@ Decided once the season's final race is final, from the season's final awards.
 
 | Oofie | Trigger |
 |---|---|
-| Most Collected | Most final awards of one OOF achievement (at least 2; a tie is shared) |
+| Most Collected | Most final awards of one OOF achievement, Nothing to See Here aside (at least 2; a tie is shared) |
 | OOFscore Champion | Top of the final OOFscore standings (a tie is shared) |
 | Rarest Award | Holds the OOF achievement unlocked least often (a tie goes to the higher tier) |
 

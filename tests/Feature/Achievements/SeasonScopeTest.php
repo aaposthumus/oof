@@ -134,6 +134,19 @@ class SeasonScopeTest extends TestCase
         $this->assertSame(0, $collected->first()->points);
     }
 
+    public function test_most_collected_leaves_nothing_to_see_here_out(): void
+    {
+        $first = $this->race(1, '2024-03-02');
+        $final = $this->race(2, '2024-03-09');
+        $alice = $this->car($final, 1);
+        $this->award($first, $alice, 'nothing_to_see_here');
+        $this->award($final, $alice, 'nothing_to_see_here');
+
+        $this->runSeason();
+
+        $this->assertCount(0, $this->awards('most_collected'));
+    }
+
     public function test_the_oofscore_champion_tops_the_final_standings(): void
     {
         $first = $this->race(1, '2024-03-02');

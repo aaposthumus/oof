@@ -109,7 +109,7 @@ class WeekendScopeTest extends TestCase
         $this->assertSame($cars[55]['race']->driver_id, $this->awards('overtime')->sole()->driver_id);
     }
 
-    public function test_an_equal_weekend_total_gives_no_overtime(): void
+    public function test_everyone_on_the_top_weekend_total_shares_overtime(): void
     {
         [$round, $sessions, $cars] = $this->weekend();
         $this->laps($sessions['fp1'], $cars[16]['fp1'], 20);
@@ -117,7 +117,24 @@ class WeekendScopeTest extends TestCase
 
         $this->runRound($round);
 
-        $this->assertCount(0, $this->awards('overtime'));
+        $shared = $this->awards('overtime');
+        $this->assertEqualsCanonicalizing([$cars[16]['fp2']->id, $cars[55]['fp2']->id], $shared->pluck('driver_entry_id')->all());
+        $this->assertSame(['20 laps'], $shared->pluck('detail')->unique()->values()->all());
+    }
+
+    public function test_everyone_on_the_top_weekend_total_shares_practice_makes_imperfect(): void
+    {
+        [$round, $sessions] = $this->weekend();
+
+        foreach (['1:30.000', '1:30.100', '1:30.200'] as $time) {
+            $this->message($sessions['fp1'], "CAR 16 (LEC) TIME {$time} DELETED - TRACK LIMITS AT TURN 4 LAP 3 13:10:00");
+            $this->message($sessions['fp2'], "CAR 55 (SAI) TIME {$time} DELETED - TRACK LIMITS AT TURN 4 LAP 3 13:10:00");
+        }
+
+        $this->runRound($round);
+
+        $this->assertCount(2, $this->awards('practice_makes_imperfect'));
+        $this->assertSame(['3 deleted laps'], $this->awards('practice_makes_imperfect')->pluck('detail')->unique()->values()->all());
     }
 
     public function test_a_weekend_achievement_waits_until_its_deciding_session_has_ended(): void

@@ -27,6 +27,7 @@ use InvalidArgumentException;
  *   after the last round)
  * - fact, where: with source facts, the fact type and its conditions
  * - shelf: with source awards, only awards on this shelf
+ * - except: with source awards, achievement keys left out
  * - per: achievement, for one contest per achievement (source awards)
  * - group: season (everything together), driver or achievement
  * - measure: count, or an attribute summed (facts) or compared (standings: position, points)
@@ -43,7 +44,7 @@ use InvalidArgumentException;
  */
 final class AggregateTrigger implements SeasonTrigger
 {
-    private const OPTIONS = ['type', 'source', 'fact', 'where', 'shelf', 'per', 'group', 'measure', 'pick', 'at_least', 'ties', 'to', 'instance', 'event', 'detail', 'note'];
+    private const OPTIONS = ['type', 'source', 'fact', 'where', 'shelf', 'except', 'per', 'group', 'measure', 'pick', 'at_least', 'ties', 'to', 'instance', 'event', 'detail', 'note'];
 
     private const TIER_RANK = ['platinum' => 4, 'gold' => 3, 'silver' => 2, 'bronze' => 1];
 
@@ -267,7 +268,9 @@ final class AggregateTrigger implements SeasonTrigger
                     'session' => "Round {$data->session->round->round_number} {$data->type()->label()}",
                 ]))->values(),
             'awards' => $season->finalAwards()
-                ->filter(fn (AchievementAward $award) => $award->driver_id !== null && (! isset($this->definition['shelf']) || $award->shelf?->value === $this->definition['shelf']))
+                ->filter(fn (AchievementAward $award) => $award->driver_id !== null
+                    && (! isset($this->definition['shelf']) || $award->shelf?->value === $this->definition['shelf'])
+                    && ! in_array($award->achievement->key, $this->definition['except'] ?? [], true))
                 ->map(fn (AchievementAward $award) => [
                     'driver' => $award->driver_id,
                     'entry' => $award->driver_entry_id,
