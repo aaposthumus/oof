@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\RecipientType;
+use Carbon\CarbonInterface;
 use Database\Factories\DriverFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -54,5 +55,26 @@ class Driver extends Model
     public function awards(): HasMany
     {
         return $this->hasMany(AchievementAward::class)->where('recipient_type', RecipientType::Driver);
+    }
+
+    /**
+     * Every stage of the driver's nickname, planned ones included.
+     *
+     * @return HasMany<DriverNickname, $this>
+     */
+    public function nicknames(): HasMany
+    {
+        return $this->hasMany(DriverNickname::class)->orderBy('stage');
+    }
+
+    /**
+     * The nickname in use on a date (today by default): an award keeps the
+     * stage of its own date after an evolution, and follows a correction.
+     */
+    public function nicknameOn(?CarbonInterface $date = null): ?DriverNickname
+    {
+        $date ??= now();
+
+        return $this->nicknames->sortByDesc('stage')->first(fn (DriverNickname $nickname) => $nickname->wasInUseOn($date));
     }
 }

@@ -355,6 +355,28 @@ class AchievementAward extends Model
     }
 
     /**
+     * The driver's nickname on the award's date. Never stored: it is read
+     * from the nickname record, so a correction shows at once and an award
+     * keeps the stage it was won under after an evolution.
+     */
+    public function nickname(): ?DriverNickname
+    {
+        return $this->recipient_type === RecipientType::Driver ? $this->driver?->nicknameOn($this->occurred_on) : null;
+    }
+
+    /**
+     * The edition subtitle of a driver-specific variant, "Outside the Lines ·
+     * MaxSettings edition", built from the achievement and the nickname
+     * record; null without a variant or a nickname.
+     */
+    public function editionSubtitle(): ?string
+    {
+        $nickname = $this->achievement_variant_id === null ? null : $this->nickname();
+
+        return $nickname === null ? null : "{$this->achievement->name} · {$nickname->nickname} edition";
+    }
+
+    /**
      * The achievement's description from the catalogue, then the award's own subtitle.
      */
     public function descriptionLine(): ?string

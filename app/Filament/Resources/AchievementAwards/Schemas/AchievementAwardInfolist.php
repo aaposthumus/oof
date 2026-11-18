@@ -35,6 +35,14 @@ class AchievementAwardInfolist
                             ->label('Recipient')
                             ->state(fn (AchievementAward $record): ?string => $record->recipientLabel())
                             ->placeholder('No car'),
+                        TextEntry::make('nickname')
+                            ->label('Nickname on the day')
+                            ->state(fn (AchievementAward $record): ?string => $record->nickname()?->nickname)
+                            ->placeholder('None'),
+                        TextEntry::make('edition')
+                            ->label('Edition subtitle')
+                            ->state(fn (AchievementAward $record): ?string => $record->editionSubtitle())
+                            ->placeholder('No driver variant'),
                         TextEntry::make('confidence')
                             ->badge()
                             ->formatStateUsing(fn (AwardConfidence $state): string => $state->label()),

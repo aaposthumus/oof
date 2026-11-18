@@ -36,3 +36,9 @@ Schedule::command('oof:achievements --changed --stale')
     ->hourlyAt(50)
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/achievements.log'));
+
+// Approved nickname evolutions take effect on their own (off-season) date.
+Schedule::command('oof:nicknames:evolve')
+    ->dailyAt('00:10')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/nicknames.log'));

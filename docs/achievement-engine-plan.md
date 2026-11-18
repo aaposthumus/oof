@@ -22,7 +22,7 @@ and 4 for the design, and "Working notes" at the end.
 | 6 | Facts and triggers | Done, 17 November 2026 |
 | 7 | Scopes, runs and the Oofies | Done, 18 November 2026 |
 | 8 | Recipients | Done, 18 November 2026 |
-| 9 | Nicknames and evolution events | Not started |
+| 9 | Nicknames and evolution events | Done, 18 November 2026 |
 | 10 | 2027 pack | Not started |
 | 11 | Historic backfill | Not started |
 
@@ -430,8 +430,8 @@ come from general knowledge of the Ergast data, not from this database.
    injury relies on a person suppressing it.
 7. **No live sensitivity source.** The seeded weekends are historic; nothing flags a
    2027 weekend unless a person or the heavy-crash proposal does.
-8. **Nicknames, mottos, props, reserves** are not in the database; the 2027 line-ups
-   are not confirmed.
+8. **Props and reserves** are not in the database (nicknames and mottos are, as drafts,
+   since Phase 9); the 2027 line-ups are not confirmed.
 9. **Team lineage** covers today's teams and, since Phase 2, the main historic renames.
    Jolpica's chassis-engine constructors of the 1950s to 1970s (Lotus-Climax beside Team
    Lotus, Cooper-Climax, Brabham-Repco, McLaren-Ford and so on) are still separate teams,
@@ -938,12 +938,64 @@ Decided by the owner on 18 November 2026:
 - Season-level team awards (an aggregate trigger grouped by team) come later, if ever;
   until then a team achievement takes a match, count or extreme trigger.
 
-**Phase 9: nicknames and evolution events.**
-Tables, seed the 22 nicknames and the legends, CMS screens, the breakthrough check,
-both events, the off-season rule for the effective date, nickname-based edition
-subtitles. Apply decision 1 of section 2.
-Done when a fixture podium for Lindblad creates one proposal and one event, a re-run
-creates none, and an effective date inside the season is refused.
+**Phase 9: nicknames and evolution events. Done.**
+
+- Source: `docs/oof-concept.md`, committed on its own as a reference snapshot (13 November
+  2026 nicknames). Requirement from the owner: the nicknames are not final, so everything
+  must stay editable, and nothing stores a nickname as text.
+- `driver_nicknames`: one row per stage (driver, nickname, motto, stage, `evolves_from_id`,
+  status planned, active or retired, `is_draft`, `active_from`, `active_to`,
+  `evolution_trigger`: the breakthroughs that may propose a planned stage, any when empty,
+  and a note). One active nickname per driver (model guard). `nickname_evolutions`: driver,
+  from and to nickname, season of the breakthrough, trigger award, reason, evidence, status
+  (proposed, approved, applied, dismissed), decided by and at, `effective_on`, `applied_at`;
+  unique on the target nickname.
+- Seeded by `DriverNicknameSeeder` (also in `DatabaseSeeder`), all as drafts: the 22 drivers
+  of the grid table and the four legends, with mottos (legends have none), and the four
+  planned evolutions (Outlawson to LawFirm, which keeps the motto as the concept says;
+  LindBud to LindBloom, RafaCut to Rafined and Gabbles to Gabblefly, without a motto yet).
+  Create-only per driver and stage: an existing row is never touched. A driver not in the
+  database (matched on the Jolpica ID, else the name) is skipped and reported: Câmara
+  locally. Props are not seeded.
+- Nothing stores the text: `Driver::nicknameOn($date)` finds the stage in use on a date;
+  `AchievementAward::nickname()` reads it for the award's date, so an award keeps the stage
+  it was won under after an evolution; `editionSubtitle()` builds "Outside the Lines ·
+  MaxSettings edition" for an award with a driver variant. The award's own `subtitle`
+  stays a person's free text. Evolutions refer to the rows.
+- Correction and evolution are kept apart. A correction edits the row in place (CMS
+  Nicknames, "Correct"): every award, subtitle and evolution follows at once, with no new
+  stage and no event; status and dates are not editable there. An evolution is a new row:
+  planned in the CMS ("Next stage of"), made active only through an approved evolution.
+- Breakthroughs (`App\Achievements\Nicknames\Breakthroughs`), for each planned stage whose
+  previous stage is active and that has no evolution yet: first podium or first win, from
+  the Grand Prix results (sprints do not count), once the award behind it (Did the Thing
+  or what supersedes it, Silver Lining, Solid Bronze) is final; a first podium that is a
+  win is a first win. Strong first season (decision 1 of section 2): once the season is
+  final, `nicknames.strong_first_season_top` (10, in its own `config/nicknames.php`, so the
+  catalogue version is unchanged) or better in the final drivers' standings of the
+  driver's first full season (a race entry in every round). One proposal per target
+  nickname, so a re-run, a backfill or a dismissal never proposes again.
+- Runs at the end of `oof:achievements` for the seasons touched (not on a dry run), and
+  as `oof:nicknames [--season=]`.
+- Approval (CMS Nickname evolutions): a person approves with an effective date, which must
+  fall after the breakthrough season's last round and before the next season's first
+  round (`OffSeasonOnly` otherwise; also refused while the next season's calendar is not
+  in the database), or dismisses it. `oof:nicknames:evolve`, daily at 00:10, applies the
+  approved evolutions whose date has come: the old stage retires the day before, the new
+  one is active from the date.
+- Events, after the commit and only for seasons from `achievements.events_from` (2027):
+  `NicknameEvolutionProposed` and `NicknameEvolved` (the evolution: driver, from, to,
+  effective date, trigger award).
+- CMS: Nicknames (list with filters, Correct, add a first nickname or plan a next stage,
+  delete only a stage nothing builds on) and Nickname evolutions (approve, dismiss). The
+  award page shows the nickname on the day and the edition subtitle.
+- Checked on the local database: migrate, seed (28 rows: 25 drivers and 3 planned stages,
+  all drafts; Câmara skipped), seed again (nothing changes), rollback and re-apply. Read
+  without storing: no proposal over 2023 to 2026, which is right: Lawson, Lindblad and
+  Bortoleto have no Grand Prix podium (best P5, P6, P6), Lawson's and Bortoleto's first
+  full seasons (2025) ended P14 and P19, and 2026 is not final yet (Lindblad P11 after
+  round 19).
+- Golden master: no differences; not re-exported.
 
 **Phase 10: 2027 pack.**
 The nine new achievements, Zoomies, manual Built Different; normalise practice session
@@ -985,7 +1037,7 @@ Decided for this phase on 17 November 2026:
 When the `achievement-engine` branch is deployed to production (decided 17 November 2026):
 
 1. `php artisan migrate` (lineages, award schema and snapshot, sensitivity columns,
-   data needs, scope and the run log, recipient type).
+   data needs, scope and the run log, recipient type, nicknames and evolutions).
 2. `php artisan oof:achievements:sync --dry-run`, then, if it lists no differences in
    sessions or stacks the owner wants kept, `php artisan oof:achievements:sync` (writes
    the catalogue's mechanics and the derived data needs, and creates the three Oofies).
@@ -998,6 +1050,8 @@ When the `achievement-engine` branch is deployed to production (decided 17 Novem
    their new contexts and fill the run log. Decisions made by people stay as they are.
 5. `php artisan oof:oofscore`, to build the standings of every season (step 4 already
    rebuilds the seasons it ran; this makes sure).
-6. Do not run `oof:dig` yet; it waits for the chassis-engine merge in Phase 11.
-7. Do not close any season until the owner says so.
-8. After any later catalogue or engine change: `php artisan oof:achievements --stale`.
+6. `php artisan db:seed --class=DriverNicknameSeeder --force` (create-only; run it again
+   once Câmara is imported), then `php artisan oof:nicknames` to check for breakthroughs.
+7. Do not run `oof:dig` yet; it waits for the chassis-engine merge in Phase 11.
+8. Do not close any season until the owner says so.
+9. After any later catalogue or engine change: `php artisan oof:achievements --stale`.

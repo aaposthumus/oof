@@ -24,5 +24,6 @@ class DatabaseSeeder extends Seeder
 
         $this->call(AchievementSeeder::class);
         $this->call(TeamLineageSeeder::class);
+        $this->call(DriverNicknameSeeder::class);
     }
 }

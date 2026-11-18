@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Achievements\AchievementEngine;
+use App\Achievements\Nicknames\Breakthroughs;
 use App\Achievements\OofScoreStandings;
 use App\Achievements\RunLog;
 use App\Achievements\SessionData;
@@ -40,7 +41,7 @@ class OofAchievements extends Command
      *
      * @var string
      */
-    protected $description = 'Unlock achievements per session, weekend and season (safe to re-run; updates awards and keeps manual decisions), rebuild the OOFscore of the seasons touched, and log each run';
+    protected $description = 'Unlock achievements per session, weekend and season (safe to re-run; updates awards and keeps manual decisions), rebuild the OOFscore of the seasons touched, propose nickname evolutions after breakthroughs, and log each run';
 
     /**
      * Tables whose rows feed the detectors, by their link to a session.
@@ -65,7 +66,7 @@ class OofAchievements extends Command
     /**
      * Execute the console command.
      */
-    public function handle(AchievementEngine $engine, OofScoreStandings $standings, RunLog $log): int
+    public function handle(AchievementEngine $engine, OofScoreStandings $standings, RunLog $log, Breakthroughs $breakthroughs): int
     {
         $sessionType = $this->option('session') === null ? null : SessionType::tryFrom($this->option('session'));
 
@@ -144,6 +145,13 @@ class OofAchievements extends Command
             }
         }
 
+        // Breakthroughs read the final awards just stored: nickname evolutions are proposed for the seasons touched.
+        $proposed = $dryRun ? collect() : Season::query()
+            ->whereIn('id', $sessions->toBase()->map(fn (RaceSession $session) => $session->round->season_id)->concat(collect($seasonIds)->all())->unique()->values())
+            ->orderBy('year')
+            ->get()
+            ->flatMap(fn (Season $season) => $breakthroughs->check($season));
+
         if ($dryRun) {
             DB::rollBack();
 
@@ -157,6 +165,10 @@ class OofAchievements extends Command
 
         if ($rebuilt->isNotEmpty()) {
             $this->components->info('OOFscore rebuilt for '.$rebuilt->keys()->implode(', ').'.');
+        }
+
+        if ($proposed->isNotEmpty()) {
+            $this->components->info("{$proposed->count()} nickname evolutions proposed.");
         }
 
         if ($totals !== []) {
