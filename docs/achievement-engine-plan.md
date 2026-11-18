@@ -1033,12 +1033,12 @@ To do (nicknames):
   | Achievement | Shelf, tier | Score category | Definition as built |
   |---|---|---|---|
   | Nearly Famous | OOF, Bronze | pace | Grand Prix: classified P11. Sprints do not count |
-  | Economy Class | OOF, Silver | surprise | Qualifying and sprint qualifying: out in Q1 (by classified position, with or without a time) while the lasting team is in the top 4 on form before the round (Phase 2 rule) |
+  | Economy Class | OOF, Silver | surprise | Qualifying and sprint qualifying: out in Q1 or SQ1 (by classified position) with a lap time in it, while the lasting team is in the top 4 on form before the round (Phase 2 rule) |
   | Peaked Too Soon | OOF, Gold | surprise | Grand Prix: took pole (`took_pole`), then not on the podium (P4 or lower, unclassified, DNS or disqualified) |
   | Led Astray | OOF, Gold | surprise | Grand Prix: led the most laps (shared on a tie, at least one) and did not win. Laps led from OpenF1 as for Clean Sweep: P1 at the end of a lap (the last lap is not counted for anyone) |
   | Double Detention | OOF, Gold | driver | Offence `serving_a_penalty_incorrectly` with a penalty, in races, sprints and both qualifyings; absorbs the penalty like the other offences ("Double Detention · 10 s") |
   | Fool's Gold | OOF, Gold | surprise | Weekend, decided after qualifying: P1 in at least one practice session of the round, then qualified P11 or lower; once per weekend ("topped FP1 and FP3 · P12") |
-  | Sibling Rivalry | OOF, Gold | driver | Race or sprint: named in an incident race control noted together with a teammate; both get it; supersedes It Was Like That When I Got There for that incident |
+  | Sibling Rivalry | OOF, Silver | driver | Race or sprint: named in an incident race control noted together with a teammate; both get it; supersedes It Was Like That When I Got There for that incident, and is superseded for a car penalised for it |
   | First Time for Everything | Glory, Gold | n/a | Career first in a Grand Prix: win, else podium, else points (one per car, the most specific); in Grand Prix qualifying, the first pole (an earlier pole is P1 in qualifying, else grid 1). History from 1950; sprints do not count |
   | Charging Rhino | Glory, Silver | n/a | Grand Prix: classified and gained 10 or more places; a pit lane start counts as behind every car that started |
   | Zoomies | Glory, Bronze | n/a | Grand Prix: highest speed-trap reading (OpenF1 `st_speed`, whole km/h); a tie is shared |
@@ -1079,6 +1079,36 @@ To do (nicknames):
   (same holders); OOFscore Champion: 2023 Piastri 715 to 810, 2024 Magnussen 742.5 to
   Hamilton 815, 2025 Antonelli 1,180 to 1,300. Re-exported: 4,651 awards in 453 contexts.
 - Stored awards on the local database were not brought up to date (only dry runs).
+
+Decided by the owner on 18 November 2026, done the same day:
+
+1. Sibling Rivalry is Silver, by the frequency rule.
+2. Built Different keeps Platinum.
+3. Fool's Gold is in the surprise score category; Peaked Too Soon and Led Astray stay
+   withheld on sensitive weekends.
+4. Economy Class keeps sprint qualifying but leaves out Q1 and SQ1 exits without a lap
+   time: a crash or a failure is not the joke.
+5. Nearly Famous stays Grand Prix only.
+6. First Time for Everything and Did the Thing both stand on a first win.
+7. One event, one achievement: a teammate penalised for the incident gets the offence
+   (Bumper Cars) only; the other keeps Sibling Rivalry. Built as: every achievement that
+   supersedes It Was Like That When I Got There (the 13 offences, Sunday Driver and the
+   four penalties) also supersedes Sibling Rivalry.
+8. Peaked Too Soon and Led Astray may both stand on one result.
+
+- 1, 4 and 7 in the catalogue and, for existing rows, by migration (tier only while still
+  Gold, the Economy Class description only while it equals the seeded text, Sibling
+  Rivalry added to the supersedes lists that hold It Was Like That When I Got There).
+  Rebuild the OOFscore of open seasons after deploying (`oof:oofscore`).
+- Frequency now: Economy Class 50 (0.56 per weekend; 40 qualifying, 10 sprint
+  qualifying), Sibling Rivalry 46 (0.51).
+- Golden master: 14 differences, all intended. Economy Class 4 missing (Q1 exits without a
+  time: Pérez 2023 R3, Tsunoda 2025 R7, Hadjar 2026 R4 and R17); Sibling Rivalry 3
+  missing and 1 added (Ocon 2024 R8, Sainz 2026 R12 and Colapinto 2026 R15 had Bumper Cars
+  for the incident; Colapinto's other incident with Gasly stays, now as a single award);
+  Most Collected 4 changed (Tsunoda Economy Class ×10 to ×9, evidence of three others);
+  OOFscore Champion 2023 Piastri 810 to 785, 2025 evidence only (Antonelli 1,300); 2024
+  Hamilton 815 unchanged. Re-exported: 4,645 awards in 453 contexts.
 
 **Phase 11: historic backfill.**
 Import Jolpica lap times (independent of the other phases, so it can start any time),

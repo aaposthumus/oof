@@ -3,6 +3,7 @@
 namespace Tests\Feature\Achievements\Detectors;
 
 use App\Enums\SessionType;
+use App\Models\Achievement;
 use App\Models\Driver;
 use App\Models\DriverEntry;
 use App\Models\Position;
@@ -114,12 +115,33 @@ class Pack2027DetectorsTest extends TestCase
         $earlier = $this->raceSession(SessionType::Race, $this->round(2024, 4, ['date' => '2024-04-21']));
         $this->resultFor($this->car($earlier, 1, $top), ['points' => 25]);
 
-        // P16 is the top team, out in Q1; P15 is the top team too, but out in Q2; P17 has no form.
-        $field = $this->qualifyingField([15 => $top, 16 => $top]);
+        // P16 is the top team, out in Q1; P15 is the top team too, but out in Q2; P17 has no form;
+        // P18 is the top team out in Q1 without a lap time (a crash or failure is not the joke).
+        $field = $this->qualifyingField([15 => $top, 16 => $top, 18 => $top]);
+        $field[18]->qualifyingResult->update(['q1_millis' => null]);
 
         $detection = $this->detect('economy_class', $field[1]->raceSession)->sole();
         $this->assertSame($field[16]->id, $detection->recipient->entryId);
         $this->assertSame('P16 · team P1 on form', $detection->detail);
+    }
+
+    public function test_sibling_rivalry_is_silver_and_a_teammate_penalised_for_the_incident_keeps_only_the_offence(): void
+    {
+        $this->catalogue();
+        $this->assertSame('silver', Achievement::firstWhere('key', 'sibling_rivalry')->tier->value);
+
+        $team = SeasonTeam::factory()->create(['season_id' => $this->race->round->season_id]);
+        $this->car($this->race, 81, $team, Driver::factory()->create(['family_name' => 'Piastri']));
+        $this->car($this->race, 4, $team, Driver::factory()->create(['family_name' => 'Norris']));
+        $this->message($this->race, 'TURN 1 INCIDENT INVOLVING CARS 81 (PIA) AND 4 (NOR) NOTED - CAUSING A COLLISION');
+        $this->message($this->race, 'FIA STEWARDS: TURN 1 INCIDENT INVOLVING CARS 81 (PIA) AND 4 (NOR) UNDER INVESTIGATION - CAUSING A COLLISION');
+        $this->message($this->race, 'FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 4 (NOR) - CAUSING A COLLISION');
+
+        $this->runEngine($this->race);
+
+        $this->assertSame(['Norris'], $this->awards('bumper_cars')->map(fn ($award) => $award->driver->family_name)->all());
+        $this->assertSame(['Piastri'], $this->awards('sibling_rivalry')->map(fn ($award) => $award->driver->family_name)->all());
+        $this->assertCount(0, $this->awards('it_was_like_that_when_i_got_there'));
     }
 
     public function test_fools_gold_is_a_practice_topper_who_qualified_p11_or_lower_once_per_weekend(): void
