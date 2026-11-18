@@ -13,7 +13,10 @@ use Illuminate\Contracts\Container\Container;
  * first year, or when the session has no rows in a source its facts are
  * built from.
  *
- * @phpstan-type Needs array{sources: list<DataSource>, available_from: int, notes: list<string>, session_sources: list<DataSource>}
+ * Reads earlier races: whether a predicate or provider reads races before
+ * the round (ReadsEarlierRaces), for --stale.
+ *
+ * @phpstan-type Needs array{sources: list<DataSource>, available_from: int, notes: list<string>, session_sources: list<DataSource>, reads_earlier_races: bool}
  */
 class Requirements
 {
@@ -37,12 +40,25 @@ class Requirements
         return $this->derived[$key] ??= $this->derive($this->catalogue->trigger($key));
     }
 
-    public function allows(string $key, SessionData $data): bool
+    /**
+     * Whether to look for it in a session, or in a weekend built from these
+     * sessions: the year is late enough, and each source its facts come from
+     * has rows in the session (for a weekend, in at least one of them).
+     *
+     * @param  iterable<SessionData>|null  $sessions  The weekend's sessions it reads; the session itself by default
+     */
+    public function allows(string $key, SessionData $data, ?iterable $sessions = null): bool
     {
         $needs = $this->for($key);
+        $sessions = collect($sessions ?? [$data]);
 
         return $data->year() >= $needs['available_from']
-            && collect($needs['session_sources'])->every(fn (DataSource $source) => $source->hasRows($data));
+            && collect($needs['session_sources'])->every(fn (DataSource $source) => $sessions->contains(fn (SessionData $session) => $source->hasRows($session)));
+    }
+
+    public function allowsSeason(string $key, int $year): bool
+    {
+        return $year >= $this->for($key)['available_from'];
     }
 
     /**
@@ -59,6 +75,17 @@ class Requirements
                 'available_from' => $class->availableFrom(),
                 'notes' => $class->notes(),
                 'session_sources' => $class->sources(),
+                'reads_earlier_races' => $class instanceof ReadsEarlierRaces,
+            ];
+        }
+
+        if ($trigger['type'] === 'aggregate' && $trigger['source'] !== 'facts') {
+            return [
+                'sources' => [$trigger['source'] === 'awards' ? DataSource::Awards : DataSource::OofScore],
+                'available_from' => (int) config('achievements.first_season'),
+                'notes' => [$trigger['source'] === 'awards' ? 'Reads the season\'s final awards, once its final round is final.' : 'Reads the OOFscore standings after the season\'s last round, once it is final.'],
+                'session_sources' => [],
+                'reads_earlier_races' => false,
             ];
         }
 
@@ -73,7 +100,9 @@ class Requirements
             'sources' => collect($needs)->flatMap(fn (DataNeeds $need) => $need->sources())->unique(fn (DataSource $source) => $source->value)->values()->all(),
             'available_from' => max([...array_map(fn (DataNeeds $need) => $need->availableFrom(), $needs), ...array_values($attributeYears)]),
             'notes' => collect($needs)->flatMap(fn (DataNeeds $need) => $need->notes())->concat(array_values($attributeNotes))->unique()->values()->all(),
-            'session_sources' => $provider->sources(),
+            // A season total is not gated per session.
+            'session_sources' => $trigger['type'] === 'aggregate' ? [] : $provider->sources(),
+            'reads_earlier_races' => collect($needs)->contains(fn (DataNeeds $need) => $need instanceof ReadsEarlierRaces),
         ];
     }
 }

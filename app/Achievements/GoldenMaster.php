@@ -2,7 +2,9 @@
 
 namespace App\Achievements;
 
+use App\Enums\AwardScope;
 use App\Models\AchievementAward;
+use App\Models\AchievementRun;
 use App\Models\RaceSession;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -13,7 +15,9 @@ use Illuminate\Support\Facades\Storage;
  *
  * It belongs to the database it was exported from, because instance keys
  * carry that database's IDs. Each award is one line, keyed by its session,
- * achievement and instance key, with its evidence as a hash.
+ * achievement and instance key, with its evidence as a hash. A weekend award
+ * is keyed by the session it was decided after, a season award by its
+ * season ("2025-season"), covered once the season has been decided.
  */
 class GoldenMaster
 {
@@ -25,7 +29,7 @@ class GoldenMaster
     public const FIELDS = ['driver', 'car', 'detail', 'variant', 'status', 'confidence', 'review_reason', 'event_key', 'evidence', 'sensitive'];
 
     /**
-     * The awards as stored right now, with the sessions the engine has run.
+     * The awards as stored right now, with the sessions (and seasons) the engine has run.
      *
      * @param  list<int>  $seasons  Only these seasons; all of them when empty
      * @return array{sessions: list<string>, awards: array<string, array<string, string|int|null>>}
@@ -40,15 +44,24 @@ class GoldenMaster
             ->toBase()
             ->get(['seasons.year', 'rounds.round_number', 'race_sessions.type'])
             ->map(fn (object $session) => self::sessionKey($session->year, $session->round_number, $session->type))
+            ->concat(AchievementRun::query()
+                ->join('seasons', 'seasons.id', '=', 'achievement_runs.season_id')
+                ->where('achievement_runs.scope', AwardScope::Season)
+                ->where('achievement_runs.is_dry_run', false)
+                ->when($seasons !== [], fn ($query) => $query->whereIn('seasons.year', $seasons))
+                ->distinct()
+                ->pluck('seasons.year')
+                ->map(fn (int $year) => self::seasonKey($year)))
+            ->unique()
             ->sort()
             ->values()
             ->all();
 
         $awards = AchievementAward::query()
             ->join('achievements', 'achievements.id', '=', 'achievement_awards.achievement_id')
-            ->join('race_sessions', 'race_sessions.id', '=', 'achievement_awards.race_session_id')
-            ->join('rounds', 'rounds.id', '=', 'race_sessions.round_id')
-            ->join('seasons', 'seasons.id', '=', 'rounds.season_id')
+            ->leftJoin('race_sessions', 'race_sessions.id', '=', 'achievement_awards.race_session_id')
+            ->leftJoin('rounds', 'rounds.id', '=', 'race_sessions.round_id')
+            ->join('seasons', 'seasons.id', '=', 'achievement_awards.season_id')
             ->leftJoin('drivers', 'drivers.id', '=', 'achievement_awards.driver_id')
             ->leftJoin('driver_entries', 'driver_entries.id', '=', 'achievement_awards.driver_entry_id')
             ->when($seasons !== [], fn ($query) => $query->whereIn('seasons.year', $seasons))
@@ -60,7 +73,7 @@ class GoldenMaster
                 'achievement_awards.event_key', 'achievement_awards.evidence', 'achievement_awards.is_sensitive',
             ])
             ->mapWithKeys(fn (object $award) => [
-                self::sessionKey($award->year, $award->round_number, $award->type)."|{$award->key}|{$award->instance_key}" => [
+                ($award->type === null ? self::seasonKey($award->year) : self::sessionKey($award->year, $award->round_number, $award->type))."|{$award->key}|{$award->instance_key}" => [
                     'driver' => $award->jolpica_driver_id,
                     'car' => $award->car_number,
                     'detail' => $award->detail,
@@ -185,6 +198,14 @@ class GoldenMaster
     private static function sessionKey(int $year, int $roundNumber, string $type): string
     {
         return sprintf('%04d-%02d-%s', $year, $roundNumber, $type);
+    }
+
+    /**
+     * Sorts after the season's sessions.
+     */
+    private static function seasonKey(int $year): string
+    {
+        return sprintf('%04d-season', $year);
     }
 
     /**

@@ -2,8 +2,14 @@
 
 namespace Tests\Feature\Console\Commands;
 
+use App\Achievements\Catalogue;
+use App\Enums\AwardScope;
 use App\Enums\SessionType;
 use App\Models\AchievementAward;
+use App\Models\AchievementRun;
+use App\Models\RaceSession;
+use App\Models\Result;
+use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Date;
 use Tests\Concerns\BuildsSessions;
@@ -92,5 +98,125 @@ class OofAchievementsTest extends TestCase
         $this->artisan('oof:achievements', ['--session' => 'warmup'])
             ->expectsOutputToContain('Unknown session type [warmup]')
             ->assertFailed();
+    }
+
+    /**
+     * A race with a classified finisher, in round 5 by default.
+     */
+    private function raceWithAResult(int $roundNumber = 5): RaceSession
+    {
+        $race = $this->raceSession(SessionType::Race, $this->round(2024, $roundNumber, ['date' => sprintf('2024-05-%02d', $roundNumber)]));
+        $this->resultFor($this->car($race, 1), ['position' => 1, 'position_text' => '1', 'points' => 25]);
+
+        return $race;
+    }
+
+    public function test_logs_every_session_weekend_and_season_it_decides_with_the_catalogue_version(): void
+    {
+        $race = $this->raceWithAResult();
+        $qualifying = $this->raceSession(SessionType::Qualifying, $race->round);
+
+        $this->artisan('oof:achievements')
+            ->expectsOutputToContain('2 sessions, 1 weekends, 1 seasons')
+            ->assertSuccessful();
+
+        $runs = AchievementRun::query()->orderBy('id')->get();
+        $this->assertSame(["session:{$qualifying->id}", "session:{$race->id}", "round:{$race->round_id}", "season:{$race->round->season_id}"], $runs->pluck('context_key')->all());
+        $this->assertSame([AwardScope::Session, AwardScope::Session, AwardScope::Weekend, AwardScope::Season], $runs->pluck('scope')->all());
+        $this->assertSame([app(Catalogue::class)->version()], $runs->pluck('catalogue_version')->unique()->all());
+        $this->assertFalse($runs->contains('is_dry_run', true));
+        $this->assertSame(1, $runs[1]->stats['did_the_thing']['created']);
+    }
+
+    public function test_a_dry_run_is_logged_as_one_and_never_counts_as_decided(): void
+    {
+        $this->raceWithAResult();
+
+        $this->artisan('oof:achievements', ['--dry-run' => true])->assertSuccessful();
+
+        $this->assertSame(3, AchievementRun::query()->where('is_dry_run', true)->count());
+        $this->assertSame(['dry-run' => true], AchievementRun::query()->first()->options);
+        $this->assertDatabaseCount('achievement_awards', 0);
+    }
+
+    public function test_stale_re_runs_only_what_was_decided_on_another_catalogue_version(): void
+    {
+        $this->raceWithAResult(4);
+        $this->raceWithAResult(5);
+        $this->artisan('oof:achievements')->assertSuccessful();
+
+        $this->artisan('oof:achievements', ['--stale' => true])
+            ->expectsOutputToContain('0 sessions, 0 weekends, 0 seasons')
+            ->assertSuccessful();
+
+        config(['achievement_catalogue.achievements.did_the_thing.trigger.detail' => 'Won']);
+
+        $this->artisan('oof:achievements', ['--stale' => true])
+            ->expectsOutputToContain('2 sessions, 2 weekends, 1 seasons')
+            ->assertSuccessful();
+        $this->assertSame(['Won'], AchievementAward::whereRelation('achievement', 'key', 'did_the_thing')->pluck('detail')->unique()->all());
+
+        $this->artisan('oof:achievements', ['--stale' => true])
+            ->expectsOutputToContain('0 sessions, 0 weekends, 0 seasons')
+            ->assertSuccessful();
+    }
+
+    public function test_stale_re_runs_a_session_whose_surprise_window_changed_since(): void
+    {
+        $earlier = $this->raceWithAResult(3);
+        $windowRace = $this->raceWithAResult(4);
+        $later = $this->raceWithAResult(5);
+        $this->artisan('oof:achievements')->assertSuccessful();
+
+        // A late change to round 4's result changes the team form that rounds 5 reads, not what rounds 3 and 4 read.
+        Date::setTestNow('2024-06-02 12:00:00');
+        Result::query()->whereHas('driverEntry', fn ($query) => $query->where('race_session_id', $windowRace->id))->update(['points' => 0, 'updated_at' => now()]);
+
+        $this->artisan('oof:achievements', ['--stale' => true])
+            ->expectsOutputToContain('1 sessions, 1 weekends, 1 seasons')
+            ->assertSuccessful();
+
+        $this->assertTrue($later->fresh()->achievements_checked_at->isSameDay('2024-06-02'));
+        $this->assertTrue($windowRace->fresh()->achievements_checked_at->isSameDay('2024-06-01'));
+        $this->assertTrue($earlier->fresh()->achievements_checked_at->isSameDay('2024-06-01'));
+    }
+
+    public function test_runs_only_the_scopes_asked_for(): void
+    {
+        $this->raceWithAResult();
+
+        $this->artisan('oof:achievements', ['--scope' => ['season']])
+            ->expectsOutputToContain('0 sessions, 0 weekends, 0 seasons')
+            ->assertSuccessful();
+
+        $this->artisan('oof:achievements', ['--scope' => ['session', 'weekend']])
+            ->expectsOutputToContain('1 sessions, 1 weekends, 0 seasons')
+            ->assertSuccessful();
+
+        // Now that its race has been run, the season can be decided on its own.
+        $this->artisan('oof:achievements', ['--scope' => ['season']])
+            ->expectsOutputToContain('0 sessions, 0 weekends, 1 seasons')
+            ->assertSuccessful();
+
+        $this->artisan('oof:achievements', ['--scope' => ['round']])
+            ->expectsOutputToContain('Unknown scope')
+            ->assertFailed();
+    }
+
+    public function test_changed_decides_a_season_again_once_its_awards_changed(): void
+    {
+        $this->raceWithAResult();
+        $this->artisan('oof:achievements')->assertSuccessful();
+
+        $this->artisan('oof:achievements', ['--changed' => true])
+            ->expectsOutputToContain('0 sessions, 0 weekends, 0 seasons')
+            ->assertSuccessful();
+
+        Date::setTestNow('2024-06-02 12:00:00');
+        AchievementAward::whereRelation('achievement', 'key', 'did_the_thing')->sole()->suppress(User::factory()->create(), 'Not a win after all.');
+
+        $this->artisan('oof:achievements', ['--changed' => true])
+            ->expectsOutputToContain('0 sessions, 0 weekends, 1 seasons')
+            ->assertSuccessful();
     }
 }

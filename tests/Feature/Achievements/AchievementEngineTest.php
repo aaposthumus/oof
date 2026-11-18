@@ -475,12 +475,13 @@ class AchievementEngineTest extends TestCase
         $award(4, ['status' => AwardStatus::Suppressed, 'decided_by' => User::factory()->create()->id, 'decided_at' => now(), 'decision_note' => 'No.']);
 
         $this->runEngine($race);
+        $this->runWeekend($race->round);
 
         $quiet = $this->awards('nothing_to_see_here')->pluck('driver_entry_id')->sort()->values()->all();
         $this->assertSame([$cars[1]->id, $cars[4]->id, $cars[5]->id], $quiet);
     }
 
-    public function test_nothing_to_see_here_ignores_a_suppression_by_a_person_in_the_same_session(): void
+    public function test_nothing_to_see_here_ignores_an_award_a_person_suppressed(): void
     {
         $race = $this->raceSession();
         $earlier = $this->raceSession(SessionType::Race, $this->round(2024, 4));
@@ -489,11 +490,11 @@ class AchievementEngineTest extends TestCase
         $this->resultFor($entry, ['position' => 9, 'position_text' => '9', 'status' => '+1 Lap']);
         $this->resultFor($this->car($earlier, 44, null, $entry->driver), ['position' => 5, 'position_text' => '5']);
 
-        $this->runEngine($race);
+        $this->runRound($race->round);
         $this->assertCount(0, $this->awards('nothing_to_see_here'));
 
         $this->awards('lapped_dog')->firstWhere('driver_entry_id', $entry->id)->suppress(User::factory()->create(), 'Not this time.');
-        $this->runEngine($race);
+        $this->runRound($race->round);
 
         $this->assertCount(1, $this->awards('nothing_to_see_here'));
     }
@@ -504,7 +505,7 @@ class AchievementEngineTest extends TestCase
         $debutant = $this->car($race, 38);
         $this->resultFor($debutant, ['position' => 10, 'position_text' => '10', 'points' => 1]);
 
-        $this->runEngine($race);
+        $this->runRound($race->round);
 
         $this->assertCount(0, $this->awards('nothing_to_see_here'));
     }

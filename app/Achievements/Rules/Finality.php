@@ -37,6 +37,19 @@ class Finality
         return [$reason === null && $sessionIsFinal ? AwardStatus::Final : AwardStatus::Pending, $reason];
     }
 
+    /**
+     * A season award is decided once the season is final, from final awards
+     * and data: it waits only when inferred (low confidence).
+     *
+     * @return array{0: AwardStatus, 1: AwardReviewReason|null}
+     */
+    public function judgeSeason(Detection $detection): array
+    {
+        $reason = $detection->reviewReason ?? ($detection->confidence === AwardConfidence::Low ? AwardReviewReason::LowConfidence : null);
+
+        return [$reason === null ? AwardStatus::Final : AwardStatus::Pending, $reason];
+    }
+
     public function sessionIsFinal(SessionData $data, ?CarbonImmutable $now = null): bool
     {
         return $data->isFinal($now ?? CarbonImmutable::now());

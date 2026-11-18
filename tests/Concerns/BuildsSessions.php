@@ -126,6 +126,28 @@ trait BuildsSessions
     }
 
     /**
+     * Run the engine on a round's weekend achievements, as if well after its sessions.
+     *
+     * @return array<string, array<string, int>>
+     */
+    protected function runWeekend(Round $round, ?CarbonImmutable $now = null): array
+    {
+        return app(AchievementEngine::class)->runWeekend($round->fresh(), now: $now ?? CarbonImmutable::parse('2024-06-01'));
+    }
+
+    /**
+     * Run the engine on a round's sessions in weekend order, then on its weekend.
+     */
+    protected function runRound(Round $round, ?CarbonImmutable $now = null): void
+    {
+        $round->raceSessions()->get()
+            ->sortBy(fn (RaceSession $session) => $session->type->weekendOrder())
+            ->each(fn (RaceSession $session) => $this->runEngine($session, $now));
+
+        $this->runWeekend($round, $now);
+    }
+
+    /**
      * @return Collection<int, AchievementAward>
      */
     protected function awards(?string $key = null): Collection

@@ -16,6 +16,8 @@ enum DataSource: string
     case OpenF1Laps = 'openf1_laps';
     case OpenF1Pit = 'openf1_pit';
     case OpenF1Positions = 'openf1_positions';
+    case Awards = 'achievement_awards';
+    case OofScore = 'oofscore_standings';
 
     public function label(): string
     {
@@ -26,11 +28,14 @@ enum DataSource: string
             self::OpenF1Laps => 'OpenF1 laps',
             self::OpenF1Pit => 'OpenF1 pit',
             self::OpenF1Positions => 'OpenF1 positions',
+            self::Awards => 'Achievement awards',
+            self::OofScore => 'OOFscore standings',
         };
     }
 
     /**
-     * Whether the source has any rows for the session.
+     * Whether the source has any rows for the session. Awards and standings
+     * are read per season, never per session.
      */
     public function hasRows(SessionData $data): bool
     {
@@ -41,6 +46,7 @@ enum DataSource: string
             self::OpenF1Laps => $data->laps()->isNotEmpty(),
             self::OpenF1Pit => $data->pitVisits()->isNotEmpty(),
             self::OpenF1Positions => $data->positions()->isNotEmpty(),
+            self::Awards, self::OofScore => true,
         };
     }
 }

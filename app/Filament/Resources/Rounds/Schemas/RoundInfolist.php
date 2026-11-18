@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Rounds\Schemas;
 
 use App\Achievements\Support\Finish;
+use App\Enums\AwardScope;
 use App\Enums\SessionType;
 use App\Filament\Resources\AchievementAwards\AchievementAwardResource;
 use App\Models\AchievementAward;
@@ -236,7 +237,7 @@ class RoundInfolist
             ->orderBy('id')
             ->get()
             ->map(fn (AchievementAward $award) => [
-                'session' => $award->raceSession->type->label(),
+                'session' => $award->scope === AwardScope::Weekend ? 'Weekend' : $award->raceSession->type->label(),
                 'driver' => $award->driver === null ? '' : "{$award->driver->given_name} {$award->driver->family_name}",
                 'title' => $award->title(),
                 'description' => $award->descriptionLine(),

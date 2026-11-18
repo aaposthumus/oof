@@ -60,7 +60,9 @@ class OofAchievementsGoldenTest extends TestCase
         $master = app(GoldenMaster::class)->read();
         $award = $master['awards']["2024-05-race|lapped_dog|e{$lapped->id}:result"];
 
-        $this->assertSame(['2024-05-race'], $master['sessions']);
+        // The season's only race is final, so the season is decided too.
+        $this->assertSame(['2024-05-race', '2024-season'], $master['sessions']);
+        $this->assertSame('10 points', $master['awards']["2024-season|oofscore_champion|e{$lapped->id}:season"]['detail']);
         $this->assertSame($lapped->driver->jolpica_driver_id, $award['driver']);
         $this->assertSame(44, $award['car']);
         $this->assertSame('1 lap', $award['detail']);
@@ -133,7 +135,7 @@ class OofAchievementsGoldenTest extends TestCase
         $this->race($this->raceSession(SessionType::Race, $this->round(2025)));
 
         $this->artisan('oof:achievements:golden')
-            ->expectsOutputToContain('1 sessions were first run after the export and are not compared (2025-05-race to 2025-05-race).')
+            ->expectsOutputToContain('2 sessions were first run after the export and are not compared (2025-05-race to 2025-season).')
             ->expectsOutputToContain('No differences.')
             ->assertSuccessful();
     }

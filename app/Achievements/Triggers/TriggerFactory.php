@@ -5,16 +5,19 @@ namespace App\Achievements\Triggers;
 use App\Achievements\Catalogue;
 use App\Achievements\Facts\Conditions;
 use App\Achievements\Facts\Facts;
+use App\Enums\SessionType;
 use Illuminate\Contracts\Container\Container;
 use InvalidArgumentException;
 
 /**
- * Builds each achievement's trigger from its catalogue entry.
+ * Builds each achievement's trigger from its catalogue entry. A weekend
+ * trigger reads the sessions its entry lists; an aggregate trigger is a
+ * season trigger.
  */
 class TriggerFactory
 {
     /**
-     * @var array<string, Trigger>
+     * @var array<string, Trigger|SeasonTrigger>
      */
     private array $built = [];
 
@@ -26,28 +29,41 @@ class TriggerFactory
     ) {}
 
     /**
-     * @return array<string, Trigger> Keyed by achievement key, in run order
+     * @return array<string, Trigger|SeasonTrigger> Keyed by achievement key, in run order
      */
     public function all(): array
     {
         return collect($this->catalogue->keys())->mapWithKeys(fn (string $key) => [$key => $this->for($key)])->all();
     }
 
-    public function for(string $key): Trigger
+    public function for(string $key): Trigger|SeasonTrigger
     {
-        return $this->built[$key] ??= $this->make($key, $this->catalogue->trigger($key));
+        return $this->built[$key] ??= $this->make($key, $this->catalogue->entry($key));
     }
 
     /**
-     * @param  array<string, mixed>  $definition
+     * @param  array<string, mixed>  $entry
      */
-    private function make(string $key, array $definition): Trigger
+    private function make(string $key, array $entry): Trigger|SeasonTrigger
     {
+        $definition = $entry['trigger'];
+        $sessions = array_map(SessionType::from(...), $entry['sessions']);
+        $weekendSessions = $entry['scope'] === 'weekend' ? $sessions : null;
+
+        if ($entry['scope'] === 'weekend' && ! isset($entry['decided_after'])) {
+            throw new InvalidArgumentException("[{$key}]: a weekend achievement names the session it is decided after (decided_after).");
+        }
+
+        if (($definition['type'] === 'aggregate') !== ($entry['scope'] === 'season')) {
+            throw new InvalidArgumentException("[{$key}]: the season scope takes an aggregate trigger, and an aggregate trigger the season scope.");
+        }
+
         return match ($definition['type']) {
             'custom' => new CustomTrigger($this->container->make($definition['class'])),
-            'match' => new MatchTrigger($key, $definition, $this->facts, $this->conditions),
-            'count' => new CountTrigger($key, $definition, $this->facts, $this->conditions),
-            'extreme' => new ExtremeTrigger($key, $definition, $this->facts, $this->conditions),
+            'match' => new MatchTrigger($key, $definition, $this->facts, $this->conditions, $weekendSessions),
+            'count' => new CountTrigger($key, $definition, $this->facts, $this->conditions, $weekendSessions),
+            'extreme' => new ExtremeTrigger($key, $definition, $this->facts, $this->conditions, $weekendSessions),
+            'aggregate' => new AggregateTrigger($key, $definition, $this->facts, $this->conditions, $sessions),
             default => throw new InvalidArgumentException("Unknown trigger type [{$definition['type']}] for [{$key}]."),
         };
     }

@@ -8,6 +8,7 @@ use App\Achievements\LateDetector;
 use App\Achievements\SessionData;
 use App\Achievements\Support\Evidence;
 use App\Achievements\Support\RaceStarts;
+use App\Enums\AwardScope;
 use App\Enums\AwardStatus;
 use App\Models\Achievement;
 use App\Models\AchievementAward;
@@ -15,10 +16,11 @@ use App\Models\DriverEntry;
 use Illuminate\Support\Collection;
 
 /**
- * "The quiet ones": a race driver with no award at all all weekend, on any
- * shelf and in any status. Awards the engine suppressed itself still count;
- * only one a person suppressed does not. Runs on the race, after the
- * weekend's other sessions. A driver's first ever start never gets it.
+ * "The quiet ones": a race driver with no award at all the whole weekend,
+ * on any shelf and in any status. Awards the engine suppressed itself still
+ * count; only one a person suppressed does not. Decided over the weekend
+ * after the race, once the sessions are stored, from their awards and the
+ * weekend's other detections. A driver's first ever start never gets it.
  */
 class NothingToSeeHere implements LateDetector
 {
@@ -59,35 +61,35 @@ class NothingToSeeHere implements LateDetector
     }
 
     /**
-     * IDs of the drivers with an award this weekend: what this session just
-     * found, minus what a person suppressed, and what the other sessions hold.
+     * IDs of the drivers with an award this weekend: the weekend's other
+     * detections, minus what a person suppressed, and what the sessions hold.
      *
-     * @param  Collection<int, Detection>  $detections
+     * @param  Collection<int, Detection>  $detections  The weekend's settled detections
      * @return Collection<int, int>
      */
     private function driversWithAwards(SessionData $data, Collection $detections): Collection
     {
         $ids = Achievement::query()->where('key', '!=', $this->key())->pluck('id', 'key');
         $suppressedByPeople = AchievementAward::query()
-            ->where('race_session_id', $data->session->id)
+            ->where('context_key', "round:{$data->session->round_id}")
             ->where('status', AwardStatus::Suppressed)
             ->whereNotNull('decided_by')
             ->get()
             ->map(fn (AchievementAward $award) => "{$award->achievement_id}|{$award->instance_key}");
 
-        $here = $detections
+        $weekend = $detections
             ->filter(fn (Detection $detection) => $detection->achievementKey !== $this->key()
                 && ! $suppressedByPeople->contains("{$ids->get($detection->achievementKey)}|{$detection->awardInstanceKey()}"))
             ->map(fn (Detection $detection) => $data->entry($detection->driverEntryId)?->driver_id);
 
-        $elsewhere = AchievementAward::query()
-            ->where('race_session_id', '!=', $data->session->id)
-            ->whereHas('raceSession', fn ($query) => $query->where('round_id', $data->session->round_id))
+        $sessions = AchievementAward::query()
+            ->where('round_id', $data->session->round_id)
+            ->where('scope', AwardScope::Session)
             ->whereIn('achievement_id', $ids->values())
             ->whereNotNull('driver_id')
             ->where(fn ($query) => $query->where('status', '!=', AwardStatus::Suppressed)->orWhereNull('decided_by'))
             ->pluck('driver_id');
 
-        return $here->concat($elsewhere)->filter()->unique()->values();
+        return $weekend->concat($sessions)->filter()->unique()->values();
     }
 }

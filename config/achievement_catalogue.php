@@ -1,7 +1,6 @@
 <?php
 
 use App\Achievements\Triggers\Custom\ClassDismissed;
-use App\Achievements\Triggers\Custom\FrequentFlyer;
 use App\Achievements\Triggers\Custom\NothingToSeeHere;
 use App\Achievements\Triggers\Custom\ToTheRescue;
 
@@ -20,8 +19,14 @@ use App\Achievements\Triggers\Custom\ToTheRescue;
 | oof:achievements:sync writes them to the row, and the CMS shows them
 | read-only.
 |
-| A trigger is one of a closed set of types: match, count, extreme or
-| custom (a class, for logic that does not fit). See App\Achievements\Triggers.
+| A trigger is one of a closed set of types: match, count, extreme,
+| aggregate (season totals) or custom (a class, for logic that does not
+| fit). See App\Achievements\Triggers.
+|
+| Scope: session (decided per session, in the sessions listed), weekend
+| (once per round from the sessions listed, after decided_after: practice
+| for the last practice session, or a session type) or season (an
+| aggregate trigger, once the final round is final).
 |
 */
 
@@ -690,16 +695,16 @@ return [
             'shelf' => 'oof',
             'tier' => 'bronze',
             'score_category' => 'reliability',
-            'description' => 'Slowest pit stop of the weekend.',
+            'description' => 'Slowest pit stop of the whole weekend, sprint included.',
             'supersedes' => ['table_for_one'],
-            'sessions' => ['race'],
+            'sessions' => ['race', 'sprint'],
             'stacks' => false,
             'recipient' => 'driver',
-            'scope' => 'session',
+            'scope' => 'weekend',
+            'decided_after' => 'race',
             'withheld_on_sensitive_weekends' => false,
             'trigger' => [
                 'type' => 'extreme', 'fact' => 'pit_stop',
-                'from' => ['race', 'sprint'], 'only_own_session' => true,
                 'measure' => 'stop_millis', 'pick' => 'max', 'ties' => 'none',
                 'detail' => '{stop_time}', 'note' => 'The slowest measured stop of the weekend.',
             ],
@@ -793,17 +798,19 @@ return [
             'shelf' => 'oof',
             'tier' => 'bronze',
             'score_category' => 'pace',
-            'description' => 'Most laps driven.',
+            'description' => 'Most laps driven in practice over the whole weekend.',
             'supersedes' => [],
             'sessions' => ['practice_1', 'practice_2', 'practice_3'],
             'stacks' => false,
             'recipient' => 'driver',
-            'scope' => 'session',
+            'scope' => 'weekend',
+            'decided_after' => 'practice',
             'withheld_on_sensitive_weekends' => false,
             'trigger' => [
                 'type' => 'extreme', 'fact' => 'lap_count',
-                'measure' => 'laps', 'pick' => 'max', 'at_least' => 1, 'ties' => 'none', 'among' => 'race_drivers',
-                'evidence' => 'leaderboard', 'detail' => '{laps} laps',
+                'measure' => 'laps', 'per' => 'driver', 'pick' => 'max', 'at_least' => 1, 'ties' => 'none', 'among' => 'race_drivers',
+                'instance' => 'weekend', 'event' => 'weekend',
+                'evidence' => 'leaderboard', 'detail' => '{value} laps',
             ],
         ],
 
@@ -813,17 +820,18 @@ return [
             'shelf' => 'oof',
             'tier' => 'bronze',
             'score_category' => 'driver',
-            'description' => 'Most deleted laps.',
+            'description' => 'Most deleted laps in practice over the whole weekend, at least 3.',
             'supersedes' => [],
             'sessions' => ['practice_1', 'practice_2', 'practice_3'],
             'stacks' => false,
             'recipient' => 'driver',
-            'scope' => 'session',
+            'scope' => 'weekend',
+            'decided_after' => 'practice',
             'withheld_on_sensitive_weekends' => false,
             'trigger' => [
                 'type' => 'extreme', 'fact' => 'track_limit_deletion',
-                'measure' => 'count', 'pick' => 'max', 'at_least' => 3, 'ties' => 'none', 'among' => 'race_drivers',
-                'instance' => 'session', 'event' => 'session:{entry}',
+                'measure' => 'count', 'per' => 'driver', 'pick' => 'max', 'at_least' => 3, 'ties' => 'none', 'among' => 'race_drivers',
+                'instance' => 'weekend', 'event' => 'weekend',
                 'detail' => '{count} deleted {count:lap|laps}',
             ],
         ],
@@ -1034,12 +1042,17 @@ return [
             'score_category' => 'driver',
             'description' => 'Season count of deployments (end-of-season award).',
             'supersedes' => [],
-            'sessions' => ['race'],
+            'sessions' => ['race', 'sprint'],
             'stacks' => false,
             'recipient' => 'safety_car',
-            'scope' => 'session',
+            'scope' => 'season',
             'withheld_on_sensitive_weekends' => true,
-            'trigger' => ['type' => 'custom', 'class' => FrequentFlyer::class],
+            'trigger' => [
+                'type' => 'aggregate', 'source' => 'facts', 'fact' => 'deployment',
+                'where' => [['kind', '=', 'safety_car']],
+                'group' => 'season', 'measure' => 'count', 'pick' => 'all', 'at_least' => 1,
+                'detail' => '{value} deployments',
+            ],
         ],
 
         'virtually_there' => [
@@ -1064,14 +1077,81 @@ return [
             'shelf' => 'oof',
             'tier' => 'bronze',
             'score_category' => 'driver',
-            'description' => 'Unlocked nothing all weekend ("The quiet ones").',
+            'description' => 'Unlocked nothing the whole weekend ("The quiet ones").',
             'supersedes' => [],
             'sessions' => ['race'],
             'stacks' => false,
             'recipient' => 'driver',
-            'scope' => 'session',
+            'scope' => 'weekend',
+            'decided_after' => 'race',
             'withheld_on_sensitive_weekends' => true,
             'trigger' => ['type' => 'custom', 'class' => NothingToSeeHere::class],
+        ],
+
+        /*
+        | The Oofies: the season's own awards, on a shelf without tiers or
+        | points, decided once the final round is final. Another Oofie is
+        | one more entry like these.
+        */
+
+        'most_collected' => [
+            'name' => 'Most Collected',
+            'section' => 'oofies',
+            'shelf' => 'oofies',
+            'tier' => null,
+            'score_category' => 'driver',
+            'description' => 'Most final awards of one OOF achievement in the season (at least 2; a tie is shared).',
+            'supersedes' => [],
+            'sessions' => [],
+            'stacks' => true,
+            'recipient' => 'driver',
+            'scope' => 'season',
+            'withheld_on_sensitive_weekends' => false,
+            'trigger' => [
+                'type' => 'aggregate', 'source' => 'awards', 'shelf' => 'oof',
+                'per' => 'achievement', 'group' => 'driver', 'measure' => 'count', 'pick' => 'max', 'at_least' => 2, 'ties' => 'share',
+                'detail' => '{achievement} ×{value}', 'note' => 'The most {achievement} awards of the season.',
+            ],
+        ],
+
+        'oofscore_champion' => [
+            'name' => 'OOFscore Champion',
+            'section' => 'oofies',
+            'shelf' => 'oofies',
+            'tier' => null,
+            'score_category' => 'driver',
+            'description' => 'Top of the final OOFscore standings (a tie is shared).',
+            'supersedes' => [],
+            'sessions' => [],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'season',
+            'withheld_on_sensitive_weekends' => false,
+            'trigger' => [
+                'type' => 'aggregate', 'source' => 'standings',
+                'group' => 'driver', 'measure' => 'position', 'pick' => 'min', 'ties' => 'share',
+                'detail' => '{points} points',
+            ],
+        ],
+
+        'rarest_award' => [
+            'name' => 'Rarest Award',
+            'section' => 'oofies',
+            'shelf' => 'oofies',
+            'tier' => null,
+            'score_category' => 'driver',
+            'description' => 'Holds the OOF achievement unlocked least often in the season (a tie goes to the higher tier).',
+            'supersedes' => [],
+            'sessions' => [],
+            'stacks' => true,
+            'recipient' => 'driver',
+            'scope' => 'season',
+            'withheld_on_sensitive_weekends' => false,
+            'trigger' => [
+                'type' => 'aggregate', 'source' => 'awards', 'shelf' => 'oof',
+                'group' => 'achievement', 'measure' => 'count', 'pick' => 'min', 'ties' => 'higher_tier', 'to' => 'holders',
+                'detail' => '{achievement}', 'note' => '{achievement}: unlocked {value} {value:time|times} this season, the fewest of any OOF achievement.',
+            ],
         ],
     ],
 

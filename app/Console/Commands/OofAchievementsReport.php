@@ -77,12 +77,15 @@ class OofAchievementsReport extends Command
      */
     private function frequencies(Collection $sessions, Collection $weekends, array $seasons): void
     {
+        // By season, so weekend awards (anchored to a session) and season awards (without one) count too.
+        $years = $sessions->mapWithKeys(fn (RaceSession $session) => [$session->round->season_id => $session->round->season->year]);
         $counts = AchievementAward::query()
-            ->whereIn('race_session_id', $sessions->pluck('id'))
+            ->whereIn('season_id', $years->keys())
+            ->where(fn ($query) => $query->whereIn('race_session_id', $sessions->pluck('id'))->orWhereNull('race_session_id'))
             ->where('status', '!=', AwardStatus::Suppressed)
-            ->get(['achievement_id', 'race_session_id'])
+            ->get(['achievement_id', 'season_id'])
             ->groupBy('achievement_id')
-            ->map(fn (Collection $awards) => $awards->countBy(fn (AchievementAward $award) => $sessions->firstWhere('id', $award->race_session_id)->round->season->year));
+            ->map(fn (Collection $awards) => $awards->countBy(fn (AchievementAward $award) => $years[$award->season_id]));
 
         $this->line('| Achievement | Shelf | Tier now | Total | '.implode(' | ', $seasons).' | Per weekend | Proposed tier |');
         $this->line('|---|---|---|---:|'.str_repeat('---:|', count($seasons)).'---:|---|');

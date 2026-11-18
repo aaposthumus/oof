@@ -16,6 +16,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Engine version
+    |--------------------------------------------------------------------------
+    |
+    | Part of the catalogue version in the run log. Raise it when a code
+    | change alters what the engine finds, so oof:achievements --stale
+    | re-runs every context decided before it.
+    |
+    */
+
+    'engine_version' => 1,
+
+    /*
+    |--------------------------------------------------------------------------
     | Finality
     |--------------------------------------------------------------------------
     |

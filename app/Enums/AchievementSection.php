@@ -16,6 +16,7 @@ enum AchievementSection: string
     case Practice = 'practice';
     case Glory = 'glory';
     case SafetyCar = 'safety_car';
+    case Oofies = 'oofies';
 
     public function label(): string
     {
@@ -28,6 +29,7 @@ enum AchievementSection: string
             self::Practice => 'Practice',
             self::Glory => 'Glory',
             self::SafetyCar => 'Safety Car',
+            self::Oofies => 'Oofies',
         };
     }
 

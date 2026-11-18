@@ -2,12 +2,15 @@
 
 namespace Tests\Feature\Achievements\Detectors;
 
+use App\Achievements\AchievementEngine;
+use App\Achievements\SeasonData;
 use App\Enums\SessionType;
 use App\Models\DriverEntry;
 use App\Models\PitLaneVisit;
 use App\Models\RaceSession;
 use App\Models\SeasonTeam;
 use App\Models\SessionLap;
+use App\RaceControl\MessageClassifier;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\Concerns\BuildsSessions;
 use Tests\TestCase;
@@ -186,8 +189,10 @@ class SessionDetectorsTest extends TestCase
         PitLaneVisit::factory()->create(['race_session_id' => $sprint->id, 'driver_number' => 44, 'driver_entry_id' => $sprintCar->id, 'entered_at' => '2024-05-04 16:20:00', 'stop_duration_millis' => 3_000, 'lane_duration_millis' => 22_000]);
 
         $this->assertSame('6.2 s', $this->detect('table_for_one', $race)->sole()->detail);
+        $this->assertCount(0, $this->detect('table_for_one', $sprint));
+        // Fine Dining reads the whole weekend, whichever of its sessions it is found from.
         $this->assertSame("pit:{$slow->id}", $this->detect('fine_dining', $race)->sole()->eventKey);
-        $this->assertCount(0, $this->detect('fine_dining', $sprint));
+        $this->assertSame("pit:{$slow->id}", $this->detect('fine_dining', $sprint)->sole()->eventKey);
     }
 
     public function test_a_stop_that_served_a_penalty_is_not_a_slow_stop(): void
@@ -215,7 +220,10 @@ class SessionDetectorsTest extends TestCase
         $this->assertSame('9 laps', $this->detect('took_the_lead', $race)->sole()->detail);
         $this->assertSame('2 deployments', $this->detect('second_helping', $race)->sole()->detail);
         $this->assertSame('lap 20', $this->detect('virtually_there', $race)->sole()->detail);
-        $this->assertSame('2 deployments', $this->detect('frequent_flyer', $race)->sole()->detail);
         $this->assertNull($this->detect('virtually_there', $race)->sole()->driverEntryId);
+
+        $season = app(AchievementEngine::class)->trigger('frequent_flyer')->detectSeason(new SeasonData($race->round->season, app(MessageClassifier::class)));
+        $this->assertSame('2 deployments', $season->sole()->detail);
+        $this->assertNull($season->sole()->driverEntryId);
     }
 }

@@ -12,6 +12,7 @@ use App\Enums\AwardScope;
 use App\Enums\AwardSource;
 use App\Enums\AwardStatus;
 use App\Enums\RecipientType;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\AchievementAwardFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,13 +22,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * An achievement unlocked in a context (today always a session), with the
- * evidence it came from. Safety Car awards have no driver entry. Once a
+ * An achievement unlocked in a context, with the evidence it came from: a
+ * session ("session:12"), a weekend ("round:7", anchored to the session it
+ * was decided after) or a season ("season:3", without round or session). Safety Car awards have no driver entry. Once a
  * person has decided on an award (decided_at), re-running the engine never
  * changes that decision.
  *
- * Saving fills what follows from the rest: the context (scope, key, season,
- * round, calendar date) from the session, the season team and team from
+ * Saving fills what follows from the rest: the context (key, season, round,
+ * calendar date) from the session, or for a season from its final round, the season team and team from
  * the driver entry, and finalized_at the first time it is final. Tier,
  * shelf and points are a snapshot taken when the award is created. A tier
  * change in the catalogue updates the snapshot in seasons that are not
@@ -208,17 +210,32 @@ class AchievementAward extends Model
 
     private function fillDerived(): void
     {
-        if ($this->race_session_id !== null && ($this->context_key === null || $this->isDirty('race_session_id'))) {
+        $this->scope ??= AwardScope::Session;
+
+        // A session or weekend award takes its context from its session (a weekend's deciding session).
+        if ($this->scope !== AwardScope::Season && $this->race_session_id !== null && ($this->context_key === null || $this->isDirty('race_session_id'))) {
             $session = RaceSession::query()->with('round')->findOrFail($this->race_session_id);
             $date = $session->scheduled_date ?? $session->round->date;
 
             $this->fill([
-                'scope' => AwardScope::Session,
-                'context_key' => "session:{$session->id}",
+                'context_key' => $this->scope === AwardScope::Weekend ? "round:{$session->round_id}" : "session:{$session->id}",
                 'season_id' => $session->round->season_id,
                 'round_id' => $session->round_id,
                 'occurred_on' => $date,
                 'occurred_md' => self::monthDay($date),
+            ]);
+        }
+
+        // A season award has only its season, dated on the final round.
+        if ($this->scope === AwardScope::Season && (! $this->exists || $this->isDirty('season_id'))) {
+            $date = Round::query()->where('season_id', $this->season_id)->orderByDesc('round_number')->value('date');
+
+            $this->fill([
+                'context_key' => "season:{$this->season_id}",
+                'round_id' => null,
+                'race_session_id' => null,
+                'occurred_on' => $date,
+                'occurred_md' => $date === null ? null : self::monthDay(CarbonImmutable::parse($date)),
             ]);
         }
 

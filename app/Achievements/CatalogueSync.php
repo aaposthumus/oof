@@ -5,12 +5,13 @@ namespace App\Achievements;
 use App\Achievements\Facts\DataSource;
 use App\Achievements\Facts\Requirements;
 use App\Models\Achievement;
+use BackedEnum;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Brings the achievements table in line with the catalogue: creates
- * missing achievements, and writes the mechanics (sessions, stacks,
- * withheld on sensitive weekends) and the derived data needs over what the
+ * missing achievements, and writes the mechanics (sessions, scope, decided
+ * after, stacks, withheld on sensitive weekends) and the derived data needs over what the
  * row holds. Editorial fields are left to the CMS. Rows without a catalogue
  * entry are reported, never deleted.
  */
@@ -39,7 +40,8 @@ class CatalogueSync
 
             foreach ($this->owned($key) as $field => $value) {
                 if (! self::same($row->{$field}, $value)) {
-                    $plan['update'][] = ['key' => $key, 'field' => $field, 'from' => $row->{$field}, 'to' => $value];
+                    $stored = $row->{$field};
+                    $plan['update'][] = ['key' => $key, 'field' => $field, 'from' => $stored instanceof BackedEnum ? $stored->value : $stored, 'to' => $value];
                 }
             }
         }
@@ -90,6 +92,10 @@ class CatalogueSync
      */
     private static function same(mixed $stored, mixed $wanted): bool
     {
+        if ($stored instanceof BackedEnum) {
+            $stored = $stored->value;
+        }
+
         if (is_array($stored) && is_array($wanted)) {
             sort($stored);
             sort($wanted);

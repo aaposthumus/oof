@@ -1,7 +1,7 @@
 # OOF! Achievements spec
 
 Source of truth for the achievements engine. Written for Claude Code.
-Last updated: 16 November 2026. The phased plan for the engine is in
+Last updated: 18 November 2026. The phased plan for the engine is in
 `docs/achievement-engine-plan.md`.
 
 ## Concept in short
@@ -31,7 +31,7 @@ awarded once per instance; otherwise once per driver per session.
 | Good Boy | Lapped twice or more | Silver |
 | Blue Carpet | Shown 8 or more blue flags in one race | Bronze |
 | Table for One | Pit stop longer than 5 seconds stationary | Bronze |
-| Fine Dining | Slowest pit stop of the weekend | Bronze |
+| Fine Dining | Slowest pit stop of the whole weekend, sprint included | Bronze |
 | Meatball Sub | Black flag with orange circle ("meatball flag"); stacks | Platinum |
 | Outside the Lines | Lap time deleted for track limits | Bronze |
 | Teacher's Stare | Black-and-white warning flag in a race or qualifying, for any reason (track limits, driving slowly, etc.) | Silver |
@@ -58,7 +58,7 @@ awarded once per instance; otherwise once per driver per session.
 | Reverse Gear | Most places lost compared with the grid | Bronze |
 | All Dressed Up, Nowhere to Go | Fastest lap, but finished outside the points | Gold |
 | Turned Off the Lights | Last classified finisher | Bronze |
-| Nothing to See Here | Unlocked nothing all weekend ("The quiet ones"); 0 points | Bronze |
+| Nothing to See Here | Unlocked nothing the whole weekend ("The quiet ones"); 0 points | Bronze |
 
 The offence achievements (Bumper Cars to Released Into the Wild, with a
 penalty, and Sunday Driver) and Teacher's Stare also run in qualifying and
@@ -103,12 +103,19 @@ give nothing.
 
 | Achievement | Trigger | Tier |
 |---|---|---|
-| Overtime | Most laps driven | Bronze |
-| Practice Makes Imperfect | Most deleted laps, at least 3 | Bronze |
+| Overtime | Most laps driven in practice over the whole weekend | Bronze |
+| Practice Makes Imperfect | Most deleted laps in practice over the whole weekend, at least 3 | Bronze |
 
 Practice achievements only count for race drivers (not FP1 rookies or
-practice-only drivers). They are awarded per practice session today; one
-award per weekend comes with the weekend scope (see the engine plan).
+practice-only drivers). They are decided once per weekend, after the last
+practice session, over the totals of every practice session; an equal top
+total gives nothing.
+
+### Weekend achievements
+
+Overtime, Practice Makes Imperfect, Fine Dining and Nothing to See Here are
+decided once per weekend, after the session they wait for (the last
+practice session, or the race), and appear once per weekend.
 
 ### Glory shelf (trophy cabinet, no points)
 
@@ -136,8 +143,18 @@ The Safety Car is a cameo character with its own small stats corner.
 |---|---|
 | Took the Lead | The safety car ran 8 or more laps in one race |
 | Second Helping | 2 or more safety car deployments in one race |
-| Frequent Flyer | Season count of deployments (end-of-season award) |
+| Frequent Flyer | Season count of deployments in races and sprints (end-of-season award) |
 | Virtually There | A VSC deployment |
+
+### The Oofies (season awards, no tiers, no points)
+
+Decided once the season's final race is final, from the season's final awards.
+
+| Oofie | Trigger |
+|---|---|
+| Most Collected | Most final awards of one OOF achievement (at least 2; a tie is shared) |
+| OOFscore Champion | Top of the final OOFscore standings (a tie is shared) |
+| Rarest Award | Holds the OOF achievement unlocked least often (a tie goes to the higher tier) |
 
 ## Rules
 

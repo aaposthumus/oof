@@ -7,6 +7,7 @@ use App\Achievements\WithheldOnSensitiveWeekend;
 use App\Enums\AchievementShelf;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
+use App\Enums\AwardScope;
 use App\Enums\AwardStatus;
 use App\Enums\SessionType;
 use App\Models\AchievementAward;
@@ -41,14 +42,19 @@ class AchievementAwardsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['raceSession.round.season', 'driver', 'achievement']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['raceSession.round.season', 'season', 'driver', 'achievement']))
             ->defaultSort('race_session_id', 'desc')
-            ->defaultGroup('raceSession.id')
+            ->defaultGroup('context_key')
             ->groups([
-                Group::make('raceSession.id')
+                // A session, a weekend (anchored to the session it was decided after) or a season, each in one group.
+                Group::make('context_key')
                     ->label('Session')
                     ->getTitleFromRecordUsing(fn (AchievementAward $record): string => self::sessionTitle($record))
-                    ->orderQueryUsing(fn (Builder $query, string $direction) => $query->orderBy('race_session_id', $direction)),
+                    ->orderQueryUsing(fn (Builder $query, string $direction) => $query
+                        ->orderBy('season_id', $direction)
+                        ->orderByRaw('round_id is null '.($direction === 'desc' ? 'desc' : 'asc'))
+                        ->orderBy('race_session_id', $direction)
+                        ->orderBy('scope', $direction)),
             ])
             ->columns([
                 TextColumn::make('achievement.name')
@@ -262,11 +268,15 @@ class AchievementAwardsTable
                     ->afterStateUpdated(fn (Set $set) => $set('session', null)),
                 Select::make('session')
                     ->placeholder('All sessions')
-                    ->options(fn (Get $get): array => collect($get('round') === null
-                        ? SessionType::cases()
-                        : RaceSession::query()->where('round_id', $get('round'))->pluck('type')->all())
-                        ->mapWithKeys(fn (SessionType $type) => [$type->value => $type->label()])
-                        ->all()),
+                    ->options(fn (Get $get): array => [
+                        ...collect($get('round') === null
+                            ? SessionType::cases()
+                            : RaceSession::query()->where('round_id', $get('round'))->pluck('type')->all())
+                            ->mapWithKeys(fn (SessionType $type) => [$type->value => $type->label()])
+                            ->all(),
+                        AwardScope::Weekend->value => 'Weekend',
+                        AwardScope::Season->value => 'Season',
+                    ]),
                 Select::make('driver')
                     ->placeholder('All drivers')
                     ->searchable()
@@ -275,10 +285,12 @@ class AchievementAwardsTable
                     ->getOptionLabelUsing(fn ($value): ?string => ($driver = Driver::find($value)) === null ? null : "{$driver->given_name} {$driver->family_name}"),
             ])
             ->query(fn (Builder $query, array $data): Builder => $query
-                ->when($data['season'] ?? null, fn (Builder $query, $season) => $query->whereHas('raceSession.round', fn (Builder $round) => $round->where('season_id', $season)))
+                ->when($data['season'] ?? null, fn (Builder $query, $season) => $query->where('season_id', $season))
                 // A round left over from another season is ignored.
-                ->when(self::roundInSeason($data['round'] ?? null, $data['season'] ?? null), fn (Builder $query, $round) => $query->whereHas('raceSession', fn (Builder $session) => $session->where('round_id', $round)))
-                ->when($data['session'] ?? null, fn (Builder $query, $type) => $query->whereHas('raceSession', fn (Builder $session) => $session->where('type', $type)))
+                ->when(self::roundInSeason($data['round'] ?? null, $data['season'] ?? null), fn (Builder $query, $round) => $query->where('round_id', $round))
+                ->when($data['session'] ?? null, fn (Builder $query, $type) => AwardScope::tryFrom($type) !== null
+                    ? $query->where('scope', $type)
+                    : $query->where('scope', AwardScope::Session)->whereHas('raceSession', fn (Builder $session) => $session->where('type', $type)))
                 ->when($data['driver'] ?? null, fn (Builder $query, $driver) => $query->where('driver_id', $driver)))
             ->indicateUsing(function (array $data): array {
                 $season = isset($data['season']) ? Season::find($data['season'])?->year : null;
@@ -287,7 +299,7 @@ class AchievementAwardsTable
                 return array_values(array_filter([
                     $season === null ? null : "Season {$season}",
                     $round === null ? null : "Round {$round->round_number} · {$round->name}",
-                    isset($data['session']) ? SessionType::from($data['session'])->label() : null,
+                    isset($data['session']) ? (SessionType::tryFrom($data['session'])?->label() ?? ucfirst($data['session'])) : null,
                     isset($data['driver']) && ($driver = Driver::find($data['driver'])) !== null ? "{$driver->given_name} {$driver->family_name}" : null,
                 ]));
             });
@@ -337,11 +349,19 @@ class AchievementAwardsTable
             ->all();
     }
 
+    /**
+     * "2025 R5 Miami Grand Prix · FP3", "… · Weekend (after FP3)" or "2025 · Season".
+     */
     public static function sessionTitle(AchievementAward $record): string
     {
-        $round = $record->raceSession->round;
+        if ($record->scope === AwardScope::Season || $record->raceSession === null) {
+            return "{$record->season->year} · Season";
+        }
 
-        return "{$round->season->year} R{$round->round_number} {$round->name} · {$record->raceSession->type->label()}";
+        $round = $record->raceSession->round;
+        $session = $record->scope === AwardScope::Weekend ? "Weekend (after {$record->raceSession->type->label()})" : $record->raceSession->type->label();
+
+        return "{$round->season->year} R{$round->round_number} {$round->name} · {$session}";
     }
 
     private static function needsCar(AchievementAward $record): bool

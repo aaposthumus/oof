@@ -3,6 +3,7 @@
 namespace Tests\Feature\Achievements;
 
 use App\Achievements\AchievementEngine;
+use App\Achievements\Catalogue;
 use App\Achievements\Detection;
 use App\Achievements\Facts\DataSource;
 use App\Achievements\Facts\Fact;
@@ -115,6 +116,56 @@ class CatalogueTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         app(AchievementEngine::class)->trigger('lapped_dog');
+    }
+
+    public function test_the_season_scope_and_the_aggregate_trigger_only_go_together(): void
+    {
+        config(['achievement_catalogue.achievements.lapped_dog.scope' => 'season']);
+
+        $this->expectException(InvalidArgumentException::class);
+
+        app(AchievementEngine::class)->trigger('lapped_dog');
+    }
+
+    public function test_a_weekend_achievement_must_name_its_deciding_session(): void
+    {
+        config(['achievement_catalogue.achievements.overtime.decided_after' => null]);
+
+        $this->expectException(InvalidArgumentException::class);
+
+        app(AchievementEngine::class)->trigger('overtime');
+    }
+
+    public function test_an_aggregate_trigger_with_an_unknown_option_is_refused(): void
+    {
+        config(['achievement_catalogue.achievements.most_collected.trigger.pik' => 'max']);
+
+        $this->expectException(InvalidArgumentException::class);
+
+        app(AchievementEngine::class)->trigger('most_collected');
+    }
+
+    public function test_the_catalogue_version_follows_the_catalogue_the_engine_settings_and_the_stored_mechanics(): void
+    {
+        $version = fn () => app(Catalogue::class)->version();
+        $before = $version();
+
+        $this->assertSame($before, $version());
+
+        config(['achievement_catalogue.achievements.blue_carpet.trigger.at_least' => 9]);
+        $changedCatalogue = $version();
+        $this->assertNotSame($before, $changedCatalogue);
+
+        config(['achievements.surprise.window_races' => 12]);
+        $changedSettings = $version();
+        $this->assertNotSame($changedCatalogue, $changedSettings);
+
+        // Points are snapshotted apart, so they are no part of it.
+        config(['achievements.points.tiers.bronze' => 11]);
+        $this->assertSame($changedSettings, $version());
+
+        Achievement::firstWhere('key', 'fine_dining')->update(['supersedes' => []]);
+        $this->assertNotSame($changedSettings, $version());
     }
 
     public function test_a_template_leaves_out_empty_values_and_picks_a_word_by_count(): void

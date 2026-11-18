@@ -6,6 +6,7 @@ use App\Achievements\OofScoreStandings;
 use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
+use App\Enums\AwardScope;
 use App\Enums\RecipientType;
 use App\Enums\ScoreCategory;
 use App\Enums\SessionType;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 /**
  * An achievement in the catalogue. The key ties it to its entry in
@@ -25,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property list<string>|null $data_sources DataSource values, derived from the trigger
  * @property int|null $available_from The first year its data supports, derived from the trigger
  */
-#[Fillable(['key', 'name', 'section', 'shelf', 'tier', 'session_types', 'stacks', 'supersedes', 'description', 'is_enabled', 'withheld_on_sensitive_weekends', 'score_category', 'data_sources', 'available_from'])]
+#[Fillable(['key', 'name', 'section', 'shelf', 'tier', 'session_types', 'scope', 'decided_after', 'stacks', 'supersedes', 'description', 'is_enabled', 'withheld_on_sensitive_weekends', 'score_category', 'data_sources', 'available_from'])]
 class Achievement extends Model
 {
     /** @use HasFactory<AchievementFactory> */
@@ -43,6 +45,7 @@ class Achievement extends Model
             'shelf' => AchievementShelf::class,
             'tier' => AchievementTier::class,
             'session_types' => 'array',
+            'scope' => AwardScope::class,
             'stacks' => 'boolean',
             'supersedes' => 'array',
             'is_enabled' => 'boolean',
@@ -123,9 +126,36 @@ class Achievement extends Model
         return (float) $multipliers[$band];
     }
 
+    /**
+     * Whether it is looked for in a session of this type: enabled, decided
+     * per session and listing the type.
+     */
     public function appliesTo(SessionType $type): bool
     {
-        return $this->is_enabled && in_array($type->value, $this->session_types, true);
+        return $this->is_enabled && $this->scope === AwardScope::Session && in_array($type->value, $this->session_types, true);
+    }
+
+    /**
+     * Whether it is decided over this scope and enabled.
+     */
+    public function isDecidedOver(AwardScope $scope): bool
+    {
+        return $this->is_enabled && $this->scope === $scope;
+    }
+
+    /**
+     * The session of the round a weekend achievement is decided after: the
+     * last practice session for "practice", else the session of that type.
+     *
+     * @param  Collection<int, RaceSession>  $sessions  The round's sessions
+     */
+    public function decidingSession(Collection $sessions): ?RaceSession
+    {
+        if ($this->decided_after === 'practice') {
+            return $sessions->filter(fn (RaceSession $session) => $session->type->isPractice())->sortBy(fn (RaceSession $session) => $session->type->weekendOrder())->last();
+        }
+
+        return $sessions->first(fn (RaceSession $session) => $session->type->value === $this->decided_after);
     }
 
     /**

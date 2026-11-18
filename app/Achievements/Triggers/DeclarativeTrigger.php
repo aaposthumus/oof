@@ -10,6 +10,7 @@ use App\Achievements\Facts\Facts;
 use App\Achievements\Facts\Template;
 use App\Achievements\SessionData;
 use App\Enums\AwardConfidence;
+use App\Enums\SessionType;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
@@ -23,6 +24,9 @@ use InvalidArgumentException;
  * - detail, note: text templates (see Template); the note replaces the fact's own
  * - confidence: high, medium or low; the fact's own by default
  * - confidence_when: [level => where], the first level whose conditions hold
+ *
+ * A weekend-scope trigger reads the facts of every session of the round its
+ * entry lists, and is run on the session it is decided after.
  */
 abstract class DeclarativeTrigger implements Trigger
 {
@@ -37,12 +41,14 @@ abstract class DeclarativeTrigger implements Trigger
 
     /**
      * @param  array<string, mixed>  $definition
+     * @param  list<SessionType>|null  $weekendSessions  For a weekend-scope trigger, the sessions it reads
      */
     public function __construct(
         protected readonly string $key,
         protected readonly array $definition,
         protected readonly Facts $facts,
         protected readonly Conditions $conditions,
+        protected readonly ?array $weekendSessions = null,
     ) {
         $unknown = array_diff(array_keys($definition), [...self::COMMON_OPTIONS, ...static::OPTIONS]);
 
@@ -72,17 +78,36 @@ abstract class DeclarativeTrigger implements Trigger
     }
 
     /**
-     * The session's facts of the type that meet the conditions.
+     * The facts of the type that meet the conditions: the session's, or for
+     * a weekend trigger those of every session it reads.
      *
      * @return Collection<int, Fact>
      */
     protected function selected(SessionData $data): Collection
+    {
+        return $this->sessions($data)->flatMap(fn (SessionData $session) => $this->selectedIn($session))->values();
+    }
+
+    /**
+     * @return Collection<int, Fact>
+     */
+    protected function selectedIn(SessionData $data): Collection
     {
         $where = $this->definition['where'] ?? [];
 
         return $this->facts->of($data, $this->definition['fact'])
             ->filter(fn (Fact $fact) => $this->conditions->pass($where, $fact, $data))
             ->values();
+    }
+
+    /**
+     * The sessions whose facts it reads.
+     *
+     * @return Collection<int, SessionData>
+     */
+    protected function sessions(SessionData $data): Collection
+    {
+        return $this->weekendSessions === null ? collect([$data]) : $data->weekendSessions($this->weekendSessions);
     }
 
     /**

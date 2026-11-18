@@ -4,10 +4,14 @@ namespace App\Console\Commands;
 
 use App\Achievements\AchievementEngine;
 use App\Achievements\OofScoreStandings;
+use App\Achievements\RunLog;
 use App\Achievements\SessionData;
+use App\Enums\AwardScope;
 use App\Enums\AwardStatus;
 use App\Enums\SessionType;
+use App\Models\AchievementAward;
 use App\Models\RaceSession;
+use App\Models\Season;
 use App\RaceControl\MessageClassifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -25,8 +29,10 @@ class OofAchievements extends Command
     protected $signature = 'oof:achievements
         {--season=* : Only these seasons (default: all from achievements.first_season)}
         {--round= : Only this round number}
-        {--session= : Only this session type, e.g. race, qualifying, practice_1}
-        {--changed : Only rounds with new data since their last run, or pending awards that are now final}
+        {--session= : Only this session type, e.g. race, qualifying, practice_1 (weekends and seasons still run)}
+        {--scope=* : Only these scopes: session, weekend, season (default: all three)}
+        {--changed : Only rounds with new data since their last run, or pending awards that are now final; and seasons whose awards changed since}
+        {--stale : Only what was decided on an older catalogue version, or never logged; and sessions whose surprise window changed since}
         {--dry-run : Show what would be awarded without storing anything}';
 
     /**
@@ -34,15 +40,7 @@ class OofAchievements extends Command
      *
      * @var string
      */
-    protected $description = 'Unlock achievements per session (safe to re-run; updates awards and keeps manual decisions), then rebuild the OOFscore of the seasons touched';
-
-    /**
-     * Sessions in the order they run, so the race comes last and can look at the whole weekend.
-     */
-    private const ORDER = [
-        SessionType::Practice1, SessionType::Practice2, SessionType::Practice3,
-        SessionType::SprintQualifying, SessionType::Sprint, SessionType::Qualifying, SessionType::Race,
-    ];
+    protected $description = 'Unlock achievements per session, weekend and season (safe to re-run; updates awards and keeps manual decisions), rebuild the OOFscore of the seasons touched, and log each run';
 
     /**
      * Tables whose rows feed the detectors, by their link to a session.
@@ -58,14 +56,29 @@ class OofAchievements extends Command
     ];
 
     /**
+     * Runs of a dry run, written to the log after it is rolled back.
+     *
+     * @var list<array{0: AwardScope, 1: string, 2: int|null, 3: array<string, array<string, int>>, 4: CarbonImmutable}>
+     */
+    private array $dryRuns = [];
+
+    /**
      * Execute the console command.
      */
-    public function handle(AchievementEngine $engine, OofScoreStandings $standings): int
+    public function handle(AchievementEngine $engine, OofScoreStandings $standings, RunLog $log): int
     {
         $sessionType = $this->option('session') === null ? null : SessionType::tryFrom($this->option('session'));
 
         if ($this->option('session') !== null && $sessionType === null) {
             $this->components->error('Unknown session type ['.$this->option('session').']. Available: '.implode(', ', array_column(SessionType::cases(), 'value')).'.');
+
+            return self::FAILURE;
+        }
+
+        $scopes = $this->scopes();
+
+        if ($scopes === null) {
+            $this->components->error('Unknown scope. Available: '.implode(', ', array_column(AwardScope::cases(), 'value')).'.');
 
             return self::FAILURE;
         }
@@ -76,31 +89,71 @@ class OofAchievements extends Command
             $this->components->warn('Dry run: nothing is stored.');
         }
 
-        $sessions = $this->sessions($sessionType);
+        [$sessions, $seasonIds] = $this->select($sessionType, $log);
         $totals = [];
+        $counts = ['session' => 0, 'weekend' => 0, 'season' => 0];
+        $add = function (array $stats) use (&$totals): void {
+            foreach ($stats as $key => $stat) {
+                foreach ($stat as $label => $count) {
+                    $totals[$key][$label] = ($totals[$key][$label] ?? 0) + $count;
+                }
+            }
+        };
 
-        // One transaction around a dry run, so the race still sees what the weekend's other sessions unlocked.
+        // One transaction around a dry run, so the weekend still sees what the sessions unlocked.
         if ($dryRun) {
             DB::beginTransaction();
         }
 
-        foreach ($sessions as $session) {
-            foreach ($engine->run($session) as $key => $stats) {
-                foreach ($stats as $label => $count) {
-                    $totals[$key][$label] = ($totals[$key][$label] ?? 0) + $count;
+        foreach ($sessions->groupBy('round_id') as $roundSessions) {
+            $round = $roundSessions->first()->round;
+
+            if (in_array(AwardScope::Session, $scopes, true)) {
+                foreach ($roundSessions->when($sessionType !== null, fn (Collection $all) => $all->where('type', $sessionType)) as $session) {
+                    $startedAt = CarbonImmutable::now();
+                    $stats = $engine->run($session);
+                    $add($stats);
+                    $counts['session']++;
+                    $this->log($log, AwardScope::Session, "session:{$session->id}", $round->season_id, $stats, $startedAt, $dryRun);
+                }
+            }
+
+            if (in_array(AwardScope::Weekend, $scopes, true)) {
+                $startedAt = CarbonImmutable::now();
+                $stats = $engine->runWeekend($round);
+                $add($stats);
+                $counts['weekend']++;
+                $this->log($log, AwardScope::Weekend, "round:{$round->id}", $round->season_id, $stats, $startedAt, $dryRun);
+            }
+        }
+
+        // The OOFscore of every open season the run touched follows its awards; the Oofies read it.
+        $rebuilt = $standings->rebuildSeasons($sessions->map(fn (RaceSession $session) => $session->round->season_id)->unique())->filter();
+
+        if (in_array(AwardScope::Season, $scopes, true)) {
+            foreach (Season::query()->whereIn('id', $seasonIds)->orderBy('year')->get() as $season) {
+                $startedAt = CarbonImmutable::now();
+                $stats = $engine->runSeason($season);
+
+                // A season that is not final yet is not decided, so there is nothing to log.
+                if ($stats !== null) {
+                    $add($stats);
+                    $counts['season']++;
+                    $this->log($log, AwardScope::Season, "season:{$season->id}", $season->id, $stats, $startedAt, $dryRun);
                 }
             }
         }
 
-        // The OOFscore of every open season the run touched follows its awards.
-        $rebuilt = $standings->rebuildSeasons($sessions->map(fn (RaceSession $session) => $session->round->season_id))->filter();
-
         if ($dryRun) {
             DB::rollBack();
+
+            foreach ($this->dryRuns as [$scope, $contextKey, $seasonId, $stats, $startedAt]) {
+                $log->record($scope, $contextKey, $seasonId, $this->runOptions(), $stats, true, $startedAt);
+            }
         }
 
         ksort($totals);
-        $this->components->info("{$sessions->count()} sessions");
+        $this->components->info("{$counts['session']} sessions, {$counts['weekend']} weekends, {$counts['season']} seasons");
 
         if ($rebuilt->isNotEmpty()) {
             $this->components->info('OOFscore rebuilt for '.$rebuilt->keys()->implode(', ').'.');
@@ -117,9 +170,48 @@ class OofAchievements extends Command
     }
 
     /**
-     * @return Collection<int, RaceSession>
+     * @return list<AwardScope>|null Null when one is unknown
      */
-    private function sessions(?SessionType $type): Collection
+    private function scopes(): ?array
+    {
+        $scopes = array_map(fn (string $scope) => AwardScope::tryFrom($scope), $this->option('scope'));
+
+        if (in_array(null, $scopes, true)) {
+            return null;
+        }
+
+        return $scopes === [] ? AwardScope::cases() : $scopes;
+    }
+
+    /**
+     * @param  array<string, array<string, int>>  $stats
+     */
+    private function log(RunLog $log, AwardScope $scope, string $contextKey, ?int $seasonId, array $stats, CarbonImmutable $startedAt, bool $dryRun): void
+    {
+        if ($dryRun) {
+            $this->dryRuns[] = [$scope, $contextKey, $seasonId, $stats, $startedAt];
+
+            return;
+        }
+
+        $log->record($scope, $contextKey, $seasonId, $this->runOptions(), $stats, false, $startedAt);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function runOptions(): array
+    {
+        return array_filter(array_intersect_key($this->options(), array_flip(['season', 'round', 'session', 'scope', 'changed', 'stale', 'dry-run'])), fn ($value) => $value !== null && $value !== false && $value !== []);
+    }
+
+    /**
+     * The sessions to run, in the order they were held (grouped per round,
+     * whose weekend runs after them), and the seasons to decide.
+     *
+     * @return array{0: Collection<int, RaceSession>, 1: Collection<int, int>}
+     */
+    private function select(?SessionType $type, RunLog $log): array
     {
         $sessions = RaceSession::query()
             ->with('round.season')
@@ -129,17 +221,84 @@ class OofAchievements extends Command
                 ->whereHas('season', fn (Builder $season) => $season
                     ->where('year', '>=', config('achievements.first_season'))
                     ->when($this->option('season'), fn (Builder $query, array $years) => $query->whereIn('year', array_map('intval', $years)))))
-            ->when($type, fn (Builder $query) => $query->where('type', $type))
             ->get();
 
-        if ($this->option('changed')) {
-            $rounds = $sessions->filter(fn (RaceSession $session) => $this->hasChanged($session))->pluck('round_id')->unique();
-            $sessions = $sessions->whereIn('round_id', $rounds);
+        // A session filter narrows the session scope only, so the round must keep a session to hang its weekend on.
+        if ($type !== null) {
+            $sessions = $sessions->whereIn('round_id', $sessions->where('type', $type)->pluck('round_id'));
         }
 
-        return $sessions
-            ->sortBy(fn (RaceSession $session) => sprintf('%04d-%03d-%d', $session->round->season->year, $session->round->round_number, array_search($session->type, self::ORDER, true)))
+        $allSeasons = $sessions->pluck('round.season_id')->unique()->values();
+
+        if ($this->option('changed') || $this->option('stale')) {
+            $rounds = collect()
+                ->concat($this->option('changed') ? $sessions->filter(fn (RaceSession $session) => $this->hasChanged($session))->pluck('round_id') : [])
+                ->concat($this->option('stale') ? $this->staleRounds($sessions, $log) : [])
+                ->unique();
+            $seasons = collect()
+                ->concat($this->option('changed') ? $this->changedSeasons($allSeasons, $log) : [])
+                ->concat($this->option('stale') ? $allSeasons->filter(fn (int $seasonId) => $log->isStale($log->latest(["season:{$seasonId}"])->first())) : []);
+            $sessions = $sessions->whereIn('round_id', $rounds);
+            $allSeasons = $seasons->concat($sessions->pluck('round.season_id'))->unique()->values();
+        }
+
+        $sessions = $sessions
+            ->sortBy(fn (RaceSession $session) => sprintf('%04d-%03d-%d', $session->round->season->year, $session->round->round_number, $session->type->weekendOrder()))
             ->values();
+
+        return [$sessions, $allSeasons];
+    }
+
+    /**
+     * Rounds with a session or weekend decided on an older catalogue
+     * version (or never logged), or a session whose surprise window changed.
+     * Only what was run before counts; what never ran is for --changed.
+     *
+     * @param  Collection<int, RaceSession>  $sessions
+     * @return Collection<int, int>
+     */
+    private function staleRounds(Collection $sessions, RunLog $log): Collection
+    {
+        $run = $sessions->filter(fn (RaceSession $session) => $session->achievements_checked_at !== null);
+        $latest = $log->latest([
+            ...$run->map(fn (RaceSession $session) => "session:{$session->id}"),
+            ...$run->map(fn (RaceSession $session) => "round:{$session->round_id}"),
+        ]);
+
+        return $run
+            ->filter(function (RaceSession $session) use ($latest, $log) {
+                $sessionRun = $latest->get("session:{$session->id}");
+
+                return $log->isStale($sessionRun)
+                    || $log->isStale($latest->get("round:{$session->round_id}"))
+                    || $log->earlierRacesChanged($session, $sessionRun);
+            })
+            ->pluck('round_id')
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * Seasons whose session and weekend awards changed since the season was
+     * last decided, or that were never decided: a decision in the CMS can
+     * change the Oofies. The engine decides them only once they are final.
+     *
+     * @param  Collection<int, int>  $seasonIds
+     * @return Collection<int, int>
+     */
+    private function changedSeasons(Collection $seasonIds, RunLog $log): Collection
+    {
+        $latest = $log->latest($seasonIds->map(fn (int $id) => "season:{$id}"));
+
+        return $seasonIds->filter(function (int $seasonId) use ($latest) {
+            $run = $latest->get("season:{$seasonId}");
+
+            return $run === null || AchievementAward::query()
+                ->where('season_id', $seasonId)
+                ->where('scope', '!=', AwardScope::Season)
+                ->where('updated_at', '>', $run->finished_at)
+                ->exists();
+        })->values();
     }
 
     /**
@@ -164,7 +323,8 @@ class OofAchievements extends Command
             }
         }
 
-        if (! $session->achievementAwards()->where('status', AwardStatus::Pending)->whereNull('decided_at')->exists()) {
+        // Pending awards anchored to the session: its own, and the weekend's decided after it.
+        if (! AchievementAward::query()->where('race_session_id', $session->id)->where('status', AwardStatus::Pending)->whereNull('decided_at')->exists()) {
             return false;
         }
 

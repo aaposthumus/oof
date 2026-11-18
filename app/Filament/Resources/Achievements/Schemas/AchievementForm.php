@@ -6,6 +6,7 @@ use App\Achievements\Facts\DataSource;
 use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
+use App\Enums\AwardScope;
 use App\Enums\ScoreCategory;
 use App\Enums\SessionType;
 use App\Models\Achievement;
@@ -54,6 +55,17 @@ class AchievementForm
                     ->disabled()
                     ->dehydrated(false)
                     ->helperText(self::CATALOGUE_OWNED)
+                    ->columnSpanFull(),
+                TextInput::make('scope')
+                    ->label('Decided over')
+                    ->formatStateUsing(fn (?Achievement $record): string => match ($record?->scope) {
+                        AwardScope::Weekend => $record->decided_after === 'practice' ? 'The weekend, after the last practice session' : 'The weekend, after the '.(SessionType::tryFrom((string) $record->decided_after)?->label() ?? $record->decided_after),
+                        AwardScope::Season => 'The season, once its final round is final',
+                        default => 'Each session',
+                    })
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText('A weekend or season achievement reads the sessions above. '.self::CATALOGUE_OWNED)
                     ->columnSpanFull(),
                 Select::make('supersedes')
                     ->multiple()

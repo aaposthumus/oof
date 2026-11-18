@@ -5,6 +5,7 @@ namespace App\Achievements\Facts\Predicates;
 use App\Achievements\Facts\DataSource;
 use App\Achievements\Facts\Fact;
 use App\Achievements\Facts\Predicate;
+use App\Achievements\Facts\ReadsEarlierRaces;
 use App\Achievements\SessionData;
 
 /**
@@ -12,7 +13,7 @@ use App\Achievements\SessionData;
  * rolling look-back of achievements.surprise; see Surprise and TeamForm).
  * Reads the fact's surprise attribute.
  */
-class IsSurprise implements Predicate
+class IsSurprise implements Predicate, ReadsEarlierRaces
 {
     public function sources(): array
     {

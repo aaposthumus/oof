@@ -31,6 +31,11 @@ class Sensitivity
     public const SYSTEM_NOTE = 'Withheld: sensitive or blocked weekend';
 
     /**
+     * The state of a context outside any round, such as a season.
+     */
+    public const NONE = ['sensitive' => false, 'blocked_round' => false, 'blocked_drivers' => [], 'note' => null];
+
+    /**
      * @var WeakMap<SessionData, array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, note: string|null}>|null
      */
     private ?WeakMap $cache = null;

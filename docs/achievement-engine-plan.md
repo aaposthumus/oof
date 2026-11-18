@@ -20,7 +20,7 @@ and 4 for the design, and "Working notes" at the end.
 | 4 | Sensitivity | Done, 17 November 2026 |
 | 5 | OOFscore | Done, 17 November 2026 |
 | 6 | Facts and triggers | Done, 17 November 2026 |
-| 7 | Scopes, runs and the Oofies | Not started |
+| 7 | Scopes, runs and the Oofies | Done, 18 November 2026 |
 | 8 | Recipients | Not started |
 | 9 | Nicknames and evolution events | Not started |
 | 10 | 2027 pack | Not started |
@@ -786,12 +786,82 @@ Decided by the owner on 17 November 2026:
 - Deploy: sync dry run first, then the sync (deploy step 2). Nobody has edited sessions
   or stacks in the production CMS, so the sync overwrites nothing a person set.
 
-**Phase 7: scopes, runs and the Oofies.**
-Weekend scope (combined practice awards, Fine Dining, Nothing to See Here), season scope
-(Frequent Flyer and the three Oofies), the run log and `--stale`. Apply decisions 2, 3
-and 4 of section 2.
-Done when practice awards appear once per weekend, the 2025 Oofies can be computed, and
-a catalogue change marks old contexts stale.
+**Phase 7: scopes, runs and the Oofies. Done.**
+
+- `achievements.scope` (session, weekend, season) and `decided_after` (`practice` for the
+  last practice session, or a session type), mechanics written by the sync; the migration
+  sets them for the five achievements that move. A weekend or season entry's `sessions`
+  are the sessions it reads. The factory refuses a weekend entry without `decided_after`
+  and an aggregate trigger outside the season scope (and the reverse).
+- Weekend scope: Overtime and Practice Makes Imperfect (after the last practice, totals
+  per driver over every practice session: extreme option `per: driver`), Fine Dining (after
+  the race, the slowest stop of race and sprint; `from` and `only_own_session` are gone)
+  and Nothing to See Here (after the race, from the stored session awards and the
+  weekend's other detections). Descriptions now say "the whole weekend" (replaced only
+  where they still equal the seeded text). Stored in context `round:{id}`, anchored
+  (`race_session_id`) to the deciding session, on the car the driver drove in it. An
+  achievement whose deciding session has not ended is undecided: nothing is found and its
+  stored awards stay. A weekend achievement that supersedes a session one (Fine Dining over
+  Table for One) joins that session's cascade, so the session never stores what the
+  weekend replaces. CrossCheck does not run on the weekend (no fault-based weekend
+  achievement exists).
+- Season scope and the `aggregate` trigger: a source (facts of the season's sessions, the
+  season's final session and weekend awards, or the OOFscore standings after the last
+  round), `per` (achievement), `group` (season, driver, achievement), `measure`, `pick`
+  (all, max, min), `at_least`, `ties` (share, none, higher_tier) and `to` (group or
+  holders). Stored in context `season:{id}` with only a season, dated on the final round,
+  final unless inferred. A season is decided once its final race has been run and is
+  final. Frequent Flyer moved onto it (facts: safety car deployments of races and sprints);
+  the custom class is gone.
+- The Oofies (decisions 2, 3, 4): a fourth shelf and section `oofies`, no tier, 0 points.
+  Most Collected (per OOF achievement, the driver with the most final awards; at least 2;
+  ties shared), OOFscore Champion (position 1 after the last round; ties shared), Rarest
+  Award (the OOF achievement unlocked least often, at least once; a tie goes to the higher
+  tier, equal tiers share; every holder gets it). Created by the sync; names are CMS fields.
+- Run order per round: its sessions in weekend order, then its weekend. Then the OOFscore
+  of the seasons touched, then the seasons. The standings come before the seasons (not
+  after, as section 3 had it) because the champion reads them; the Oofies earn no points.
+- Run log: `achievement_runs`, one row per context decided, with `Catalogue::version()`: a
+  hash of the catalogue file, the engine settings of `config/achievements.php` (not points,
+  not events) including the new `engine_version` (raise it when a code change alters what
+  the engine finds), and what the engine reads from the stored achievements (enabled,
+  supersedes, mechanics). Dry runs are logged too, marked, after the rollback; a season
+  that is not final is not logged.
+- `oof:achievements --stale`: rounds with a session or weekend whose last real run was on
+  another version or is not in the log (what never ran is for `--changed`), a session whose
+  achievements read earlier races (`ReadsEarlierRaces`, the surprise rule) when a result,
+  entry or season team in its team-form window changed after its last run (the Phase 2
+  note), and seasons decided on another version. Whole rounds re-run. `--changed` now also
+  decides a season whose session or weekend awards changed since it was last decided (a
+  CMS decision can change the Oofies), and re-runs a round when a weekend award anchored to
+  one of its sessions is pending and that session is final now. `--scope=session|weekend|season`
+  limits the run; `--session` narrows only the session scope.
+- Golden master: a weekend award is keyed by its deciding session, a season award by
+  `2025-season`, covered once that season is in the run log.
+- CMS: the awards list groups by context ("2025 R5 Miami Grand Prix · Weekend (after
+  FP3)", "2025 · Season"), filters on the award's season and round, and the session filter
+  has Weekend and Season. The achievement form shows what it is decided over (read-only).
+  The test-run report counts by season, so weekend and season awards count. No CMS screen
+  for the run log.
+- Checked on the local database (migrate, sync: the 3 Oofies created, no other drift;
+  rollback and re-apply work): Overtime equals an independent SQL total of practice laps
+  per race driver on all 90 weekends (67 awards; 22 weekends tie on the top total, 1 has no
+  laps). Every Nothing to See Here change comes from Overtime moving. Frequent Flyer gives
+  the old counts (2023 21, 2024 14, 2025 21). `--stale` after a full run takes under a
+  second and finds nothing; after a catalogue change it re-runs everything.
+- Golden master: 282 differences, all intended. Overtime 147 missing, 67 added (once per
+  weekend over the practice totals); Practice Makes Imperfect 24 missing, 15 added (likewise;
+  2026 rounds 11 and 14 tie on the total); Nothing to See Here 5 missing, 15 added (drivers
+  who gained or lost their only award through Overtime); Fine Dining 3 added and Table for
+  One 3 missing (the slowest stop was in a sprint: 2025 rounds 6 and 19, 2026 round 4);
+  Frequent Flyer 3 moved to the season contexts. New and not compared: the season contexts
+  of 2023 to 2025 (3 Frequent Flyer, 91 Most Collected, 3 champions, 4 Rarest Award).
+  Re-exported: 4,175 awards in 453 contexts (450 sessions, 3 seasons).
+- 2025 Oofies on the local data: OOFscore Champion Antonelli (1,210); Rarest Award
+  Bearman (Red Light, Green Light, once, over Queue Jumper on tier); 32 Most Collected,
+  for example Antonelli Outside the Lines ×15, Ocon Nothing to See Here ×9.
+- Stored awards on the local database were not brought up to date (only dry runs); deploy
+  step 3 does that.
 
 **Phase 8: recipients.**
 Recipient value on detections, team columns in use, Safety Car explicit; trophy queries
@@ -845,14 +915,19 @@ Decided for this phase on 17 November 2026:
 When the `achievement-engine` branch is deployed to production (decided 17 November 2026):
 
 1. `php artisan migrate` (lineages, award schema and snapshot, sensitivity columns,
-   data needs).
+   data needs, scope and the run log).
 2. `php artisan oof:achievements:sync --dry-run`, then, if it lists no differences in
    sessions or stacks the owner wants kept, `php artisan oof:achievements:sync` (writes
-   the catalogue's mechanics and the derived data needs).
-3. `php artisan oof:achievements --season=2023 --season=2024 --season=2025 --season=2026`,
-   to bring the stored awards up to date, as was done locally. Decisions made by people
-   stay as they are.
-4. `php artisan oof:oofscore`, to build the standings of every season (step 3 already
+   the catalogue's mechanics and the derived data needs, and creates the three Oofies).
+3. Before the next step, check for awards a person decided on Overtime, Practice Makes
+   Imperfect, Fine Dining, Nothing to See Here or Frequent Flyer: the engine leaves such a
+   decided award in its old session context, beside the new weekend or season one. None
+   existed locally.
+4. `php artisan oof:achievements --season=2023 --season=2024 --season=2025 --season=2026`,
+   to bring the stored awards up to date, move the weekend and season achievements to
+   their new contexts and fill the run log. Decisions made by people stay as they are.
+5. `php artisan oof:oofscore`, to build the standings of every season (step 4 already
    rebuilds the seasons it ran; this makes sure).
-5. Do not run `oof:dig` yet; it waits for the chassis-engine merge in Phase 11.
-6. Do not close any season until the owner says so.
+6. Do not run `oof:dig` yet; it waits for the chassis-engine merge in Phase 11.
+7. Do not close any season until the owner says so.
+8. After any later catalogue or engine change: `php artisan oof:achievements --stale`.

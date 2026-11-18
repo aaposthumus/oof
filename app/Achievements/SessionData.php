@@ -38,6 +38,13 @@ class SessionData
     private array $loaded = [];
 
     /**
+     * Other sessions of the round by type value, null where the round has none.
+     *
+     * @var array<string, self|null>
+     */
+    private array $siblings = [];
+
+    /**
      * @param  Collection<int, DriverEntry>  $entries  Keyed by ID
      */
     public function __construct(
@@ -68,9 +75,39 @@ class SessionData
         return $this->session->round->season->year;
     }
 
+    /**
+     * A driver entry of this session or, for a weekend award built from
+     * several sessions, of another session of the round.
+     */
     public function entry(?int $entryId): ?DriverEntry
     {
-        return $entryId === null ? null : $this->entries->get($entryId);
+        if ($entryId === null) {
+            return null;
+        }
+
+        return $this->entries->get($entryId) ?? $this->roundEntries()->get($entryId);
+    }
+
+    /**
+     * Every driver entry of the round, keyed by ID.
+     *
+     * @return Collection<int, DriverEntry>
+     */
+    private function roundEntries(): Collection
+    {
+        return $this->loaded['round_entries'] ??= DriverEntry::query()
+            ->whereHas('raceSession', fn ($query) => $query->where('round_id', $this->session->round_id))
+            ->with(['driver', 'seasonTeam', 'result', 'qualifyingResult'])
+            ->get()
+            ->keyBy('id');
+    }
+
+    /**
+     * This driver's entry in this session, if they took part.
+     */
+    public function entryOfDriver(int $driverId): ?DriverEntry
+    {
+        return $this->entries->first(fn (DriverEntry $entry) => $entry->driver_id === $driverId);
     }
 
     /**
@@ -173,7 +210,8 @@ class SessionData
     }
 
     /**
-     * Another session of the same round, if it exists.
+     * Another session of the same round, if it exists. Loaded once, so its
+     * facts are built once too.
      */
     public function roundSession(SessionType $type): ?self
     {
@@ -181,9 +219,27 @@ class SessionData
             return $this;
         }
 
-        $session = RaceSession::query()->where('round_id', $this->session->round_id)->where('type', $type)->first();
+        if (! array_key_exists($type->value, $this->siblings)) {
+            $session = RaceSession::query()->where('round_id', $this->session->round_id)->where('type', $type)->first();
+            $this->siblings[$type->value] = $session === null ? null : self::load($session, $this->classifier);
+        }
 
-        return $session === null ? null : self::load($session, $this->classifier);
+        return $this->siblings[$type->value];
+    }
+
+    /**
+     * The round's sessions of these types that exist, in weekend order.
+     *
+     * @param  list<SessionType>  $types
+     * @return Collection<int, self>
+     */
+    public function weekendSessions(array $types): Collection
+    {
+        return collect($types)
+            ->sortBy(fn (SessionType $type) => $type->weekendOrder())
+            ->map(fn (SessionType $type) => $this->roundSession($type))
+            ->filter()
+            ->values();
     }
 
     /**
