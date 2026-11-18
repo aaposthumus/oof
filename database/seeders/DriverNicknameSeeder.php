@@ -37,7 +37,7 @@ class DriverNicknameSeeder extends Seeder
         ['arvid_lindblad', 'Arvid', 'Lindblad', ['LindBud', 'Born to bloom'], ['LindBloom', null]],
         ['gasly', 'Pierre', 'Gasly', ['Gasmania', 'Thrives under Pierre pressure'], null],
         ['colapinto', 'Franco', 'Colapinto', ['FranTastic', 'Louder than the grandstand'], null],
-        ['camara', 'Rafael', 'Câmara', ['RafaCut', 'Always Camara-ready'], ['Rafined', null]],
+        ['rafael_camara', 'Rafael', 'Câmara', ['RafaCut', 'Always Camara-ready'], ['Rafined', null]],
         ['bearman', 'Oliver', 'Bearman', ['BearlyBraking', 'Bear with me'], null],
         ['hulkenberg', 'Nico', 'Hülkenberg', ['Peako', 'The view was worth the climb'], null],
         ['bortoleto', 'Gabriel', 'Bortoleto', ['Gabbles', 'Bubbling up'], ['Gabblefly', null]],

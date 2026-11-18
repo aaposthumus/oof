@@ -115,6 +115,45 @@ class NicknameEvolutionTest extends TestCase
         $this->assertCount(0, $this->check(CarbonImmutable::parse('2027-06-01')));
     }
 
+    public function test_a_full_season_starts_in_the_first_round_and_misses_at_most_two_rounds(): void
+    {
+        $this->assertSame(Breakthrough::StrongFirstSeason, $this->strongSeasonCheck(drove: [1, 4, 5])->sole()->reason, 'two rounds missed');
+    }
+
+    public function test_three_missed_rounds_are_no_full_season(): void
+    {
+        $this->assertCount(0, $this->strongSeasonCheck(drove: [1, 5]));
+    }
+
+    public function test_a_mid_season_replacement_has_no_full_season(): void
+    {
+        $this->assertCount(0, $this->strongSeasonCheck(drove: [2, 3, 4, 5]));
+    }
+
+    /**
+     * A five-round 2027 season with Lindblad in these rounds (always the
+     * last), eighth in the final standings, checked once it is final.
+     *
+     * @param  list<int>  $drove
+     * @return Collection<int, NicknameEvolution>
+     */
+    private function strongSeasonCheck(array $drove): Collection
+    {
+        foreach (range(1, 4) as $number) {
+            $race = $this->raceSession(round: $this->round(2027, $number, ['date' => '2027-0'.$number.'-01']));
+            $this->car($race, 30 + $number);
+
+            if (in_array($number, $drove, true)) {
+                $this->car($race, 6, driver: $this->lindblad);
+            }
+        }
+
+        $last = $this->raceWithLindbladIn(position: 9);
+        DriverStanding::create(['round_id' => $last->round_id, 'driver_id' => $this->lindblad->id, 'position' => 8, 'position_text' => '8', 'points' => 64, 'wins' => 0]);
+
+        return $this->check(CarbonImmutable::parse('2027-06-01'));
+    }
+
     public function test_a_season_before_the_events_start_proposes_without_an_event(): void
     {
         $this->raceWithLindbladIn(position: 3, round: $this->round(2026, 20), now: CarbonImmutable::parse('2026-06-01'));

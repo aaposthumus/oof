@@ -669,7 +669,9 @@ Follow-ups decided by the owner on 17 November 2026, done the same day:
 **Hard requirement for any publishing work** (feeds, automatic posts, comedic formats,
 the public site, exports): read awards only through `publishable()`. Suppressed, pending
 and flagged awards never leave the CMS. A publishing change that reads awards another
-way is not done.
+way is not done. Likewise, publishing refuses draft nicknames (`driver_nicknames.is_draft`,
+decided 18 November 2026): a draft nickname, its motto and an edition subtitle built from
+it never leave the CMS.
 
 **Phase 5: OOFscore. Done.**
 
@@ -973,7 +975,7 @@ Decided by the owner on 18 November 2026:
   win is a first win. Strong first season (decision 1 of section 2): once the season is
   final, `nicknames.strong_first_season_top` (10, in its own `config/nicknames.php`, so the
   catalogue version is unchanged) or better in the final drivers' standings of the
-  driver's first full season (a race entry in every round). One proposal per target
+  driver's first full season (see the decisions below). One proposal per target
   nickname, so a re-run, a backfill or a dismissal never proposes again.
 - Runs at the end of `oof:achievements` for the seasons touched (not on a dry run), and
   as `oof:nicknames [--season=]`.
@@ -996,6 +998,31 @@ Decided by the owner on 18 November 2026:
   full seasons (2025) ended P14 and P19, and 2026 is not final yet (Lindblad P11 after
   round 19).
 - Golden master: no differences; not re-exported.
+
+Decided by the owner on 18 November 2026, done the same day:
+
+- A first full season: the driver drove in the season's first round and missed at most
+  two rounds (`nicknames.full_season_missed_rounds`); a mid-season replacement has none
+  that season.
+- Approval stays refused while the next season's calendar is not in the database.
+- Unwanted proposals (for example Lawson's, meant for "once established") are dismissed
+  by hand; `evolution_trigger` stays empty.
+- Câmara: 2026 round 20 (Brazil, his Haas debut) imported locally from Jolpica and
+  OpenF1 and normalized. His Jolpica ID is `rafael_camara` (the seeder had `camara`;
+  corrected). The seeder then gave him RafaCut, with Rafined planned (30 rows).
+- Golden master after the import: 79 added, nothing missing or changed, all new data. 66
+  in round 20 (its sessions and weekend, run for the first time), and 13 in the 2026
+  round 19 race: 12 Table for One and 1 Fine Dining (Verstappen, 32.4 s) from pit stops
+  that OpenF1 published after the earlier import. Bottas's one is suppressed: his
+  retirement had heavy-crash signals, so his OOF awards wait for review, and before
+  `review_from` that means suppressed, as with his stored Home Before Dinner. Re-exported:
+  4,301 awards. Stored awards were not brought up to date (no real engine run).
+
+To do (nicknames):
+
+- Mottos for LindBloom, Rafined and Gabblefly.
+- A motto template that counts titles, for Kimissimo ("One scoop and counting", "Two
+  scoops and counting" after a second title); stored as plain text until then.
 
 **Phase 10: 2027 pack.**
 The nine new achievements, Zoomies, manual Built Different; normalise practice session

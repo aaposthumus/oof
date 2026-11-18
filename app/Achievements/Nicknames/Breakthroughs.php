@@ -34,7 +34,9 @@ use Illuminate\Support\Facades\DB;
  *   is a first win.
  * - Strong first season: once the season is final, a place in the drivers'
  *   championship at or above nicknames.strong_first_season_top in the
- *   driver's first full season (a race entry in every round).
+ *   driver's first full season: a race entry in the season's first round,
+ *   and at most nicknames.full_season_missed_rounds rounds missed. A
+ *   mid-season replacement never has one that season.
  *
  * One proposal per target nickname, whatever the season or run, so re-runs
  * and backfills never propose or emit twice. NicknameEvolutionProposed is
@@ -168,7 +170,8 @@ class Breakthroughs
     }
 
     /**
-     * The first season in which the driver had a race entry in every round.
+     * The first season the driver drove from its first round, missing at
+     * most nicknames.full_season_missed_rounds rounds.
      */
     private function firstFullSeason(int $driverId): ?Season
     {
@@ -185,9 +188,17 @@ class Breakthroughs
             ->orderBy('year')
             ->get()
             ->first(function (Season $season) use ($driverId) {
-                $races = RaceSession::query()->where('type', SessionType::Race)->whereHas('round', fn ($query) => $query->where('season_id', $season->id));
+                $races = RaceSession::query()
+                    ->join('rounds', 'rounds.id', '=', 'race_sessions.round_id')
+                    ->where('rounds.season_id', $season->id)
+                    ->where('race_sessions.type', SessionType::Race)
+                    ->orderBy('rounds.round_number')
+                    ->select('race_sessions.*')
+                    ->withExists(['driverEntries as drove' => fn ($query) => $query->where('driver_id', $driverId)])
+                    ->get();
 
-                return (clone $races)->count() === (clone $races)->whereHas('driverEntries', fn ($query) => $query->where('driver_id', $driverId))->count();
+                return $races->isNotEmpty() && $races->first()->drove
+                    && $races->where('drove', false)->count() <= (int) config('nicknames.full_season_missed_rounds');
             });
     }
 
