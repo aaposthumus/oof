@@ -4,8 +4,6 @@ namespace Tests\Feature\Achievements;
 
 use App\Achievements\Rules\Sensitivity;
 use App\Achievements\WithheldOnSensitiveWeekend;
-use App\Enums\AchievementSection;
-use App\Enums\AchievementShelf;
 use App\Enums\AwardReviewReason;
 use App\Enums\AwardStatus;
 use App\Enums\SensitivityLevel;
@@ -200,7 +198,7 @@ class SensitivityTest extends TestCase
     public function test_built_different_can_never_be_awarded_on_a_sensitive_weekend(): void
     {
         $this->weekend();
-        $builtDifferent = Achievement::factory()->create(['key' => 'built_different', 'section' => AchievementSection::Glory, 'shelf' => AchievementShelf::Glory, 'withheld_on_sensitive_weekends' => true]);
+        $builtDifferent = Achievement::firstWhere('key', 'built_different');
         MomentSensitivity::factory()->create(['round_id' => $this->race->round_id]);
 
         $this->expectException(WithheldOnSensitiveWeekend::class);
@@ -211,7 +209,7 @@ class SensitivityTest extends TestCase
     public function test_built_different_can_be_awarded_on_an_ordinary_weekend(): void
     {
         $this->weekend();
-        $builtDifferent = Achievement::factory()->create(['key' => 'built_different', 'section' => AchievementSection::Glory, 'shelf' => AchievementShelf::Glory, 'withheld_on_sensitive_weekends' => true]);
+        $builtDifferent = Achievement::firstWhere('key', 'built_different');
 
         $award = AchievementAward::factory()->create(['achievement_id' => $builtDifferent->id, 'race_session_id' => $this->race->id, 'driver_entry_id' => $this->winner->id, 'driver_id' => $this->winner->driver_id]);
 

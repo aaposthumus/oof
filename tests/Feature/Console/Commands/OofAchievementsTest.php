@@ -38,9 +38,9 @@ class OofAchievementsTest extends TestCase
         $penalised = $this->car($race, 16);
         $this->resultFor($this->car($earlier, 44, null, $quiet->driver), ['position' => 5, 'position_text' => '5']);
         $this->resultFor($this->car($earlier, 16, null, $penalised->driver), ['position' => 6, 'position_text' => '6']);
-        $this->resultFor($quiet, ['position' => 8, 'position_text' => '8']);
+        $this->resultFor($quiet, ['position' => 8, 'position_text' => '8', 'grid' => 8]);
         $this->resultFor($penalised, ['position' => 9, 'position_text' => '9', 'grid' => 2]);
-        $this->resultFor($this->car($race, 99), ['position' => 20, 'position_text' => '20']);
+        $this->resultFor($this->car($race, 99), ['position' => 20, 'position_text' => '20', 'grid' => 20]);
         $this->car($qualifying, 16, null, $penalised->driver);
         $this->message($qualifying, 'FIA STEWARDS: 3 PLACE GRID PENALTY FOR CAR 16 (LEC) - CAUSING A COLLISION');
 

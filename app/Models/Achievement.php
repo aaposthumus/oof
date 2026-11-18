@@ -27,7 +27,7 @@ use Illuminate\Support\Collection;
  * @property list<string>|null $data_sources DataSource values, derived from the trigger
  * @property int|null $available_from The first year its data supports, derived from the trigger
  */
-#[Fillable(['key', 'name', 'section', 'shelf', 'recipient_type', 'tier', 'session_types', 'scope', 'decided_after', 'stacks', 'supersedes', 'description', 'is_enabled', 'withheld_on_sensitive_weekends', 'score_category', 'data_sources', 'available_from'])]
+#[Fillable(['key', 'name', 'section', 'shelf', 'recipient_type', 'tier', 'session_types', 'scope', 'decided_after', 'stacks', 'supersedes', 'description', 'is_enabled', 'withheld_on_sensitive_weekends', 'is_manual', 'score_category', 'data_sources', 'available_from'])]
 class Achievement extends Model
 {
     /** @use HasFactory<AchievementFactory> */
@@ -51,6 +51,7 @@ class Achievement extends Model
             'supersedes' => 'array',
             'is_enabled' => 'boolean',
             'withheld_on_sensitive_weekends' => 'boolean',
+            'is_manual' => 'boolean',
             'score_category' => ScoreCategory::class,
             'data_sources' => 'array',
             'available_from' => 'integer',

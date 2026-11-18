@@ -79,6 +79,16 @@ class Requirements
             ];
         }
 
+        if ($trigger['type'] === 'manual') {
+            return [
+                'sources' => [],
+                'available_from' => (int) config('achievements.first_season'),
+                'notes' => ['Awarded by hand in the CMS only, never by the engine.'],
+                'session_sources' => [],
+                'reads_earlier_races' => false,
+            ];
+        }
+
         if ($trigger['type'] === 'aggregate' && $trigger['source'] !== 'facts') {
             return [
                 'sources' => [$trigger['source'] === 'awards' ? DataSource::Awards : DataSource::OofScore],
@@ -101,7 +111,11 @@ class Requirements
             'available_from' => max([...array_map(fn (DataNeeds $need) => $need->availableFrom(), $needs), ...array_values($attributeYears)]),
             'notes' => collect($needs)->flatMap(fn (DataNeeds $need) => $need->notes())->concat(array_values($attributeNotes))->unique()->values()->all(),
             // A season total is not gated per session.
-            'session_sources' => $trigger['type'] === 'aggregate' ? [] : $provider->sources(),
+            'session_sources' => match (true) {
+                $trigger['type'] === 'aggregate' => [],
+                $provider instanceof GatesSessions => $provider->sessionSources(),
+                default => $provider->sources(),
+            },
             'reads_earlier_races' => collect($needs)->contains(fn (DataNeeds $need) => $need instanceof ReadsEarlierRaces),
         ];
     }

@@ -23,7 +23,7 @@ and 4 for the design, and "Working notes" at the end.
 | 7 | Scopes, runs and the Oofies | Done, 18 November 2026 |
 | 8 | Recipients | Done, 18 November 2026 |
 | 9 | Nicknames and evolution events | Done, 18 November 2026 |
-| 10 | 2027 pack | Not started |
+| 10 | 2027 pack | Done, 18 November 2026 |
 | 11 | Historic backfill | Not started |
 
 ## 0. Where the code stood on 16 November 2026
@@ -397,11 +397,11 @@ come from general knowledge of the Ergast data, not from this database.
 | Called the Tow Truck, Whole Class Detention | OpenF1 race control: deployment plus a single-car message just before | 2023 | Inferred, always reviewed |
 | Table for One, Fine Dining | OpenF1 pit, stationary time | 2023 nominally | Stationary time is filled for only a small share of visits; "penalty served" exists only from 2025 |
 | Holding the Door, By a Whisker, Mirror Match | Jolpica qualifying times; OpenF1 session results for sprint qualifying | 2006 (knockout format, check) | |
-| Economy Class | Same, plus team form before the round | 2006 (check) | |
+| Economy Class | Same, plus team form before the round | 2006 | Q1 exits need the knockout format |
 | Deleted Scene | OpenF1 deletions with a time, plus the Q3 time | 2023 | From 2024 most deletions carry no time, so it undercounts |
 | Overtime | OpenF1 laps | 2023 | |
 | Practice Makes Imperfect | OpenF1 deletions in practice | 2026 | Not published before 2026 |
-| Fool's Gold | Practice classification and qualifying | 2023 | Practice session results are raw only today |
+| Fool's Gold | OpenF1 practice classification (`practice_results`, since Phase 10) and qualifying | 2023 | |
 | Nothing to See Here | The weekend's awards | 2023 | |
 | Did the Thing, Silver Lining, Solid Bronze, Took the Scenic Route, Charging Rhino, First Time for Everything | Jolpica results and grid | 1950 | Shared drives in the 1950s need a rule |
 | Plot Twist, Giant Slayer | Pole or win, plus team form: results of the last 10 races and the team lineage | 1950 | Pole from qualifying where present, otherwise grid 1 |
@@ -425,7 +425,8 @@ come from general knowledge of the Ergast data, not from this database.
    for One and Fine Dining; Jolpica's pit data is pit-lane time, not stationary time.
 4. **Track limits.** Practice deletions exist only from 2026; from 2024 most deletions
    have no lap time.
-5. **Practice classification and starting grid** are only in `raw_responses`.
+5. **Starting grid** is only in `raw_responses`. The practice classification is
+   normalized into `practice_results` since Phase 10.
 6. **Retirement reasons** are generic from 2025, so a DNS or DNF through illness or
    injury relies on a person suppressing it.
 7. **No live sensitivity source.** The seeded weekends are historic; nothing flags a
@@ -1024,12 +1025,60 @@ To do (nicknames):
 - A motto template that counts titles, for Kimissimo ("One scoop and counting", "Two
   scoops and counting" after a second title); stored as plain text until then.
 
-**Phase 10: 2027 pack.**
-The nine new achievements, Zoomies, manual Built Different; normalise practice session
-results for Fool's Gold. Re-run the report on 2023 to 2026 and set final tiers.
-Done when each new achievement is a config entry plus, at most, one predicate.
-Built Different must keep `withheld_on_sensitive_weekends` (it is already in the
-seeder's list), so the award guard keeps it off sensitive weekends.
+**Phase 10: 2027 pack. Done.**
+
+- Eleven catalogue entries; the `planned` block of the catalogue is gone (its settings are
+  in the entries). As built:
+
+  | Achievement | Shelf, tier | Score category | Definition as built |
+  |---|---|---|---|
+  | Nearly Famous | OOF, Bronze | pace | Grand Prix: classified P11. Sprints do not count |
+  | Economy Class | OOF, Silver | surprise | Qualifying and sprint qualifying: out in Q1 (by classified position, with or without a time) while the lasting team is in the top 4 on form before the round (Phase 2 rule) |
+  | Peaked Too Soon | OOF, Gold | surprise | Grand Prix: took pole (`took_pole`), then not on the podium (P4 or lower, unclassified, DNS or disqualified) |
+  | Led Astray | OOF, Gold | surprise | Grand Prix: led the most laps (shared on a tie, at least one) and did not win. Laps led from OpenF1 as for Clean Sweep: P1 at the end of a lap (the last lap is not counted for anyone) |
+  | Double Detention | OOF, Gold | driver | Offence `serving_a_penalty_incorrectly` with a penalty, in races, sprints and both qualifyings; absorbs the penalty like the other offences ("Double Detention · 10 s") |
+  | Fool's Gold | OOF, Gold | surprise | Weekend, decided after qualifying: P1 in at least one practice session of the round, then qualified P11 or lower; once per weekend ("topped FP1 and FP3 · P12") |
+  | Sibling Rivalry | OOF, Gold | driver | Race or sprint: named in an incident race control noted together with a teammate; both get it; supersedes It Was Like That When I Got There for that incident |
+  | First Time for Everything | Glory, Gold | n/a | Career first in a Grand Prix: win, else podium, else points (one per car, the most specific); in Grand Prix qualifying, the first pole (an earlier pole is P1 in qualifying, else grid 1). History from 1950; sprints do not count |
+  | Charging Rhino | Glory, Silver | n/a | Grand Prix: classified and gained 10 or more places; a pit lane start counts as behind every car that started |
+  | Zoomies | Glory, Bronze | n/a | Grand Prix: highest speed-trap reading (OpenF1 `st_speed`, whole km/h); a tie is shared |
+  | Built Different | Glory, Platinum | n/a | Manual only (trigger `manual`, `achievements.is_manual`), every session type, withheld on sensitive weekends |
+
+- Withheld on sensitive weekends: Sibling Rivalry and Built Different, as decided, plus
+  Peaked Too Soon and Led Astray (both often come from a retirement or a crash).
+- Data: `practice_results` (place, best lap, laps per car) from OpenF1's practice session
+  results, by `SessionResultNormalizer`, which already stored sprint qualifying. Locally
+  4,427 rows; every practice session run so far has a P1. `oof:normalize` gained
+  `--endpoint` (`--all --source=openf1 --endpoint=session_result` re-reads them).
+- Engine: fact providers `speed_trap` and `career_first`; attributes `places_gained`,
+  `finish` and `laps_led` (results), `knocked_out_in` (from 2006), `team_form_rank` and
+  `topped_practice` (qualifying), `teammate` (incident involvement); predicates
+  `led_most_laps`, `top_team_on_form` (reads earlier races, for `--stale`) and
+  `topped_a_practice_session`; `GatesSessions` for a provider that reads results in a race
+  and qualifying in qualifying. Trigger type `manual` finds nothing.
+- Built Different: `AchievementAward::awardByHand()` stores it final, source `manual`,
+  decided by the person (so the engine keeps it), once per car and session; refused for a
+  detected achievement and, through the Phase 4 guard, on a sensitive or blocked weekend.
+  A sensitivity added later suppresses it. CMS: "Award by hand" on the awards list
+  (achievement, session, car, a required note); "Hand back to the engine" is hidden for it.
+- Frequency on 2023 to 2026 (90 race weekends, through 2026 round 20; suppressed awards
+  not counted): Nearly Famous 90 (1.00 per weekend, Bronze), Economy Class 54 (0.60,
+  Silver; 44 of them in Grand Prix qualifying), Peaked Too Soon 15 (0.17, Gold), Led Astray
+  12 (0.13, Gold; none in 2023, when the top lap leader won every race), Double Detention 6
+  (0.07, Gold), Fool's Gold 9 (0.10, Gold), Sibling Rivalry 48 (0.53, Silver by the rule),
+  First Time for Everything 20 (0.22, Gold), Charging Rhino 47 (0.52, Silver), Zoomies 110
+  (1.22, Bronze; 15 of 90 races share the top reading). The rule agrees with the concept
+  doc's proposals except Sibling Rivalry (rule Silver, doc Gold); the catalogue keeps the
+  doc's Gold until the owner decides. Built Different has no frequency; Platinum is a
+  placeholder (the doc gives no tier).
+- Golden master: 555 differences, all intended. Added: the ten detected achievements (413).
+  Knock-on: It Was Like That When I Got There 47 missing, 13 added, 1 changed (incidents with
+  a teammate are Sibling Rivalry now; merged ×2 awards split again); Nothing to See Here 44
+  missing (drivers with a new award); Perfect Ten 5 and Drive-Thru 1 missing (absorbed by
+  Double Detention); Most Collected 21 added, 3 changed; Rarest Award 3 evidence changes
+  (same holders); OOFscore Champion: 2023 Piastri 715 to 810, 2024 Magnussen 742.5 to
+  Hamilton 815, 2025 Antonelli 1,180 to 1,300. Re-exported: 4,651 awards in 453 contexts.
+- Stored awards on the local database were not brought up to date (only dry runs).
 
 **Phase 11: historic backfill.**
 Import Jolpica lap times (independent of the other phases, so it can start any time),
@@ -1064,10 +1113,13 @@ Decided for this phase on 17 November 2026:
 When the `achievement-engine` branch is deployed to production (decided 17 November 2026):
 
 1. `php artisan migrate` (lineages, award schema and snapshot, sensitivity columns,
-   data needs, scope and the run log, recipient type, nicknames and evolutions).
+   data needs, scope and the run log, recipient type, nicknames and evolutions, practice
+   results and `is_manual`), then `php artisan oof:normalize --all --source=openf1
+   --endpoint=session_result` to fill `practice_results` from the stored responses.
 2. `php artisan oof:achievements:sync --dry-run`, then, if it lists no differences in
    sessions or stacks the owner wants kept, `php artisan oof:achievements:sync` (writes
-   the catalogue's mechanics and the derived data needs, and creates the three Oofies).
+   the catalogue's mechanics and the derived data needs, and creates the three Oofies and
+   the eleven achievements of the 2027 pack).
 3. Before the next step, check for awards a person decided on Overtime, Practice Makes
    Imperfect, Fine Dining, Nothing to See Here or Frequent Flyer: the engine leaves such a
    decided award in its old session context, beside the new weekend or season one. None

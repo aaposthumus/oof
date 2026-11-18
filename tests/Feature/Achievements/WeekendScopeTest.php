@@ -203,11 +203,11 @@ class WeekendScopeTest extends TestCase
         $earlier = $this->raceSession(SessionType::Race, $this->round(2024, 4));
 
         foreach ($cars as $number => $car) {
-            $this->resultFor($car['race'], ['position' => $number === 16 ? 8 : 9, 'position_text' => $number === 16 ? '8' : '9', 'classification_order' => $number === 16 ? 8 : 9]);
+            $this->resultFor($car['race'], ['position' => $number === 16 ? 8 : 9, 'position_text' => $number === 16 ? '8' : '9', 'classification_order' => $number === 16 ? 8 : 9, 'grid' => $number === 16 ? 8 : 9]);
             $this->resultFor($this->car($earlier, $number, null, $car['race']->driver), ['position' => 5, 'position_text' => '5']);
         }
 
-        $this->resultFor($this->car($sessions['race'], 99), ['position' => 20, 'position_text' => '20', 'classification_order' => 20]);
+        $this->resultFor($this->car($sessions['race'], 99), ['position' => 20, 'position_text' => '20', 'classification_order' => 20, 'grid' => 20]);
         $this->laps($sessions['fp1'], $cars[16]['fp1'], 20);
 
         $this->runRound($round);

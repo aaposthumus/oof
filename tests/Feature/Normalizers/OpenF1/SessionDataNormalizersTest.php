@@ -7,6 +7,7 @@ use App\Models\Driver;
 use App\Models\DriverEntry;
 use App\Models\OpenF1SessionDriver;
 use App\Models\PitLaneVisit;
+use App\Models\PracticeResult;
 use App\Models\QualifyingResult;
 use App\Models\RaceControlMessage;
 use App\Models\RaceSession;
@@ -95,6 +96,23 @@ class SessionDataNormalizersTest extends TestCase
 
         $this->assertSame([1, 102_820, 102_500, 101_697], [$entry->qualifyingResult->position, $entry->qualifyingResult->q1_millis, $entry->qualifyingResult->q2_millis, $entry->qualifyingResult->q3_millis]);
         $this->assertNull($outInSq1->qualifyingResult->q2_millis);
+    }
+
+    public function test_stores_practice_results_with_the_best_lap_and_laps_driven(): void
+    {
+        $session = RaceSession::factory()->create(['type' => SessionType::Practice2, 'openf1_session_key' => 9279]);
+        $entry = DriverEntry::factory()->for($session)->create(['car_number' => 16]);
+        $gone = DriverEntry::factory()->for($session)->create(['car_number' => 2]);
+        OpenF1SessionDriver::factory()->for($session)->create(['driver_number' => 16, 'driver_entry_id' => $entry->id]);
+        PracticeResult::factory()->for($gone)->create();
+
+        app(SessionResultNormalizer::class)->normalize([
+            ['session_key' => 9279, 'driver_number' => 16, 'position' => 1, 'duration' => 71.622, 'number_of_laps' => 19, 'dnf' => false, 'dns' => false, 'dsq' => false],
+        ]);
+
+        $this->assertSame([1, 71_622, 19], [$entry->practiceResult->position, $entry->practiceResult->best_lap_millis, $entry->practiceResult->laps]);
+        $this->assertNull($gone->fresh()->practiceResult);
+        $this->assertSame(0, QualifyingResult::count());
     }
 
     public function test_leaves_results_of_other_sessions_to_jolpica(): void

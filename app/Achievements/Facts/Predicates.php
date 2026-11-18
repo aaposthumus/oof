@@ -24,6 +24,9 @@ class Predicates
         'is_surprise' => Predicates\IsSurprise::class,
         'took_pole' => Predicates\TookPole::class,
         'led_every_lap' => Predicates\LedEveryLap::class,
+        'led_most_laps' => Predicates\LedMostLaps::class,
+        'topped_a_practice_session' => Predicates\ToppedAPracticeSession::class,
+        'top_team_on_form' => Predicates\TopTeamOnForm::class,
     ];
 
     /**

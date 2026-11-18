@@ -17,7 +17,8 @@ use Illuminate\Support\Collection;
  * incident. Being named is not being blamed. It is open while the incident
  * is under investigation.
  *
- * Attributes: incident.
+ * Attributes: incident, teammate (the family name of a teammate named in
+ * the same incident, or null).
  */
 class IncidentInvolvementFacts implements FactProvider
 {
@@ -30,15 +31,31 @@ class IncidentInvolvementFacts implements FactProvider
                 ->filter(fn (ClassifiedMessage $message) => $message->is(MessageType::IncidentNoted))
                 ->flatMap(fn (ClassifiedMessage $message) => $message->entryIds)
                 ->unique()
-                ->map(fn (int $entryId) => new Fact(
+                ->pipe(fn (Collection $entryIds) => $entryIds->map(fn (int $entryId) => new Fact(
                     type: 'incident_involvement',
                     entryId: $entryId,
                     instanceKey: "incident:{$thread->id()}",
                     eventKey: $thread->eventKey(),
-                    attributes: ['incident' => $thread->id()],
+                    attributes: ['incident' => $thread->id(), 'teammate' => self::teammate($entryId, $entryIds, $data)],
                     evidence: FactEvidence::messages($thread->messagesFor($entryId)),
                     isOpen: $thread->isOpen(),
-                )))
+                ))))
             ->values();
+    }
+
+    /**
+     * The family name of a teammate among the other cars named, or null.
+     *
+     * @param  Collection<int, int>  $entryIds
+     */
+    private static function teammate(int $entryId, Collection $entryIds, SessionData $data): ?string
+    {
+        $team = $data->entry($entryId)?->season_team_id;
+        $teammate = $entryIds
+            ->reject(fn (int $other) => $other === $entryId)
+            ->map(fn (int $other) => $data->entry($other))
+            ->first(fn ($other) => $team !== null && $other?->season_team_id === $team);
+
+        return $teammate?->driver->family_name;
     }
 }

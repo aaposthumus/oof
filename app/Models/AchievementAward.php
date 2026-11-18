@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use InvalidArgumentException;
 
 /**
  * An achievement unlocked in a context, with the evidence it came from: a
@@ -382,6 +383,49 @@ class AchievementAward extends Model
     public function descriptionLine(): ?string
     {
         return collect([$this->achievement->description, $this->subtitle])->filter()->implode(' · ') ?: null;
+    }
+
+    /**
+     * Award a manual achievement (Built Different) by hand: to the driver of
+     * this car in its session, final at once and decided by the person, so
+     * the engine keeps it. Refused for an achievement the engine detects, for
+     * a session it does not apply to, twice for one car, and, through the
+     * sensitivity guard, on a sensitive or blocked weekend.
+     *
+     * @throws InvalidArgumentException
+     * @throws WithheldOnSensitiveWeekend
+     */
+    public static function awardByHand(Achievement $achievement, DriverEntry $entry, User $user, string $note): self
+    {
+        $entry->loadMissing('raceSession');
+
+        if (! $achievement->is_manual || ! in_array($entry->raceSession->type->value, $achievement->session_types, true)) {
+            throw new InvalidArgumentException("{$achievement->name} is not awarded by hand in this session.");
+        }
+
+        $instanceKey = "e{$entry->id}:manual";
+
+        if (self::query()->where('achievement_id', $achievement->id)->where('race_session_id', $entry->race_session_id)->where('instance_key', $instanceKey)->exists()) {
+            throw new InvalidArgumentException("{$achievement->name} was already awarded to this car in this session.");
+        }
+
+        return self::create([
+            'scope' => AwardScope::Session,
+            'race_session_id' => $entry->race_session_id,
+            'recipient_type' => RecipientType::Driver,
+            'driver_entry_id' => $entry->id,
+            'driver_id' => $entry->driver_id,
+            'achievement_id' => $achievement->id,
+            'instance_key' => $instanceKey,
+            'event_key' => "manual:{$entry->id}",
+            'source' => AwardSource::Manual,
+            'evidence' => ['source' => 'manual', 'note' => $note],
+            'confidence' => AwardConfidence::High,
+            'status' => AwardStatus::Final,
+            'decided_by' => $user->id,
+            'decided_at' => now(),
+            'decision_note' => $note,
+        ]);
     }
 
     public function suppress(User $user, string $reason): void

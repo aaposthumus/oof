@@ -17,7 +17,8 @@ class OofNormalize extends Command
         {--season=* : Only normalize these seasons}
         {--all : Also normalize responses that were normalized before}
         {--laps : Also normalize Jolpica lap times}
-        {--source= : Only normalize this source: jolpica or openf1}';
+        {--source= : Only normalize this source: jolpica or openf1}
+        {--endpoint= : Only normalize this endpoint (e.g. session_result)}';
 
     /**
      * The console command description.
@@ -36,6 +37,7 @@ class OofNormalize extends Command
             all: (bool) $this->option('all'),
             includeLaps: (bool) $this->option('laps'),
             source: $this->option('source'),
+            endpoint: $this->option('endpoint'),
             onEndpointDone: function (string $endpoint, int $normalized, int $deferred) {
                 $deferredNote = $deferred > 0 ? ", <comment>{$deferred} deferred</comment>" : '';
                 $this->components->twoColumnDetail($endpoint, "{$normalized} normalized{$deferredNote}");

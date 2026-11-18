@@ -60,6 +60,14 @@ class DriverEntry extends Model
     }
 
     /**
+     * @return HasOne<PracticeResult, $this>
+     */
+    public function practiceResult(): HasOne
+    {
+        return $this->hasOne(PracticeResult::class);
+    }
+
+    /**
      * @return HasMany<PitStop, $this>
      */
     public function pitStops(): HasMany

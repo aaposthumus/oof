@@ -32,6 +32,8 @@ class Facts
         'safety_car_period' => Providers\SafetyCarPeriodFacts::class,
         'deployment' => Providers\DeploymentFacts::class,
         'cause' => Providers\CauseFacts::class,
+        'speed_trap' => Providers\SpeedTrapFacts::class,
+        'career_first' => Providers\CareerFirstFacts::class,
     ];
 
     /**

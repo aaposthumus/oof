@@ -8,6 +8,7 @@ use App\Enums\AchievementShelf;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
 use App\Enums\AwardScope;
+use App\Enums\AwardSource;
 use App\Enums\AwardStatus;
 use App\Enums\RecipientType;
 use App\Enums\SessionType;
@@ -222,7 +223,8 @@ class AchievementAwardsTable
                 ->label('Hand back to the engine')
                 ->icon('heroicon-o-arrow-uturn-left')
                 ->color('gray')
-                ->visible(fn (AchievementAward $record): bool => $record->isDecided() || $record->isSuppressedAsHistoric())
+                // An award given by hand has nothing to hand back to: the engine never finds it.
+                ->visible(fn (AchievementAward $record): bool => $record->source !== AwardSource::Manual && ($record->isDecided() || $record->isSuppressedAsHistoric()))
                 ->requiresConfirmation()
                 ->modalDescription('The decision is removed and the award goes back to the review queue. The next run of oof:achievements judges it again.')
                 ->action(fn (AchievementAward $record) => self::refusingWithheld(fn () => $record->restore(), $record)),

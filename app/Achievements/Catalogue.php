@@ -76,7 +76,7 @@ class Catalogue
     /**
      * The row's mechanics, which this file owns: sync writes them over the CMS.
      *
-     * @return array{session_types: list<string>, recipient_type: string, scope: string, decided_after: string|null, stacks: bool, withheld_on_sensitive_weekends: bool}
+     * @return array{session_types: list<string>, recipient_type: string, scope: string, decided_after: string|null, stacks: bool, withheld_on_sensitive_weekends: bool, is_manual: bool}
      */
     public function mechanics(string $key): array
     {
@@ -89,6 +89,7 @@ class Catalogue
             'decided_after' => $entry['decided_after'] ?? null,
             'stacks' => $entry['stacks'],
             'withheld_on_sensitive_weekends' => $entry['withheld_on_sensitive_weekends'],
+            'is_manual' => $entry['trigger']['type'] === 'manual',
         ];
     }
 
@@ -106,7 +107,7 @@ class Catalogue
         $rows = Achievement::query()->orderBy('key')->get()
             ->map(fn (Achievement $achievement) => [
                 $achievement->key, $achievement->is_enabled, $achievement->session_types, $achievement->recipient_type?->value, $achievement->scope?->value,
-                $achievement->decided_after, $achievement->stacks, $achievement->supersedes, $achievement->withheld_on_sensitive_weekends,
+                $achievement->decided_after, $achievement->stacks, $achievement->supersedes, $achievement->withheld_on_sensitive_weekends, $achievement->is_manual,
             ])
             ->all();
 

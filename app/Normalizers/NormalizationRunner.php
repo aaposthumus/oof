@@ -95,9 +95,10 @@ class NormalizationRunner
      * @param  bool  $all  Also normalize responses that were normalized before
      * @param  callable(string, int, int): void|null  $onEndpointDone  Receives endpoint, normalized count, deferred count
      * @param  string|null  $source  Only this source; null for all
+     * @param  string|null  $endpoint  Only this endpoint ("session_result"); null for all
      * @return array<string, array{normalized: int, deferred: int}> Keyed by endpoint, prefixed with "openf1:" for OpenF1
      */
-    public function run(array $years = [], bool $all = false, bool $includeLaps = false, ?callable $onEndpointDone = null, ?string $source = null): array
+    public function run(array $years = [], bool $all = false, bool $includeLaps = false, ?callable $onEndpointDone = null, ?string $source = null, ?string $endpoint = null): array
     {
         $this->stats = [];
         $this->rosterYears = [];
@@ -108,7 +109,11 @@ class NormalizationRunner
             }
 
             foreach ($classes as $class) {
-                $this->runNormalizer($this->container->make($class), $normalizerSource, $years, $all, $includeLaps, $onEndpointDone);
+                $normalizer = $this->container->make($class);
+
+                if ($endpoint === null || $normalizer->endpoint() === $endpoint) {
+                    $this->runNormalizer($normalizer, $normalizerSource, $years, $all, $includeLaps, $onEndpointDone);
+                }
             }
         }
 

@@ -35,6 +35,7 @@ class RaceControlDetectorsTest extends TestCase
             'queue jumper' => ['queue_jumper', 'OVERTAKING UNDER SAFETY CAR'],
             'failed the driving test' => ['failed_the_driving_test', 'DRIVING ERRATICALLY'],
             'released into the wild' => ['released_into_the_wild', 'UNSAFE RELEASE'],
+            'double detention' => ['double_detention', 'FAILING TO SERVE PENALTY CORRECTLY'],
         ];
     }
 

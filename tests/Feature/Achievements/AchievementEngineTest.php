@@ -457,10 +457,10 @@ class AchievementEngineTest extends TestCase
         $race = $this->raceSession();
         $qualifying = $this->raceSession(SessionType::Qualifying, $race->round);
         $earlier = $this->raceSession(SessionType::Race, $this->round(2024, 4));
-        $this->resultFor($this->car($race, 99), ['position' => 20, 'position_text' => '20', 'classification_order' => 20]);
+        $this->resultFor($this->car($race, 99), ['position' => 20, 'position_text' => '20', 'classification_order' => 20, 'grid' => 20]);
         $cars = collect([1, 2, 3, 4, 5])->mapWithKeys(function (int $number) use ($race, $earlier) {
             $entry = $this->car($race, $number);
-            $this->resultFor($entry, ['position' => $number + 5, 'position_text' => (string) ($number + 5), 'classification_order' => $number + 5]);
+            $this->resultFor($entry, ['position' => $number + 5, 'position_text' => (string) ($number + 5), 'classification_order' => $number + 5, 'grid' => $number + 5]);
             $this->resultFor($this->car($earlier, $number, null, $entry->driver), ['position' => $number, 'position_text' => (string) $number]);
 
             return [$number => $entry];
@@ -486,9 +486,9 @@ class AchievementEngineTest extends TestCase
     {
         $race = $this->raceSession();
         $earlier = $this->raceSession(SessionType::Race, $this->round(2024, 4));
-        $this->resultFor($this->car($race, 99), ['position' => 20, 'position_text' => '20', 'status' => '+1 Lap']);
+        $this->resultFor($this->car($race, 99), ['position' => 20, 'position_text' => '20', 'status' => '+1 Lap', 'grid' => 20]);
         $entry = $this->car($race, 44);
-        $this->resultFor($entry, ['position' => 9, 'position_text' => '9', 'status' => '+1 Lap']);
+        $this->resultFor($entry, ['position' => 9, 'position_text' => '9', 'status' => '+1 Lap', 'grid' => 9]);
         $this->resultFor($this->car($earlier, 44, null, $entry->driver), ['position' => 5, 'position_text' => '5']);
 
         $this->runRound($race->round);

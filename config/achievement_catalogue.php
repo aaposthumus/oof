@@ -20,8 +20,9 @@ use App\Achievements\Triggers\Custom\ToTheRescue;
 | read-only.
 |
 | A trigger is one of a closed set of types: match, count, extreme,
-| aggregate (season totals) or custom (a class, for logic that does not
-| fit). See App\Achievements\Triggers.
+| aggregate (season totals), custom (a class, for logic that does not
+| fit) or manual (never detected: awarded by hand in the CMS only). See
+| App\Achievements\Triggers.
 |
 | Scope: session (decided per session, in the sessions listed), weekend
 | (once per round from the sessions listed, after decided_after: practice
@@ -291,6 +292,27 @@ return [
             ],
         ],
 
+        'double_detention' => [
+            'name' => 'Double Detention',
+            'section' => 'offence',
+            'shelf' => 'oof',
+            'tier' => 'gold',
+            'score_category' => 'driver',
+            'description' => 'Penalty for serving a penalty incorrectly.',
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => false,
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['serving_a_penalty_incorrectly']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
+        ],
+
         'sunday_driver' => [
             'name' => 'Sunday Driver',
             'section' => 'offence',
@@ -411,6 +433,25 @@ return [
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => true,
             'trigger' => ['type' => 'match', 'fact' => 'incident_involvement', 'confidence' => 'medium'],
+        ],
+
+        'sibling_rivalry' => [
+            'name' => 'Sibling Rivalry',
+            'section' => 'race',
+            'shelf' => 'oof',
+            'tier' => 'gold',
+            'score_category' => 'driver',
+            'description' => 'Incident with your own teammate in a race or sprint; both get it (never implies blame).',
+            'supersedes' => ['it_was_like_that_when_i_got_there'],
+            'sessions' => ['race', 'sprint'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => true,
+            'trigger' => [
+                'type' => 'match', 'fact' => 'incident_involvement', 'where' => [['teammate', '!=', null]],
+                'confidence' => 'medium', 'detail' => 'with {teammate}',
+            ],
         ],
 
         'meatball_sub' => [
@@ -678,6 +719,61 @@ return [
             'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => ['last_classified_finisher'], 'detail' => 'P{position}'],
         ],
 
+        'nearly_famous' => [
+            'name' => 'Nearly Famous',
+            'section' => 'race',
+            'shelf' => 'oof',
+            'tier' => 'bronze',
+            'score_category' => 'pace',
+            'description' => 'Finished P11, just outside the points.',
+            'supersedes' => [],
+            'sessions' => ['race'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => false,
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => [['position', '=', 11], 'classified_finisher']],
+        ],
+
+        'peaked_too_soon' => [
+            'name' => 'Peaked Too Soon',
+            'section' => 'race',
+            'shelf' => 'oof',
+            'tier' => 'gold',
+            'score_category' => 'surprise',
+            'description' => 'Pole position, but no podium.',
+            'supersedes' => [],
+            'sessions' => ['race'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => true,
+            'trigger' => [
+                'type' => 'match', 'fact' => 'result',
+                'where' => ['took_pole', ['any' => [['position', '>', 3], ['position', '=', null], 'disqualified']]],
+                'detail' => 'from pole to {finish}',
+            ],
+        ],
+
+        'led_astray' => [
+            'name' => 'Led Astray',
+            'section' => 'race',
+            'shelf' => 'oof',
+            'tier' => 'gold',
+            'score_category' => 'surprise',
+            'description' => 'Led the most laps, but didn\'t win.',
+            'supersedes' => [],
+            'sessions' => ['race'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => true,
+            'trigger' => [
+                'type' => 'match', 'fact' => 'result', 'where' => ['led_most_laps', ['position', '!=', 1]],
+                'detail' => '{laps_led} laps led · {finish}',
+            ],
+        ],
+
         'table_for_one' => [
             'name' => 'Table for One',
             'section' => 'race',
@@ -794,6 +890,47 @@ return [
                 'type' => 'extreme', 'fact' => 'qualifying_result', 'where' => [['q1_millis', '!=', null]],
                 'measure' => 'q1_millis', 'pick' => 'max', 'ties' => 'none',
                 'instance' => 'q1', 'event' => 'knocked_out:{entry}', 'detail' => '{q1_time}',
+            ],
+        ],
+
+        'economy_class' => [
+            'name' => 'Economy Class',
+            'section' => 'qualifying',
+            'shelf' => 'oof',
+            'tier' => 'silver',
+            'score_category' => 'surprise',
+            'description' => 'A driver from a top-four team on form knocked out in Q1.',
+            'supersedes' => [],
+            'sessions' => ['qualifying', 'sprint_qualifying'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => false,
+            'trigger' => [
+                'type' => 'match', 'fact' => 'qualifying_result', 'where' => [['knocked_out_in', '=', 1], 'top_team_on_form'],
+                'instance' => 'q1', 'event' => 'knocked_out:{entry}',
+                'detail' => 'P{position} · team P{team_form_rank} on form',
+            ],
+        ],
+
+        'fools_gold' => [
+            'name' => 'Fool\'s Gold',
+            'section' => 'qualifying',
+            'shelf' => 'oof',
+            'tier' => 'gold',
+            'score_category' => 'surprise',
+            'description' => 'Fastest in at least one practice session, then qualified P11 or lower (once per weekend).',
+            'supersedes' => [],
+            'sessions' => ['practice_1', 'practice_2', 'practice_3', 'qualifying'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'weekend',
+            'decided_after' => 'qualifying',
+            'withheld_on_sensitive_weekends' => false,
+            'trigger' => [
+                'type' => 'match', 'fact' => 'qualifying_result', 'where' => ['topped_a_practice_session', ['position', '>=', 11]],
+                'instance' => 'weekend', 'event' => 'fools_gold:{entry}',
+                'detail' => 'topped {topped_practice} · P{position}',
             ],
         ],
 
@@ -1001,6 +1138,73 @@ return [
             'trigger' => ['type' => 'custom', 'class' => ToTheRescue::class],
         ],
 
+        'first_time_for_everything' => [
+            'name' => 'First Time for Everything',
+            'section' => 'glory',
+            'shelf' => 'glory',
+            'tier' => 'gold',
+            'score_category' => 'driver',
+            'description' => 'Career first points, podium, win or pole in a Grand Prix (the most specific first counts).',
+            'supersedes' => [],
+            'sessions' => ['race', 'qualifying'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => false,
+            'trigger' => ['type' => 'match', 'fact' => 'career_first', 'detail' => '{label}'],
+        ],
+
+        'charging_rhino' => [
+            'name' => 'Charging Rhino',
+            'section' => 'glory',
+            'shelf' => 'glory',
+            'tier' => 'silver',
+            'score_category' => 'driver',
+            'description' => 'Gained 10 or more places from grid to finish.',
+            'supersedes' => [],
+            'sessions' => ['race'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => false,
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => [['places_gained', '>=', 10]], 'detail' => 'from {start} to P{position}'],
+        ],
+
+        'zoomies' => [
+            'name' => 'Zoomies',
+            'section' => 'glory',
+            'shelf' => 'glory',
+            'tier' => 'bronze',
+            'score_category' => 'driver',
+            'description' => 'Highest speed-trap reading in the race (a tie is shared).',
+            'supersedes' => [],
+            'sessions' => ['race'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => false,
+            'trigger' => [
+                'type' => 'extreme', 'fact' => 'speed_trap', 'measure' => 'top_speed', 'pick' => 'max', 'ties' => 'share',
+                'detail' => '{value} km/h', 'note' => 'Highest speed-trap reading of the race: {value} km/h, lap {lap}.',
+            ],
+        ],
+
+        'built_different' => [
+            'name' => 'Built Different',
+            'section' => 'glory',
+            'shelf' => 'glory',
+            'tier' => 'platinum',
+            'score_category' => 'driver',
+            'description' => 'Walked away from a heavy crash. Awarded by hand only, once the driver is confirmed OK; never when anyone else was hurt, never on a sensitive weekend.',
+            'supersedes' => [],
+            'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying', 'practice_1', 'practice_2', 'practice_3'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => true,
+            'trigger' => ['type' => 'manual'],
+        ],
+
         'took_the_lead' => [
             'name' => 'Took the Lead',
             'section' => 'safety_car',
@@ -1158,24 +1362,6 @@ return [
                 'detail' => '{achievement}', 'note' => '{achievement}: unlocked {value} {value:time|times} this season, the fewest of any OOF achievement.',
             ],
         ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Planned
-    |--------------------------------------------------------------------------
-    |
-    | Settings already decided for achievements of a later pack, applied when
-    | their entry is added: Built Different is never awarded on a sensitive
-    | weekend, and the surprise achievements count ×1 in the OOFscore.
-    |
-    */
-
-    'planned' => [
-        'built_different' => ['withheld_on_sensitive_weekends' => true],
-        'economy_class' => ['score_category' => 'surprise'],
-        'peaked_too_soon' => ['score_category' => 'surprise'],
-        'led_astray' => ['score_category' => 'surprise'],
     ],
 
 ];

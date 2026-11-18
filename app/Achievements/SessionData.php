@@ -58,7 +58,7 @@ class SessionData
         $session->loadMissing(['round.season', 'openF1Session']);
 
         $entries = $session->driverEntries()
-            ->with(['driver', 'seasonTeam', 'result', 'qualifyingResult'])
+            ->with(['driver', 'seasonTeam', 'result', 'qualifyingResult', 'practiceResult'])
             ->get()
             ->keyBy('id');
 
@@ -97,7 +97,7 @@ class SessionData
     {
         return $this->loaded['round_entries'] ??= DriverEntry::query()
             ->whereHas('raceSession', fn ($query) => $query->where('round_id', $this->session->round_id))
-            ->with(['driver', 'seasonTeam', 'result', 'qualifyingResult'])
+            ->with(['driver', 'seasonTeam', 'result', 'qualifyingResult', 'practiceResult'])
             ->get()
             ->keyBy('id');
     }

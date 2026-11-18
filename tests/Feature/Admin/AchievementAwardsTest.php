@@ -274,4 +274,26 @@ class AchievementAwardsTest extends TestCase
 
         $this->assertSame(AwardStatus::Suppressed, $award->fresh()->status);
     }
+
+    public function test_built_different_is_awarded_by_hand_but_not_on_a_sensitive_weekend(): void
+    {
+        $race = $this->raceSession();
+        $car = $this->car($race, 44);
+        $builtDifferent = Achievement::firstWhere('key', 'built_different');
+        $form = ['achievement_id' => $builtDifferent->id, 'race_session_id' => $race->id, 'driver_entry_id' => $car->id, 'note' => 'Confirmed fine the next morning.'];
+
+        Livewire::test(ListAchievementAwards::class)->callAction('awardByHand', $form)->assertNotified('Awarded');
+
+        $award = AchievementAward::sole();
+        $this->assertSame(AwardStatus::Final, $award->status);
+        $this->assertSame($this->admin->id, $award->decided_by);
+
+        Livewire::test(ViewAchievementAward::class, ['record' => $award->getRouteKey()])->assertActionHidden('restore');
+
+        $award->delete();
+        MomentSensitivity::factory()->create(['round_id' => $race->round_id]);
+
+        Livewire::test(ListAchievementAwards::class)->callAction('awardByHand', $form)->assertNotified('Not awarded');
+        $this->assertSame(0, AchievementAward::count());
+    }
 }

@@ -14,7 +14,8 @@ use InvalidArgumentException;
  * Builds each achievement's trigger from its catalogue entry. A weekend
  * trigger reads the sessions its entry lists; an aggregate trigger is a
  * season trigger. A declarative trigger gives its detections the entry's
- * recipient; a team achievement needs a match, count or extreme trigger.
+ * recipient; a team achievement needs a match, count or extreme trigger. A
+ * manual trigger (awarded by hand only) finds nothing.
  */
 class TriggerFactory
 {
@@ -61,11 +62,16 @@ class TriggerFactory
             throw new InvalidArgumentException("[{$key}]: the season scope takes an aggregate trigger, and an aggregate trigger the season scope.");
         }
 
+        if ($definition['type'] === 'manual' && ($recipient !== RecipientType::Driver || $entry['scope'] !== 'session')) {
+            throw new InvalidArgumentException("[{$key}]: a manual achievement goes to a driver in a session.");
+        }
+
         if ($recipient === RecipientType::Team && in_array($definition['type'], ['custom', 'aggregate'], true)) {
             throw new InvalidArgumentException("[{$key}]: a team achievement takes a match, count or extreme trigger.");
         }
 
         return match ($definition['type']) {
+            'manual' => new ManualTrigger,
             'custom' => new CustomTrigger($this->container->make($definition['class'])),
             'match' => new MatchTrigger($key, $definition, $this->facts, $this->conditions, $weekendSessions, $recipient),
             'count' => new CountTrigger($key, $definition, $this->facts, $this->conditions, $weekendSessions, $recipient),

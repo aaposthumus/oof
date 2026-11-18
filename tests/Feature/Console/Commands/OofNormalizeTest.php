@@ -21,4 +21,15 @@ class OofNormalizeTest extends TestCase
 
         $this->assertSame(2, Result::count());
     }
+
+    public function test_normalizes_only_the_endpoint_asked_for(): void
+    {
+        $this->storeRawFixture('results_2024_page_0', 'results', 2024);
+
+        $this->artisan('oof:normalize', ['--endpoint' => 'session_result'])->assertSuccessful();
+        $this->assertSame(0, Result::count());
+
+        $this->artisan('oof:normalize', ['--endpoint' => 'results'])->assertSuccessful();
+        $this->assertSame(2, Result::count());
+    }
 }
