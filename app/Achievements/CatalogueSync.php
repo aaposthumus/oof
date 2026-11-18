@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Brings the achievements table in line with the catalogue: creates
- * missing achievements, and writes the mechanics (sessions, scope, decided
- * after, stacks, withheld on sensitive weekends) and the derived data needs over what the
- * row holds. Editorial fields are left to the CMS. Rows without a catalogue
+ * missing achievements, and writes the mechanics (sessions, recipient,
+ * scope, decided after, stacks, withheld on sensitive weekends) and the
+ * derived data needs over what the row holds. Editorial fields are left to the CMS. Rows without a catalogue
  * entry are reported, never deleted.
  */
 class CatalogueSync

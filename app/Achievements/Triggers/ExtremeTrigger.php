@@ -10,7 +10,7 @@ use InvalidArgumentException;
 
 /**
  * Type extreme: the one candidate with the most or least of something. A
- * candidate is a fact; with measure "count" a car and all its facts; with
+ * candidate is a fact; with measure "count" a recipient (car, team) and all its facts; with
  * per "driver" a driver and all their facts across the sessions read (the
  * measure summed, or the facts counted). Templates get {value} (the
  * measure) and {count} (the facts).
@@ -63,7 +63,7 @@ class ExtremeTrigger extends DeclarativeTrigger
 
         $groups = match (true) {
             ($this->definition['per'] ?? null) === 'driver' => $facts->groupBy(fn (array $item) => $item['data']->entry($item['fact']->entryId)?->driver_id),
-            $byCount => $facts->groupBy(fn (array $item) => $item['fact']->entryId),
+            $byCount => $facts->groupBy(fn (array $item) => $this->recipientOf($item['fact'], $item['data'])->key() ?? ''),
             default => null,
         };
 

@@ -31,9 +31,9 @@ class AchievementAwardInfolist
                             ->helperText(fn (AchievementAward $record): ?string => $record->achievement->description),
                         TextEntry::make('session')
                             ->state(fn (AchievementAward $record): string => AchievementAwardsTable::sessionTitle($record)),
-                        TextEntry::make('driver_name')
-                            ->label('Driver')
-                            ->state(fn (AchievementAward $record): ?string => $record->driver ? "{$record->driver->given_name} {$record->driver->family_name}" : null)
+                        TextEntry::make('recipient')
+                            ->label('Recipient')
+                            ->state(fn (AchievementAward $record): ?string => $record->recipientLabel())
                             ->placeholder('No car'),
                         TextEntry::make('confidence')
                             ->badge()

@@ -50,7 +50,7 @@ class RaceControlDetectorsTest extends TestCase
         $this->message($race, "FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 4 (NOR) - {$offence}");
         $detection = $this->detect($achievement, $race)->sole();
 
-        $this->assertSame($car->id, $detection->driverEntryId);
+        $this->assertSame($car->id, $detection->recipient->entryId);
         $this->assertSame(1, $detection->carsNamed);
         $this->assertCount(3, $detection->evidence['messages']);
     }
@@ -130,7 +130,7 @@ class RaceControlDetectorsTest extends TestCase
 
         $detection = $this->detect('sunday_driver', $qualifying)->sole();
 
-        $this->assertSame(6, $this->data($qualifying)->entry($detection->driverEntryId)->car_number);
+        $this->assertSame(6, $this->data($qualifying)->entry($detection->recipient->entryId)->car_number);
         $this->assertSame(AwardConfidence::Medium, $detection->confidence);
     }
 
@@ -163,7 +163,7 @@ class RaceControlDetectorsTest extends TestCase
         $this->assertCount(1, $this->detect('meatball_sub', $race));
         $this->assertStringStartsWith('disqualification:', $this->detect('expelled', $race)->sole()->eventKey);
 
-        $stares = $this->detect('teachers_stare', $race)->keyBy(fn (Detection $stare) => $this->data($race)->entry($stare->driverEntryId)->car_number);
+        $stares = $this->detect('teachers_stare', $race)->keyBy(fn (Detection $stare) => $this->data($race)->entry($stare->recipient->entryId)->car_number);
         $this->assertStringStartsWith('track_limits:', $stares[18]->eventKey);
         $this->assertStringStartsWith('rcm:', $stares[27]->eventKey);
     }
@@ -205,7 +205,7 @@ class RaceControlDetectorsTest extends TestCase
 
         $detection = $this->detect('whole_class_detention', $race)->sole();
 
-        $this->assertSame($car->id, $detection->driverEntryId);
+        $this->assertSame($car->id, $detection->recipient->entryId);
         $this->assertSame(AwardConfidence::Low, $detection->confidence);
     }
 
@@ -221,7 +221,7 @@ class RaceControlDetectorsTest extends TestCase
 
         $detection = $this->detect('called_the_tow_truck', $race)->sole();
 
-        $this->assertNull($detection->driverEntryId);
+        $this->assertNull($detection->recipient->entryId);
         $this->assertSame(AwardReviewReason::NoClearCause, $detection->reviewReason);
     }
 

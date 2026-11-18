@@ -4,6 +4,7 @@ namespace Tests\Feature\Achievements;
 
 use App\Achievements\AchievementEngine;
 use App\Achievements\Detection;
+use App\Achievements\Recipient;
 use App\Achievements\Rules\Finality;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
@@ -583,7 +584,7 @@ class AchievementEngineTest extends TestCase
         $this->message($race, 'RED FLAG', ['category' => 'Flag', 'flag' => 'RED']);
         $finality = app(Finality::class);
         $judge = fn (string $key, $entry) => $finality->judge(
-            new Detection($key, $entry->id, 'x', 'x', ['source' => 'results']),
+            new Detection($key, Recipient::driver($entry->id), 'x', 'x', ['source' => 'results']),
             $this->data($race),
             true,
             $entry->driver_id,

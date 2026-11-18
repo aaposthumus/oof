@@ -21,7 +21,7 @@ and 4 for the design, and "Working notes" at the end.
 | 5 | OOFscore | Done, 17 November 2026 |
 | 6 | Facts and triggers | Done, 17 November 2026 |
 | 7 | Scopes, runs and the Oofies | Done, 18 November 2026 |
-| 8 | Recipients | Not started |
+| 8 | Recipients | Done, 18 November 2026 |
 | 9 | Nicknames and evolution events | Not started |
 | 10 | 2027 pack | Not started |
 | 11 | Historic backfill | Not started |
@@ -892,10 +892,43 @@ Decided by the owner on 18 November 2026, done the same day:
   742.5, Albon 727.5, Hamilton 715, Gasly 635, Stroll 620. Golden master: only OOFscore
   Champion differs (2023 and 2025 points, 2024 the driver); re-exported.
 
-**Phase 8: recipients.**
-Recipient value on detections, team columns in use, Safety Car explicit; trophy queries
-per recipient.
-Done when a test team achievement can be awarded end to end without engine changes.
+**Phase 8: recipients. Done.**
+
+- `App\Achievements\Recipient` (driver with its car, which may be unknown; team with its
+  season team; Safety Car) replaces the nullable entry ID on `Detection`. Its key (`e12`,
+  `t5`, none for the Safety Car or an unknown car) prefixes the award's instance key, so a
+  driver award's key is unchanged, and groups detections in Cascade, Stacking and the
+  `count` and `extreme` triggers. Fairness still needs a message naming exactly one car,
+  and the award goes to that car's driver.
+- `achievements.recipient_type` (migration; the four Safety Car achievements written out)
+  is a mechanic: the catalogue's `recipient` is written by the sync and is part of the
+  catalogue version. `Achievement::recipientType()` reads it; it no longer follows the
+  shelf. The Phase 3 migration that filled `achievement_awards.recipient_type` now has the
+  shelf rule written out, so a fresh migrate gives the same result.
+- Triggers: a declarative trigger gives each fact's detection the entry's recipient (the
+  driver of the fact's car, that car's season team, or the Safety Car); for a team
+  achievement a fact without a known team is left out. `count` counts `per: recipient`
+  (default; Blue Carpet renamed from `per: entry`) or `per: session`. The aggregate
+  trigger gives the Safety Car or a driver. The factory refuses a team achievement with a
+  custom or aggregate trigger.
+- Stored: a team award has `recipient_type` team, `season_team_id` and the lasting
+  `team_id` (filled from the season team), no driver or car; a driver award still records
+  its car's team. The OOFscore and the Oofies read driver awards only (decision 3).
+- Trophy queries: `AchievementAward::query()->forDriver()`, `forTeam()` (the lasting team,
+  every season and name), `forSeasonTeam()`, `forSafetyCar()`; `Driver::awards()`,
+  `Team::awards()`, `SeasonTeam::awards()`, each the recipient's own awards only (a team's
+  list does not hold its drivers' awards).
+- CMS: the awards list, award page and round page show a Recipient column (driver, team
+  name or "Safety Car"); picking a car on confirm is asked only for driver awards; the
+  achievement form shows "Awarded to" read-only.
+- Golden master: records a team award's team (only when set), so team awards will be
+  compared once one exists.
+- Proven with a team achievement that exists only in the test (`TeamRecipientTest`,
+  "Double Podium": a `count` trigger over result facts, `recipient: team`), added as
+  config and synced, then run: one award for the team, re-run creates nothing, the queries
+  find it, the OOFscore ignores it. No team achievement ships (decision 3).
+- Checked on the local database: migrate, sync dry run (no drift; 55 driver, 4 Safety Car
+  achievements), rollback and re-apply. Golden master: no differences; not re-exported.
 
 **Phase 9: nicknames and evolution events.**
 Tables, seed the 22 nicknames and the legends, CMS screens, the breakthrough check,
@@ -944,7 +977,7 @@ Decided for this phase on 17 November 2026:
 When the `achievement-engine` branch is deployed to production (decided 17 November 2026):
 
 1. `php artisan migrate` (lineages, award schema and snapshot, sensitivity columns,
-   data needs, scope and the run log).
+   data needs, scope and the run log, recipient type).
 2. `php artisan oof:achievements:sync --dry-run`, then, if it lists no differences in
    sessions or stacks the owner wants kept, `php artisan oof:achievements:sync` (writes
    the catalogue's mechanics and the derived data needs, and creates the three Oofies).

@@ -232,13 +232,13 @@ class RoundInfolist
     {
         return AchievementAward::query()
             ->whereIn('race_session_id', $round->raceSessions()->select('id'))
-            ->with(['raceSession', 'driver', 'achievement'])
+            ->with(['raceSession', 'driver', 'seasonTeam', 'achievement'])
             ->orderBy('race_session_id')
             ->orderBy('id')
             ->get()
             ->map(fn (AchievementAward $award) => [
                 'session' => $award->scope === AwardScope::Weekend ? 'Weekend' : $award->raceSession->type->label(),
-                'driver' => $award->driver === null ? '' : "{$award->driver->given_name} {$award->driver->family_name}",
+                'driver' => $award->recipientLabel() ?? '',
                 'title' => $award->title(),
                 'description' => $award->descriptionLine(),
                 'status' => $award->status->label(),

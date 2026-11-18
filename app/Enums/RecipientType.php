@@ -10,4 +10,13 @@ enum RecipientType: string
     case Driver = 'driver';
     case Team = 'team';
     case SafetyCar = 'safety_car';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Driver => 'Driver',
+            self::Team => 'Team',
+            self::SafetyCar => 'Safety Car',
+        };
+    }
 }

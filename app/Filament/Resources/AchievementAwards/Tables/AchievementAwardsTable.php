@@ -9,6 +9,7 @@ use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
 use App\Enums\AwardScope;
 use App\Enums\AwardStatus;
+use App\Enums\RecipientType;
 use App\Enums\SessionType;
 use App\Models\AchievementAward;
 use App\Models\Driver;
@@ -42,7 +43,7 @@ class AchievementAwardsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['raceSession.round.season', 'season', 'driver', 'achievement']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['raceSession.round.season', 'season', 'driver', 'seasonTeam', 'achievement']))
             ->defaultSort('race_session_id', 'desc')
             ->defaultGroup('context_key')
             ->groups([
@@ -61,10 +62,10 @@ class AchievementAwardsTable
                     ->label('Achievement')
                     ->state(fn (AchievementAward $record): string => $record->title())
                     ->description(fn (AchievementAward $record): ?string => $record->descriptionLine()),
-                TextColumn::make('driver_name')
-                    ->label('Driver')
-                    ->state(fn (AchievementAward $record): ?string => $record->driver ? "{$record->driver->given_name} {$record->driver->family_name}" : null)
-                    ->placeholder(fn (AchievementAward $record): string => $record->achievement->shelf === AchievementShelf::SafetyCar ? 'Safety Car' : 'No car yet'),
+                TextColumn::make('recipient')
+                    ->label('Recipient')
+                    ->state(fn (AchievementAward $record): ?string => $record->recipientLabel())
+                    ->placeholder('No car yet'),
                 TextColumn::make('achievement.shelf')
                     ->label('Shelf')
                     ->formatStateUsing(fn (AchievementShelf $state): string => $state->label())
@@ -366,7 +367,7 @@ class AchievementAwardsTable
 
     private static function needsCar(AchievementAward $record): bool
     {
-        return $record->driver_entry_id === null && $record->achievement->shelf !== AchievementShelf::SafetyCar;
+        return $record->recipient_type === RecipientType::Driver && $record->driver_entry_id === null;
     }
 
     private static function reasonField(): Textarea

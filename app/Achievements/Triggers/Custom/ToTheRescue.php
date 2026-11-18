@@ -5,6 +5,7 @@ namespace App\Achievements\Triggers\Custom;
 use App\Achievements\Detection;
 use App\Achievements\Detector;
 use App\Achievements\Facts\DataSource;
+use App\Achievements\Recipient;
 use App\Achievements\SessionData;
 use App\Achievements\Support\Evidence;
 use App\Achievements\Support\RaceStarts;
@@ -59,7 +60,7 @@ class ToTheRescue implements Detector
 
                 return new Detection(
                     achievementKey: $this->key(),
-                    driverEntryId: $entry->id,
+                    recipient: Recipient::driver($entry->id),
                     instanceKey: 'call_up',
                     eventKey: "call_up:{$entry->id}",
                     evidence: Evidence::results([$entry], $isSeatSwap

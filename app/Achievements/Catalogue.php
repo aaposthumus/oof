@@ -10,6 +10,8 @@ use InvalidArgumentException;
  * achievement seeds in the CMS (editorial defaults) and how the engine
  * finds it (mechanics and trigger).
  *
+ * Recipient: driver, team or safety_car (see App\Achievements\Recipient).
+ *
  * Scope: session (decided per session), weekend (once per round, after the
  * session named in decided_after: practice for the last practice session,
  * or a session type) or season (once the final round is final). A weekend
@@ -74,7 +76,7 @@ class Catalogue
     /**
      * The row's mechanics, which this file owns: sync writes them over the CMS.
      *
-     * @return array{session_types: list<string>, scope: string, decided_after: string|null, stacks: bool, withheld_on_sensitive_weekends: bool}
+     * @return array{session_types: list<string>, recipient_type: string, scope: string, decided_after: string|null, stacks: bool, withheld_on_sensitive_weekends: bool}
      */
     public function mechanics(string $key): array
     {
@@ -82,6 +84,7 @@ class Catalogue
 
         return [
             'session_types' => $entry['sessions'],
+            'recipient_type' => $entry['recipient'],
             'scope' => $entry['scope'],
             'decided_after' => $entry['decided_after'] ?? null,
             'stacks' => $entry['stacks'],
@@ -102,7 +105,7 @@ class Catalogue
     {
         $rows = Achievement::query()->orderBy('key')->get()
             ->map(fn (Achievement $achievement) => [
-                $achievement->key, $achievement->is_enabled, $achievement->session_types, $achievement->scope?->value,
+                $achievement->key, $achievement->is_enabled, $achievement->session_types, $achievement->recipient_type?->value, $achievement->scope?->value,
                 $achievement->decided_after, $achievement->stacks, $achievement->supersedes, $achievement->withheld_on_sensitive_weekends,
             ])
             ->all();

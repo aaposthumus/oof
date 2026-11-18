@@ -8,8 +8,10 @@ use App\Achievements\Facts\Fact;
 use App\Achievements\Facts\FactEvidence;
 use App\Achievements\Facts\Facts;
 use App\Achievements\Facts\Template;
+use App\Achievements\Recipient;
 use App\Achievements\SessionData;
 use App\Enums\AwardConfidence;
+use App\Enums\RecipientType;
 use App\Enums\SessionType;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
@@ -27,6 +29,10 @@ use InvalidArgumentException;
  *
  * A weekend-scope trigger reads the facts of every session of the round its
  * entry lists, and is run on the session it is decided after.
+ *
+ * The entry's recipient decides who a fact's detection is for: the driver of
+ * the fact's car, that car's season team (a fact without a known team is left
+ * out), or the Safety Car.
  */
 abstract class DeclarativeTrigger implements Trigger
 {
@@ -49,6 +55,7 @@ abstract class DeclarativeTrigger implements Trigger
         protected readonly Facts $facts,
         protected readonly Conditions $conditions,
         protected readonly ?array $weekendSessions = null,
+        protected readonly RecipientType $recipient = RecipientType::Driver,
     ) {
         $unknown = array_diff(array_keys($definition), [...self::COMMON_OPTIONS, ...static::OPTIONS]);
 
@@ -97,7 +104,20 @@ abstract class DeclarativeTrigger implements Trigger
 
         return $this->facts->of($data, $this->definition['fact'])
             ->filter(fn (Fact $fact) => $this->conditions->pass($where, $fact, $data))
+            ->filter(fn (Fact $fact) => $this->recipient !== RecipientType::Team || $data->entry($fact->entryId)?->season_team_id !== null)
             ->values();
+    }
+
+    /**
+     * Who a fact's detection is for.
+     */
+    protected function recipientOf(Fact $fact, SessionData $data): Recipient
+    {
+        return match ($this->recipient) {
+            RecipientType::Driver => Recipient::driver($fact->entryId),
+            RecipientType::Team => Recipient::team($data->entry($fact->entryId)->season_team_id),
+            RecipientType::SafetyCar => Recipient::safetyCar(),
+        };
     }
 
     /**
@@ -126,7 +146,7 @@ abstract class DeclarativeTrigger implements Trigger
 
         return new Detection(
             achievementKey: $this->key,
-            driverEntryId: $fact->entryId,
+            recipient: $this->recipientOf($fact, $data),
             instanceKey: isset($this->definition['instance']) ? Template::render($this->definition['instance'], $fact, $values) : $fact->instanceKey,
             eventKey: isset($this->definition['event']) ? Template::render($this->definition['event'], $fact, $values) : $fact->eventKey,
             evidence: $evidence->render(),

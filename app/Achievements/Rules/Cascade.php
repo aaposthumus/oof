@@ -8,7 +8,7 @@ use App\Models\Achievement;
 use Illuminate\Support\Collection;
 
 /**
- * One event, one achievement. Within a car's event, a detection superseded
+ * One event, one achievement. Within a recipient's event, a detection superseded
  * by a more specific one is removed; a penalty is folded into the detail of
  * what replaced it, so "Bumper Cars" shows as "Bumper Cars · 10 s".
  */
@@ -22,7 +22,7 @@ class Cascade
     public function apply(Collection $detections, Collection $catalogue): Collection
     {
         return $detections
-            ->groupBy(fn (Detection $detection) => "{$detection->driverEntryId}|{$detection->eventKey}")
+            ->groupBy(fn (Detection $detection) => "{$detection->recipient->key()}|{$detection->eventKey}")
             ->flatMap(fn (Collection $event) => $this->settle($event->values(), $catalogue))
             ->values();
     }

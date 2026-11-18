@@ -45,11 +45,11 @@ class CrossCheck
 
     private function disagreement(Detection $detection, Achievement $achievement, SessionData $data): ?string
     {
-        if ($detection->driverEntryId === null || ! $achievement->section->assignsFault() && ! in_array($achievement->key, self::DISQUALIFYING, true)) {
+        if ($detection->recipient->entryId === null || ! $achievement->section->assignsFault() && ! in_array($achievement->key, self::DISQUALIFYING, true)) {
             return null;
         }
 
-        $result = $data->entry($detection->driverEntryId)?->result;
+        $result = $data->entry($detection->recipient->entryId)?->result;
 
         if ($result === null) {
             return 'Race control penalises this car, but Jolpica has no result for it.';

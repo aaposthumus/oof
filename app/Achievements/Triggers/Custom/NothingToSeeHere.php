@@ -5,6 +5,7 @@ namespace App\Achievements\Triggers\Custom;
 use App\Achievements\Detection;
 use App\Achievements\Facts\DataSource;
 use App\Achievements\LateDetector;
+use App\Achievements\Recipient;
 use App\Achievements\SessionData;
 use App\Achievements\Support\Evidence;
 use App\Achievements\Support\RaceStarts;
@@ -52,7 +53,7 @@ class NothingToSeeHere implements LateDetector
             ->reject(fn (DriverEntry $entry) => $busyDrivers->contains($entry->driver_id) || RaceStarts::before($entry, $data)->isEmpty())
             ->map(fn (DriverEntry $entry) => new Detection(
                 achievementKey: $this->key(),
-                driverEntryId: $entry->id,
+                recipient: Recipient::driver($entry->id),
                 instanceKey: 'weekend',
                 eventKey: "weekend:{$entry->id}",
                 evidence: Evidence::results([$entry], 'No award in any session of the weekend.'),
@@ -80,7 +81,7 @@ class NothingToSeeHere implements LateDetector
         $weekend = $detections
             ->filter(fn (Detection $detection) => $detection->achievementKey !== $this->key()
                 && ! $suppressedByPeople->contains("{$ids->get($detection->achievementKey)}|{$detection->awardInstanceKey()}"))
-            ->map(fn (Detection $detection) => $data->entry($detection->driverEntryId)?->driver_id);
+            ->map(fn (Detection $detection) => $data->entry($detection->recipient->entryId)?->driver_id);
 
         $sessions = AchievementAward::query()
             ->where('round_id', $data->session->round_id)

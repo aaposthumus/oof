@@ -74,7 +74,8 @@ return new class extends Migration
                 'tier' => $achievement->tier?->value,
                 'shelf' => $achievement->shelf->value,
                 'points' => $achievement->points(),
-                'recipient_type' => $achievement->recipientType()->value,
+                // Written out: the recipient followed from the shelf until the achievements stated it (Phase 8).
+                'recipient_type' => $achievement->shelf->value === 'safety_car' ? 'safety_car' : 'driver',
             ]);
         }
 

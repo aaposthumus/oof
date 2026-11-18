@@ -8,8 +8,10 @@ use App\Achievements\Facts\Fact;
 use App\Achievements\Facts\FactEvidence;
 use App\Achievements\Facts\Facts;
 use App\Achievements\Facts\Template;
+use App\Achievements\Recipient;
 use App\Achievements\SeasonData;
 use App\Achievements\SessionData;
+use App\Enums\RecipientType;
 use App\Enums\SessionType;
 use App\Models\AchievementAward;
 use App\Models\OofscoreStanding;
@@ -51,6 +53,7 @@ final class AggregateTrigger implements SeasonTrigger
     /**
      * @param  array<string, mixed>  $definition
      * @param  list<SessionType>  $sessions  The session types a facts source reads
+     * @param  RecipientType  $recipient  A driver (by the group or holders) or the Safety Car
      */
     public function __construct(
         private readonly string $key,
@@ -58,6 +61,7 @@ final class AggregateTrigger implements SeasonTrigger
         private readonly Facts $facts,
         private readonly Conditions $conditions,
         private readonly array $sessions,
+        private readonly RecipientType $recipient = RecipientType::Driver,
     ) {
         $unknown = array_diff(array_keys($definition), self::OPTIONS);
 
@@ -198,7 +202,9 @@ final class AggregateTrigger implements SeasonTrigger
 
         return $recipients->map(fn (?int $driverId) => new Detection(
             achievementKey: $this->key,
-            driverEntryId: $driverId === null ? null : ($season->entryOfDriver($driverId)?->id ?? $group['items']->where('driver', $driverId)->last()['entry'] ?? null),
+            recipient: $this->recipient === RecipientType::SafetyCar
+                ? Recipient::safetyCar()
+                : Recipient::driver($driverId === null ? null : ($season->entryOfDriver($driverId)?->id ?? $group['items']->where('driver', $driverId)->last()['entry'] ?? null)),
             instanceKey: $instanceKey,
             eventKey: isset($this->definition['event']) ? Template::render($this->definition['event'], $fact, $values) : "season:{$instanceKey}",
             evidence: $evidence,

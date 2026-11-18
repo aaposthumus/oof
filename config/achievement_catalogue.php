@@ -28,6 +28,11 @@ use App\Achievements\Triggers\Custom\ToTheRescue;
 | for the last practice session, or a session type) or season (an
 | aggregate trigger, once the final round is final).
 |
+| Recipient: driver (the driver of the fact's car), team (that car's season
+| team, and through it the lasting team) or safety_car. A team achievement
+| is an entry with recipient team; a count or extreme trigger then counts
+| per team. No team achievement ships yet (decision 3 of the plan).
+|
 */
 
 return [
@@ -487,7 +492,7 @@ return [
             'withheld_on_sensitive_weekends' => false,
             'trigger' => [
                 'type' => 'count', 'fact' => 'flag', 'where' => [['flag', '=', 'blue_flag']],
-                'per' => 'entry', 'at_least' => 8,
+                'per' => 'recipient', 'at_least' => 8,
                 'instance' => 'session', 'event' => 'blue_flags:{entry}',
                 'detail' => '{count} blue flags',
             ],

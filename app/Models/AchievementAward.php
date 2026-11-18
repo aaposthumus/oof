@@ -24,13 +24,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * An achievement unlocked in a context, with the evidence it came from: a
  * session ("session:12"), a weekend ("round:7", anchored to the session it
- * was decided after) or a season ("season:3", without round or session). Safety Car awards have no driver entry. Once a
+ * was decided after) or a season ("season:3", without round or session). Once a
  * person has decided on an award (decided_at), re-running the engine never
  * changes that decision.
  *
+ * Its recipient (recipient_type) is a driver (driver_entry_id and driver_id;
+ * the car may be unknown), a team (season_team_id and the lasting team_id,
+ * no driver) or the Safety Car (none of them). A driver award also records
+ * the team of its car. Query them with forDriver(), forTeam(),
+ * forSeasonTeam() and forSafetyCar().
+ *
  * Saving fills what follows from the rest: the context (key, season, round,
- * calendar date) from the session, or for a season from its final round, the season team and team from
- * the driver entry, and finalized_at the first time it is final. Tier,
+ * calendar date) from the session, or for a season from its final round; the
+ * season team and team from the driver entry (for a team award, the team
+ * from its season team); and finalized_at the first time it is final. Tier,
  * shelf and points are a snapshot taken when the award is created. A tier
  * change in the catalogue updates the snapshot in seasons that are not
  * closed (Achievement::updateOpenSeasonAwards()); in a closed season it is
@@ -97,6 +104,58 @@ class AchievementAward extends Model
     public function scopePublishable(Builder $query): void
     {
         $query->where('status', AwardStatus::Final)->where('is_sensitive', false);
+    }
+
+    /**
+     * A driver's own awards, in every season (not those of their team).
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeForDriver(Builder $query, Driver|int $driver): void
+    {
+        $query->where('recipient_type', RecipientType::Driver)->where('driver_id', $driver instanceof Driver ? $driver->id : $driver);
+    }
+
+    /**
+     * A lasting team's own awards, in every season and under every name it
+     * raced under (not those of its drivers).
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeForTeam(Builder $query, Team|int $team): void
+    {
+        $query->where('recipient_type', RecipientType::Team)->where('team_id', $team instanceof Team ? $team->id : $team);
+    }
+
+    /**
+     * A team's own awards in one season.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeForSeasonTeam(Builder $query, SeasonTeam|int $seasonTeam): void
+    {
+        $query->where('recipient_type', RecipientType::Team)->where('season_team_id', $seasonTeam instanceof SeasonTeam ? $seasonTeam->id : $seasonTeam);
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     */
+    public function scopeForSafetyCar(Builder $query): void
+    {
+        $query->where('recipient_type', RecipientType::SafetyCar);
+    }
+
+    /**
+     * Who received it, as shown: the driver's name, the team's name, "Safety
+     * Car", or null for a driver award whose car is not known yet.
+     */
+    public function recipientLabel(): ?string
+    {
+        return match ($this->recipient_type) {
+            RecipientType::Team => $this->seasonTeam?->name,
+            RecipientType::SafetyCar => 'Safety Car',
+            default => $this->driver === null ? null : "{$this->driver->given_name} {$this->driver->family_name}",
+        };
     }
 
     /**
@@ -253,7 +312,12 @@ class AchievementAward extends Model
             ]);
         }
 
-        if (! $this->exists || $this->isDirty('driver_entry_id')) {
+        // A team award names its season team itself; any other award takes its team from the car.
+        if ($this->recipient_type === RecipientType::Team) {
+            if (! $this->exists || $this->isDirty('season_team_id')) {
+                $this->team_id = $this->season_team_id === null ? null : SeasonTeam::query()->find($this->season_team_id)?->team_id;
+            }
+        } elseif (! $this->exists || $this->isDirty('driver_entry_id')) {
             $entry = $this->driver_entry_id === null ? null : DriverEntry::query()->with('seasonTeam')->find($this->driver_entry_id);
             $this->season_team_id = $entry?->season_team_id;
             $this->team_id = $entry?->seasonTeam?->team_id;

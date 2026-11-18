@@ -93,7 +93,7 @@ class Sensitivity
         $round = $this->of($data);
 
         return $detections
-            ->filter(fn (Detection $detection) => self::allows($round, $catalogue[$detection->achievementKey], $data->entry($detection->driverEntryId)?->driver_id))
+            ->filter(fn (Detection $detection) => self::allows($round, $catalogue[$detection->achievementKey], $data->entry($detection->recipient->entryId)?->driver_id))
             ->values();
     }
 

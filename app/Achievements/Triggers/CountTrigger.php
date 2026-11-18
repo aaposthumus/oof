@@ -8,13 +8,13 @@ use App\Achievements\SessionData;
 use Illuminate\Support\Collection;
 
 /**
- * Type count: count or sum the facts that meet the conditions, per car or
- * for the whole session, against a threshold. One detection per group that
+ * Type count: count or sum the facts that meet the conditions, per
+ * recipient (car, team) or for the whole session, against a threshold. One detection per group that
  * reaches it, with the evidence of all its facts. Templates get {count}
  * (facts) and {total} (the sum, or the count).
  *
  * Options besides the common ones:
- * - per: entry (default) or session
+ * - per: recipient (default; a car for a driver achievement, a team for a team one) or session
  * - sum: the attribute to add up; the facts are counted without it
  * - at_least: the threshold
  */
@@ -25,9 +25,9 @@ class CountTrigger extends DeclarativeTrigger
     public function detect(SessionData $data, Collection $settled): Collection
     {
         $facts = $this->selected($data);
-        $groups = ($this->definition['per'] ?? 'entry') === 'session'
+        $groups = ($this->definition['per'] ?? 'recipient') === 'session'
             ? collect([$facts])->filter(fn (Collection $group) => $group->isNotEmpty())
-            : $facts->groupBy(fn (Fact $fact) => $fact->entryId);
+            : $facts->groupBy(fn (Fact $fact) => $this->recipientOf($fact, $data)->key() ?? '');
 
         return $groups
             ->map(function (Collection $group) use ($data) {

@@ -7,7 +7,7 @@
         <div class="oof-scroll">
             <table class="oof-table">
                 <thead>
-                    <tr><th>Session</th><th>Award</th><th>Driver</th><th>Status</th></tr>
+                    <tr><th>Session</th><th>Award</th><th>Recipient</th><th>Status</th></tr>
                 </thead>
                 <tbody>
                     @foreach ($awards as $award)

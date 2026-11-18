@@ -3,6 +3,7 @@
 namespace App\Achievements;
 
 use App\Enums\AwardScope;
+use App\Enums\RecipientType;
 use App\Models\AchievementAward;
 use App\Models\AchievementRun;
 use App\Models\RaceSession;
@@ -26,7 +27,7 @@ class GoldenMaster
     /**
      * The fields of an award that are compared.
      */
-    public const FIELDS = ['driver', 'car', 'detail', 'variant', 'status', 'confidence', 'review_reason', 'event_key', 'evidence', 'sensitive'];
+    public const FIELDS = ['driver', 'car', 'detail', 'variant', 'status', 'confidence', 'review_reason', 'event_key', 'evidence', 'sensitive', 'team'];
 
     /**
      * The awards as stored right now, with the sessions (and seasons) the engine has run.
@@ -64,6 +65,7 @@ class GoldenMaster
             ->join('seasons', 'seasons.id', '=', 'achievement_awards.season_id')
             ->leftJoin('drivers', 'drivers.id', '=', 'achievement_awards.driver_id')
             ->leftJoin('driver_entries', 'driver_entries.id', '=', 'achievement_awards.driver_entry_id')
+            ->leftJoin('teams', 'teams.id', '=', 'achievement_awards.team_id')
             ->when($seasons !== [], fn ($query) => $query->whereIn('seasons.year', $seasons))
             ->toBase()
             ->get([
@@ -71,6 +73,7 @@ class GoldenMaster
                 'drivers.jolpica_driver_id', 'driver_entries.car_number', 'achievement_awards.detail', 'achievement_awards.variant_name',
                 'achievement_awards.status', 'achievement_awards.confidence', 'achievement_awards.review_reason',
                 'achievement_awards.event_key', 'achievement_awards.evidence', 'achievement_awards.is_sensitive',
+                'achievement_awards.recipient_type', 'teams.slug as team_slug',
             ])
             ->mapWithKeys(fn (object $award) => [
                 ($award->type === null ? self::seasonKey($award->year) : self::sessionKey($award->year, $award->round_number, $award->type))."|{$award->key}|{$award->instance_key}" => [
@@ -85,6 +88,8 @@ class GoldenMaster
                     'evidence' => self::hash($award->evidence),
                     // Only when set, so a master exported before the flag existed still compares.
                     'sensitive' => $award->is_sensitive ? 1 : null,
+                    // A team award's team; only when set, like the flag.
+                    'team' => $award->recipient_type === RecipientType::Team->value ? $award->team_slug : null,
                 ],
             ])
             ->sortKeys()

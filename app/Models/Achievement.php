@@ -27,7 +27,7 @@ use Illuminate\Support\Collection;
  * @property list<string>|null $data_sources DataSource values, derived from the trigger
  * @property int|null $available_from The first year its data supports, derived from the trigger
  */
-#[Fillable(['key', 'name', 'section', 'shelf', 'tier', 'session_types', 'scope', 'decided_after', 'stacks', 'supersedes', 'description', 'is_enabled', 'withheld_on_sensitive_weekends', 'score_category', 'data_sources', 'available_from'])]
+#[Fillable(['key', 'name', 'section', 'shelf', 'recipient_type', 'tier', 'session_types', 'scope', 'decided_after', 'stacks', 'supersedes', 'description', 'is_enabled', 'withheld_on_sensitive_weekends', 'score_category', 'data_sources', 'available_from'])]
 class Achievement extends Model
 {
     /** @use HasFactory<AchievementFactory> */
@@ -43,6 +43,7 @@ class Achievement extends Model
         return [
             'section' => AchievementSection::class,
             'shelf' => AchievementShelf::class,
+            'recipient_type' => RecipientType::class,
             'tier' => AchievementTier::class,
             'session_types' => 'array',
             'scope' => AwardScope::class,
@@ -96,12 +97,12 @@ class Achievement extends Model
     }
 
     /**
-     * Who receives it. Until the catalogue states it (Phase 8): the Safety Car
-     * for its own shelf, a driver for everything else.
+     * Who receives it: the catalogue's recipient, written by the sync
+     * (a driver when the row does not say).
      */
     public function recipientType(): RecipientType
     {
-        return $this->shelf === AchievementShelf::SafetyCar ? RecipientType::SafetyCar : RecipientType::Driver;
+        return $this->recipient_type ?? RecipientType::Driver;
     }
 
     /**

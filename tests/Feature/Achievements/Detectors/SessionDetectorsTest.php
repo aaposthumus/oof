@@ -52,7 +52,7 @@ class SessionDetectorsTest extends TestCase
 
         $detection = $this->detect('mirror_match', $qualifying)->sole();
 
-        $this->assertSame($field[16]->id, $detection->driverEntryId);
+        $this->assertSame($field[16]->id, $detection->recipient->entryId);
         $this->assertSame('Q1', $detection->detail);
     }
 
@@ -63,7 +63,7 @@ class SessionDetectorsTest extends TestCase
 
         $detection = $this->detect('by_a_whisker', $qualifying)->sole();
 
-        $this->assertSame($field[11]->id, $detection->driverEntryId);
+        $this->assertSame($field[11]->id, $detection->recipient->entryId);
         $this->assertSame('Q2 · +0.012 s', $detection->detail);
     }
 
@@ -74,7 +74,7 @@ class SessionDetectorsTest extends TestCase
 
         $detection = $this->detect('by_a_whisker', $qualifying)->sole();
 
-        $this->assertSame($field[11]->id, $detection->driverEntryId);
+        $this->assertSame($field[11]->id, $detection->recipient->entryId);
         $this->assertSame('Q2 · +0.010 s', $detection->detail);
     }
 
@@ -83,7 +83,7 @@ class SessionDetectorsTest extends TestCase
         $qualifying = $this->raceSession(SessionType::Qualifying);
         $field = $this->qualifyingField($qualifying);
 
-        $this->assertSame($field[20]->id, $this->detect('holding_the_door', $qualifying)->sole()->driverEntryId);
+        $this->assertSame($field[20]->id, $this->detect('holding_the_door', $qualifying)->sole()->recipient->entryId);
     }
 
     public function test_so_close_when_a_deleted_q3_time_beats_the_classified_one(): void
@@ -96,7 +96,7 @@ class SessionDetectorsTest extends TestCase
 
         $detection = $this->detect('deleted_scene', $qualifying)->sole();
 
-        $this->assertSame($field[1]->id, $detection->driverEntryId);
+        $this->assertSame($field[1]->id, $detection->recipient->entryId);
         $this->assertSame('1:27.950', $detection->detail);
     }
 
@@ -222,10 +222,10 @@ class SessionDetectorsTest extends TestCase
         $this->assertSame('9 laps', $this->detect('took_the_lead', $race)->sole()->detail);
         $this->assertSame('2 deployments', $this->detect('second_helping', $race)->sole()->detail);
         $this->assertSame('lap 20', $this->detect('virtually_there', $race)->sole()->detail);
-        $this->assertNull($this->detect('virtually_there', $race)->sole()->driverEntryId);
+        $this->assertNull($this->detect('virtually_there', $race)->sole()->recipient->entryId);
 
         $season = app(AchievementEngine::class)->trigger('frequent_flyer')->detectSeason(new SeasonData($race->round->season, app(MessageClassifier::class)));
         $this->assertSame('2 deployments', $season->sole()->detail);
-        $this->assertNull($season->sole()->driverEntryId);
+        $this->assertNull($season->sole()->recipient->entryId);
     }
 }

@@ -8,8 +8,9 @@ use App\Models\Achievement;
 use Illuminate\Support\Collection;
 
 /**
- * An achievement that does not stack is awarded once per driver per session:
- * its instances are merged into one, keeping all their evidence.
+ * An achievement that does not stack is awarded once per recipient (a car
+ * or a team) per session: its instances are merged into one, keeping all
+ * their evidence.
  */
 class Stacking
 {
@@ -21,9 +22,9 @@ class Stacking
     public function apply(Collection $detections, Collection $catalogue): Collection
     {
         return $detections
-            ->groupBy(fn (Detection $detection) => $catalogue[$detection->achievementKey]->stacks || $detection->driverEntryId === null
+            ->groupBy(fn (Detection $detection) => $catalogue[$detection->achievementKey]->stacks || $detection->recipient->key() === null
                 ? $detection->key()
-                : "{$detection->achievementKey}|{$detection->driverEntryId}")
+                : "{$detection->achievementKey}|{$detection->recipient->key()}")
             ->map(fn (Collection $instances) => $instances->count() === 1 ? $instances->first() : $this->merge($instances->values()))
             ->values();
     }

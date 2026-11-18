@@ -49,9 +49,9 @@ class ResultDetectorsTest extends TestCase
         $once = $this->finisher(2, 2, ['status' => '+1 Lap', 'laps_completed' => 56]);
         $twice = $this->finisher(3, 3, ['status' => 'Lapped', 'laps_completed' => 55]);
 
-        $this->assertSame([$once->id], $this->detect('lapped_dog', $this->race)->pluck('driverEntryId')->all());
+        $this->assertSame([$once->id], $this->detect('lapped_dog', $this->race)->pluck('recipient.entryId')->all());
         $this->assertSame('2 laps', $this->detect('good_boy', $this->race)->sole()->detail);
-        $this->assertSame($twice->id, $this->detect('good_boy', $this->race)->sole()->driverEntryId);
+        $this->assertSame($twice->id, $this->detect('good_boy', $this->race)->sole()->recipient->entryId);
     }
 
     public function test_retirements_on_lap_one_and_later(): void
@@ -60,8 +60,8 @@ class ResultDetectorsTest extends TestCase
         $later = $this->finisher(2, 0, ['position' => null, 'position_text' => 'R', 'is_classified' => false, 'status' => 'Engine', 'laps_completed' => 30]);
         $this->finisher(3, 0, ['position' => null, 'position_text' => 'R', 'is_classified' => false, 'status' => 'Illness', 'laps_completed' => 3]);
 
-        $this->assertSame([$lapOne->id], $this->detect('early_lunch', $this->race)->pluck('driverEntryId')->all());
-        $this->assertSame([$lapOne->id, $later->id], $this->detect('home_before_dinner', $this->race)->pluck('driverEntryId')->all());
+        $this->assertSame([$lapOne->id], $this->detect('early_lunch', $this->race)->pluck('recipient.entryId')->all());
+        $this->assertSame([$lapOne->id, $later->id], $this->detect('home_before_dinner', $this->race)->pluck('recipient.entryId')->all());
     }
 
     public function test_did_not_start_unless_through_illness(): void
@@ -71,7 +71,7 @@ class ResultDetectorsTest extends TestCase
         $ill = $this->car($this->race, 2);
         Result::factory()->for($ill)->withdrawn()->create(['status' => 'Illness']);
 
-        $this->assertSame([$withdrew->id], $this->detect('forgot_the_keys', $this->race)->pluck('driverEntryId')->all());
+        $this->assertSame([$withdrew->id], $this->detect('forgot_the_keys', $this->race)->pluck('recipient.entryId')->all());
     }
 
     public function test_disqualified_whatever_the_position_text_says(): void
@@ -80,9 +80,9 @@ class ResultDetectorsTest extends TestCase
         $disqualified = $this->finisher(44, 2, ['status' => 'Disqualified', 'is_classified' => false]);
 
         $detection = $this->detect('sent_to_your_room', $this->race)->sole();
-        $this->assertSame($disqualified->id, $detection->driverEntryId);
+        $this->assertSame($disqualified->id, $detection->recipient->entryId);
         $this->assertSame("disqualification:{$disqualified->id}", $detection->eventKey);
-        $this->assertSame([], $this->detect('silver_lining', $this->race)->where('driverEntryId', $disqualified->id)->all());
+        $this->assertSame([], $this->detect('silver_lining', $this->race)->where('recipient.entryId', $disqualified->id)->all());
     }
 
     public function test_most_places_lost_last_finisher_and_fastest_lap_without_points(): void
@@ -91,9 +91,9 @@ class ResultDetectorsTest extends TestCase
         $this->finisher(2, 2, ['grid' => 3, 'points' => 18]);
         $last = $this->finisher(3, 3, ['grid' => 1, 'points' => 0, 'fastest_lap_rank' => 1]);
 
-        $this->assertSame([$last->id], $this->detect('reverse_gear', $this->race)->pluck('driverEntryId')->all());
-        $this->assertSame($last->id, $this->detect('turned_off_the_lights', $this->race)->sole()->driverEntryId);
-        $this->assertSame($last->id, $this->detect('all_dressed_up_nowhere_to_go', $this->race)->sole()->driverEntryId);
+        $this->assertSame([$last->id], $this->detect('reverse_gear', $this->race)->pluck('recipient.entryId')->all());
+        $this->assertSame($last->id, $this->detect('turned_off_the_lights', $this->race)->sole()->recipient->entryId);
+        $this->assertSame($last->id, $this->detect('all_dressed_up_nowhere_to_go', $this->race)->sole()->recipient->entryId);
     }
 
     public function test_a_shared_top_spot_for_most_places_lost_gives_no_award(): void
@@ -112,9 +112,9 @@ class ResultDetectorsTest extends TestCase
         $third = $this->finisher(3, 3);
         $this->finisher(4, 4);
 
-        $this->assertSame($winner->id, $this->detect('did_the_thing', $this->race)->sole()->driverEntryId);
-        $this->assertSame($second->id, $this->detect('silver_lining', $this->race)->sole()->driverEntryId);
-        $this->assertSame($third->id, $this->detect('solid_bronze', $this->race)->sole()->driverEntryId);
+        $this->assertSame($winner->id, $this->detect('did_the_thing', $this->race)->sole()->recipient->entryId);
+        $this->assertSame($second->id, $this->detect('silver_lining', $this->race)->sole()->recipient->entryId);
+        $this->assertSame($third->id, $this->detect('solid_bronze', $this->race)->sole()->recipient->entryId);
         $this->assertSame('from P12', $this->detect('took_the_scenic_route', $this->race)->sole()->detail);
     }
 
@@ -272,7 +272,7 @@ class ResultDetectorsTest extends TestCase
         DriverStanding::create(['round_id' => $this->race->round_id, 'driver_id' => $champion->driver_id, 'position' => 1, 'position_text' => '1', 'points' => 125, 'wins' => 5]);
         DriverStanding::create(['round_id' => $this->race->round_id, 'driver_id' => $rival->driver_id, 'position' => 2, 'position_text' => '2', 'points' => 98, 'wins' => 0]);
 
-        $this->assertSame($champion->id, $this->detect('class_dismissed', $this->race)->sole()->driverEntryId);
+        $this->assertSame($champion->id, $this->detect('class_dismissed', $this->race)->sole()->recipient->entryId);
     }
 
     public function test_a_driver_without_an_earlier_start_that_season_is_a_genuine_call_up(): void
@@ -285,7 +285,7 @@ class ResultDetectorsTest extends TestCase
 
         $detection = $this->detect('to_the_rescue', $this->race)->sole();
 
-        $this->assertSame($standIn->id, $detection->driverEntryId);
+        $this->assertSame($standIn->id, $detection->recipient->entryId);
         $this->assertSame(AwardConfidence::High, $detection->confidence);
     }
 
@@ -301,7 +301,7 @@ class ResultDetectorsTest extends TestCase
 
         $detection = $this->detect('to_the_rescue', $this->race)->sole();
 
-        $this->assertSame($swapper->id, $detection->driverEntryId);
+        $this->assertSame($swapper->id, $detection->recipient->entryId);
         $this->assertSame(AwardConfidence::Low, $detection->confidence);
     }
 }

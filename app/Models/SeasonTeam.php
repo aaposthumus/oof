@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RecipientType;
 use Database\Factories\SeasonTeamFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -37,5 +38,15 @@ class SeasonTeam extends Model
     public function driverEntries(): HasMany
     {
         return $this->hasMany(DriverEntry::class);
+    }
+
+    /**
+     * The team's own awards in this season (see AchievementAward::forSeasonTeam()).
+     *
+     * @return HasMany<AchievementAward, $this>
+     */
+    public function awards(): HasMany
+    {
+        return $this->hasMany(AchievementAward::class)->where('recipient_type', RecipientType::Team);
     }
 }

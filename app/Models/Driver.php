@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RecipientType;
 use Database\Factories\DriverFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -43,5 +44,15 @@ class Driver extends Model
     public function seasonDrivers(): HasMany
     {
         return $this->hasMany(SeasonDriver::class);
+    }
+
+    /**
+     * The driver's own awards (see AchievementAward::forDriver()).
+     *
+     * @return HasMany<AchievementAward, $this>
+     */
+    public function awards(): HasMany
+    {
+        return $this->hasMany(AchievementAward::class)->where('recipient_type', RecipientType::Driver);
     }
 }

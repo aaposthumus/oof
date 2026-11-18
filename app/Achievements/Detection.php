@@ -6,7 +6,8 @@ use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
 
 /**
- * An achievement a trigger found in a session, before the rules run.
+ * An achievement a trigger found in a session, before the rules run, with
+ * its recipient (a driver's car, a team or the Safety Car).
  *
  * The instance key tells instances of the same achievement apart within the
  * session (e.g. one per penalty message). The event key ties together
@@ -22,7 +23,7 @@ final readonly class Detection
      */
     public function __construct(
         public string $achievementKey,
-        public ?int $driverEntryId,
+        public Recipient $recipient,
         public string $instanceKey,
         public string $eventKey,
         public array $evidence,
@@ -34,11 +35,14 @@ final readonly class Detection
     ) {}
 
     /**
-     * The award's instance key: the entry first, so awards of different cars never collide.
+     * The award's instance key: the recipient first ("e12:" for a car, "t5:"
+     * for a season team), so awards of different recipients never collide.
      */
     public function awardInstanceKey(): string
     {
-        return $this->driverEntryId === null ? $this->instanceKey : "e{$this->driverEntryId}:{$this->instanceKey}";
+        $recipient = $this->recipient->key();
+
+        return $recipient === null ? $this->instanceKey : "{$recipient}:{$this->instanceKey}";
     }
 
     public function key(): string

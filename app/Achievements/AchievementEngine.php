@@ -15,6 +15,7 @@ use App\Achievements\Triggers\TriggerFactory;
 use App\Enums\AwardReviewReason;
 use App\Enums\AwardScope;
 use App\Enums\AwardStatus;
+use App\Enums\RecipientType;
 use App\Enums\SessionType;
 use App\Models\Achievement;
 use App\Models\AchievementAward;
@@ -332,7 +333,8 @@ class AchievementEngine
             $stat ??= ['found' => 0, 'created' => 0, 'updated' => 0, 'removed' => 0, 'pending' => 0];
             $stat['found']++;
 
-            $driverId = $entryOf($detection->driverEntryId)?->driver_id;
+            $recipient = $detection->recipient;
+            $driverId = $entryOf($recipient->entryId)?->driver_id;
             [$status, $reviewReason] = $judge($detection, $driverId, $achievement);
             $key = "{$achievement->id}|{$detection->awardInstanceKey()}";
             $award = $existing->get($key) ?? new AchievementAward([
@@ -340,6 +342,7 @@ class AchievementEngine
                 'context_key' => $context['key'],
                 'season_id' => $context['season_id'],
                 'race_session_id' => $anchorOf($detection)?->session->id,
+                'recipient_type' => $recipient->type,
                 'achievement_id' => $achievement->id,
                 'instance_key' => $detection->awardInstanceKey(),
             ]);
@@ -358,11 +361,16 @@ class AchievementEngine
 
             // A person's decision stands: the car they picked, the status and their note.
             if (! $award->isDecided()) {
+                // A team award names its season team; a driver award gets its team from the car.
+                if ($recipient->is(RecipientType::Team)) {
+                    $award->season_team_id = $recipient->seasonTeamId;
+                }
+
                 // In a historic session nobody reviews what would wait for review, unless it was handed back.
                 $suppressAsHistoric = $isHistoric && $status === AwardStatus::Pending && $reviewReason !== null && $award->handed_back_at === null;
 
                 $award->fill([
-                    'driver_entry_id' => $detection->driverEntryId,
+                    'driver_entry_id' => $recipient->entryId,
                     'driver_id' => $driverId,
                     'status' => $suppressAsHistoric ? AwardStatus::Suppressed : $status,
                     'review_reason' => $reviewReason,
@@ -464,15 +472,19 @@ class AchievementEngine
     }
 
     /**
-     * A weekend detection on the car its driver drove in the deciding
+     * A weekend detection for a driver on the car they drove in the deciding
      * session, when they drove in it.
      */
     private function onAnchor(Detection $detection, SessionData $anchor): Detection
     {
-        $driverId = $anchor->entry($detection->driverEntryId)?->driver_id;
+        if (! $detection->recipient->is(RecipientType::Driver)) {
+            return $detection;
+        }
+
+        $driverId = $anchor->entry($detection->recipient->entryId)?->driver_id;
         $entry = $driverId === null ? null : $anchor->entryOfDriver($driverId);
 
-        return $entry === null || $entry->id === $detection->driverEntryId ? $detection : $detection->with(['driverEntryId' => $entry->id]);
+        return $entry === null || $entry->id === $detection->recipient->entryId ? $detection : $detection->with(['recipient' => Recipient::driver($entry->id)]);
     }
 
     /**

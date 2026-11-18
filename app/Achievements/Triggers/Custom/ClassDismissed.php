@@ -5,6 +5,7 @@ namespace App\Achievements\Triggers\Custom;
 use App\Achievements\Detection;
 use App\Achievements\Detector;
 use App\Achievements\Facts\DataSource;
+use App\Achievements\Recipient;
 use App\Achievements\SessionData;
 use App\Achievements\Support\Evidence;
 use App\Enums\SessionType;
@@ -70,7 +71,7 @@ class ClassDismissed implements Detector
 
         return $entry === null ? collect() : collect([new Detection(
             achievementKey: $this->key(),
-            driverEntryId: $entry->id,
+            recipient: Recipient::driver($entry->id),
             instanceKey: 'title',
             eventKey: "title:{$entry->id}",
             evidence: Evidence::rows('jolpica', $after->sortDesc()->take(2)->map(fn (float $points, int $driverId) => [

@@ -30,7 +30,7 @@ class Finality
     {
         $reason = $detection->reviewReason
             ?? ($detection->confidence === AwardConfidence::Low ? AwardReviewReason::LowConfidence : null)
-            ?? ($achievement->shelf === AchievementShelf::Oof && $this->heavyCrash->involves($data, $detection->driverEntryId) ? AwardReviewReason::HeavyCrash : null)
+            ?? ($achievement->shelf === AchievementShelf::Oof && $this->heavyCrash->involves($data, $detection->recipient->entryId) ? AwardReviewReason::HeavyCrash : null)
             ?? ($achievement->shelf !== AchievementShelf::Glory && $this->sensitivity->of($data)['sensitive'] ? AwardReviewReason::SensitiveWeekend : null)
             ?? ($detection->isOpen && ! $sessionIsFinal ? AwardReviewReason::OpenInvestigation : null);
 

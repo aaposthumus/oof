@@ -7,6 +7,7 @@ use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
 use App\Enums\AwardScope;
+use App\Enums\RecipientType;
 use App\Enums\ScoreCategory;
 use App\Enums\SessionType;
 use App\Models\Achievement;
@@ -56,6 +57,12 @@ class AchievementForm
                     ->dehydrated(false)
                     ->helperText(self::CATALOGUE_OWNED)
                     ->columnSpanFull(),
+                TextInput::make('recipient_type')
+                    ->label('Awarded to')
+                    ->formatStateUsing(fn (?Achievement $record): string => ($record?->recipientType() ?? RecipientType::Driver)->label())
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText(self::CATALOGUE_OWNED),
                 TextInput::make('scope')
                     ->label('Decided over')
                     ->formatStateUsing(fn (?Achievement $record): string => match ($record?->scope) {
