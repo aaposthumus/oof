@@ -930,6 +930,14 @@ Decided by the owner on 18 November 2026, done the same day:
 - Checked on the local database: migrate, sync dry run (no drift; 55 driver, 4 Safety Car
   achievements), rollback and re-apply. Golden master: no differences; not re-exported.
 
+Decided by the owner on 18 November 2026:
+
+- Requirement for the first team achievement (not built now, as none exists): a driver
+  block on a round also holds back the team awards of that driver's team in that round,
+  as a round block does for every award.
+- Season-level team awards (an aggregate trigger grouped by team) come later, if ever;
+  until then a team achievement takes a match, count or extreme trigger.
+
 **Phase 9: nicknames and evolution events.**
 Tables, seed the 22 nicknames and the legends, CMS screens, the breakthrough check,
 both events, the off-season rule for the effective date, nickname-based edition
