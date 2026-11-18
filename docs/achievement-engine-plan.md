@@ -1093,7 +1093,9 @@ Decided by the owner on 18 November 2026, done the same day:
 7. One event, one achievement: a teammate penalised for the incident gets the offence
    (Bumper Cars) only; the other keeps Sibling Rivalry. Built as: every achievement that
    supersedes It Was Like That When I Got There (the 13 offences, Sunday Driver and the
-   four penalties) also supersedes Sibling Rivalry.
+   four penalties) also supersedes Sibling Rivalry. Confirmed by the owner the same day:
+   any offence or penalty on the incident replaces Sibling Rivalry for that car, not
+   only Bumper Cars.
 8. Peaked Too Soon and Led Astray may both stand on one result.
 
 - 1, 4 and 7 in the catalogue and, for existing rows, by migration (tier only while still
