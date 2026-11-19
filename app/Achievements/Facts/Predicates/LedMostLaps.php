@@ -16,17 +16,17 @@ class LedMostLaps implements Predicate
 {
     public function sources(): array
     {
-        return [DataSource::OpenF1Positions, DataSource::OpenF1Laps];
+        return [DataSource::JolpicaLaps, DataSource::OpenF1Positions, DataSource::OpenF1Laps];
     }
 
     public function availableFrom(): int
     {
-        return 2023;
+        return 1996;
     }
 
     public function notes(): array
     {
-        return ['Laps led are read from OpenF1 positions; before 2023 it needs the Jolpica lap-time import (from 1996).'];
+        return ['Laps led from Jolpica lap times (from 1996); OpenF1 stands in until a race\'s Jolpica laps are in, and the award waits for them.'];
     }
 
     public function test(Fact $fact, SessionData $data): bool

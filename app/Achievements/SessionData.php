@@ -7,6 +7,7 @@ use App\Achievements\Support\IncidentThread;
 use App\Achievements\Support\IncidentThreads;
 use App\Enums\SessionType;
 use App\Models\DriverEntry;
+use App\Models\LapTime;
 use App\Models\PitLaneVisit;
 use App\Models\Position;
 use App\Models\RaceControlMessage;
@@ -174,6 +175,17 @@ class SessionData
     public function laps(): Collection
     {
         return $this->loaded['laps'] ??= SessionLap::query()->where('race_session_id', $this->session->id)->orderBy('lap_number')->get();
+    }
+
+    /**
+     * Jolpica's lap times of the session's cars (races only, from 1996): the
+     * position at the end of each lap.
+     *
+     * @return Collection<int, LapTime>
+     */
+    public function lapTimes(): Collection
+    {
+        return $this->loaded['lap_times'] ??= LapTime::query()->whereIn('driver_entry_id', $this->entries->pluck('id'))->orderBy('lap')->get();
     }
 
     /**

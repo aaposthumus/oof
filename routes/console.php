@@ -8,7 +8,8 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('oof:import')
+// Jolpica, with the current season's lap times: laps led come from them, and Led Astray and Clean Sweep wait for them.
+Schedule::command('oof:import --recent-laps')
     ->hourly()
     ->withoutOverlapping(720)
     ->appendOutputTo(storage_path('logs/import.log'));
@@ -19,7 +20,7 @@ Schedule::command('oof:import --source=openf1')
     ->withoutOverlapping(240)
     ->appendOutputTo(storage_path('logs/import-openf1.log'));
 
-Schedule::command('oof:normalize')
+Schedule::command('oof:normalize --laps')
     ->hourlyAt(30)
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/normalize.log'));

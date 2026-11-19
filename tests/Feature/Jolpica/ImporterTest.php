@@ -129,6 +129,20 @@ class ImporterTest extends TestCase
         $this->assertSame(1, $this->requestsTo('2024/results.json'));
     }
 
+    public function test_recent_laps_are_only_those_of_the_current_season(): void
+    {
+        $this->travelTo('2026-10-26 12:00:00');
+        $this->fakeJolpica([2025 => [1 => '2025-03-16'], 2026 => [1 => '2026-03-08', 2 => '2026-10-25', 3 => '2026-11-08']]);
+
+        app(Importer::class)->import([2025, 2026], recentLaps: true);
+
+        $this->assertSame(0, $this->requestsTo('2025/1/laps.json'));
+        $this->assertSame(1, $this->requestsTo('2026/1/laps.json'));
+        $this->assertSame(1, $this->requestsTo('2026/2/laps.json'));
+        $this->assertSame(0, $this->requestsTo('2026/3/laps.json'));
+        $this->assertSame(1, $this->requestsTo('2026/results.json'));
+    }
+
     public function test_dry_run_counts_requests_without_fetching(): void
     {
         Http::preventStrayRequests();

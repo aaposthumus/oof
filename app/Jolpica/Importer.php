@@ -28,6 +28,7 @@ class Importer
 
     /**
      * @param  list<int>  $years  Seasons to import; empty for every season Jolpica lists
+     * @param  bool  $recentLaps  Also the lap times of the current season's races, for laps led
      * @param  bool  $dryRun  Count the requests that would be made without fetching
      * @param  (Closure(JolpicaRequest): void)|null  $onFetch  Called after each fetched request
      * @return array{fetched: int, skipped: int, planned: int}
@@ -39,6 +40,7 @@ class Importer
         bool $refresh = false,
         bool $dryRun = false,
         ?Closure $onFetch = null,
+        bool $recentLaps = false,
     ): array {
         $this->dryRun = $dryRun;
         $this->refresh = $refresh;
@@ -59,9 +61,11 @@ class Importer
         }
 
         // Lap times come last, as a separate long step, once everything else is in.
-        if ($includeLaps || $onlyLaps) {
+        if ($includeLaps || $onlyLaps || $recentLaps) {
             foreach ($years as $year) {
-                if ($year >= config('jolpica.laps_from')) {
+                $wanted = $includeLaps || $onlyLaps || $year === now()->year;
+
+                if ($wanted && $year >= config('jolpica.laps_from')) {
                     foreach ($this->pastRounds($schedules[$year]) as $round => $date) {
                         $this->ensureAllPages(new JolpicaRequest('laps', $year, $round), $this->finalSince($date));
                     }

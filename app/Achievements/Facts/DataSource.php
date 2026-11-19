@@ -12,6 +12,7 @@ enum DataSource: string
 {
     case JolpicaResults = 'jolpica_results';
     case JolpicaQualifying = 'jolpica_qualifying';
+    case JolpicaLaps = 'jolpica_laps';
     case OpenF1SessionResults = 'openf1_session_results';
     case OpenF1RaceControl = 'openf1_race_control';
     case OpenF1Laps = 'openf1_laps';
@@ -25,6 +26,7 @@ enum DataSource: string
         return match ($this) {
             self::JolpicaResults => 'Jolpica results',
             self::JolpicaQualifying => 'Jolpica qualifying',
+            self::JolpicaLaps => 'Jolpica lap times',
             self::OpenF1SessionResults => 'OpenF1 practice results',
             self::OpenF1RaceControl => 'OpenF1 race control',
             self::OpenF1Laps => 'OpenF1 laps',
@@ -44,6 +46,7 @@ enum DataSource: string
         return match ($this) {
             self::JolpicaResults => $data->resultEntries()->isNotEmpty(),
             self::JolpicaQualifying => $data->entries->contains(fn (DriverEntry $entry) => $entry->qualifyingResult !== null),
+            self::JolpicaLaps => $data->lapTimes()->isNotEmpty(),
             self::OpenF1SessionResults => $data->entries->contains(fn (DriverEntry $entry) => $entry->practiceResult !== null),
             self::OpenF1RaceControl => $data->messages()->isNotEmpty(),
             self::OpenF1Laps => $data->laps()->isNotEmpty(),

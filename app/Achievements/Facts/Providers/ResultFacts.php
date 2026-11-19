@@ -24,7 +24,7 @@ use Illuminate\Support\Collection;
  * classified finisher not starting from the pit lane), places_gained
  * (from the grid, for a classified finisher; a pit lane start counts as
  * starting behind every car that started), finish ("P5", else the status),
- * points, fastest_lap_rank, laps_led (OpenF1, from 2023; see LapsLed),
+ * points, fastest_lap_rank, laps_led (Jolpica laps from 1996, else OpenF1; see LapsLed),
  * surprise (detail and note when the team's result is a surprise on form,
  * else null; see Surprise).
  */

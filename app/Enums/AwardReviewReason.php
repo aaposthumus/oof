@@ -13,6 +13,7 @@ enum AwardReviewReason: string
     case SourceDisagreement = 'source_disagreement';
     case SensitiveWeekend = 'sensitive_weekend';
     case HeavyCrash = 'heavy_crash';
+    case AwaitingLapTimes = 'awaiting_lap_times';
 
     public function label(): string
     {
@@ -23,6 +24,7 @@ enum AwardReviewReason: string
             self::SourceDisagreement => 'Sources disagree',
             self::SensitiveWeekend => 'Sensitive weekend',
             self::HeavyCrash => 'Heavy crash',
+            self::AwaitingLapTimes => 'Waiting for lap times',
         };
     }
 }

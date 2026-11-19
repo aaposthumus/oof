@@ -54,6 +54,7 @@ class OofAchievements extends Command
         'driver_entries' => 'race_session_id',
         'results' => 'driver_entry_id',
         'qualifying_results' => 'driver_entry_id',
+        'lap_times' => 'driver_entry_id',
     ];
 
     /**

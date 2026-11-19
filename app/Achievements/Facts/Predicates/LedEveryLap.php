@@ -6,44 +6,35 @@ use App\Achievements\Facts\DataSource;
 use App\Achievements\Facts\Fact;
 use App\Achievements\Facts\Predicate;
 use App\Achievements\SessionData;
-use App\Models\Position;
-use App\Models\SessionLap;
+use App\Achievements\Support\LapsLed;
 
 /**
- * The car led at the end of every lap, read from OpenF1's positions at the
- * start of each next lap. Without positions and laps the race cannot be
- * judged, so it does not hold.
+ * The car was P1 at the end of every lap it completed: from Jolpica's lap
+ * times (from 1996), or from OpenF1's positions and laps until those are in
+ * (see LapsLed). Without either the race cannot be judged, so it does not
+ * hold.
  */
 class LedEveryLap implements Predicate
 {
     public function sources(): array
     {
-        return [DataSource::OpenF1Positions, DataSource::OpenF1Laps];
+        return [DataSource::JolpicaLaps, DataSource::OpenF1Positions, DataSource::OpenF1Laps];
     }
 
     public function availableFrom(): int
     {
-        return 2023;
+        return 1996;
     }
 
     public function notes(): array
     {
-        return ['Before 2023 it needs the Jolpica lap-time import (from 1996).'];
+        return ['Jolpica lap times from 1996; OpenF1 stands in until a race\'s Jolpica laps are in, and the award waits for them.'];
     }
 
     public function test(Fact $fact, SessionData $data): bool
     {
         $entry = $data->entry($fact->entryId);
-        $positions = $data->positions()->where('driver_entry_id', $entry->id)->values();
-        $lapEnds = $data->laps()
-            ->where('driver_entry_id', $entry->id)
-            ->filter(fn (SessionLap $lap) => $lap->lap_number > 1 && $lap->started_at !== null)
-            ->pluck('started_at');
 
-        if ($positions->isEmpty() || $lapEnds->count() < $entry->result->laps_completed - 1) {
-            return false;
-        }
-
-        return $lapEnds->every(fn ($lapEnd) => $positions->last(fn (Position $position) => $position->recorded_at->lessThanOrEqualTo($lapEnd))?->position === 1);
+        return $entry !== null && LapsLed::ledEveryLap($data, $entry);
     }
 }

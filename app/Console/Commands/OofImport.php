@@ -27,6 +27,7 @@ class OofImport extends Command
         {--meeting= : OpenF1 only: only import the sessions of this meeting key}
         {--laps : Jolpica only: also import lap times (1996 onwards), a long extra step}
         {--only-laps : Jolpica only: only import lap times}
+        {--recent-laps : Jolpica only: also the lap times of the races of the current season (the hourly run, for laps led)}
         {--refresh : Fetch again even when the stored response is final}
         {--dry-run : Count the requests needed without fetching anything}';
 
@@ -50,8 +51,8 @@ class OofImport extends Command
             return self::FAILURE;
         }
 
-        if ($source === 'openf1' && ($this->option('laps') || $this->option('only-laps'))) {
-            $this->components->error('--laps and --only-laps are Jolpica options; OpenF1 laps are always imported.');
+        if ($source === 'openf1' && ($this->option('laps') || $this->option('only-laps') || $this->option('recent-laps'))) {
+            $this->components->error('--laps, --only-laps and --recent-laps are Jolpica options; OpenF1 laps are always imported.');
 
             return self::FAILURE;
         }
@@ -89,6 +90,7 @@ class OofImport extends Command
             refresh: (bool) $this->option('refresh'),
             dryRun: (bool) $this->option('dry-run'),
             onFetch: fn (JolpicaRequest $request) => $this->line("  fetched <info>{$request->requestKey()}</info>"),
+            recentLaps: (bool) $this->option('recent-laps'),
         );
 
         if ($this->option('dry-run')) {
