@@ -136,10 +136,9 @@ class CoreResolver
         $constructorId = $constructor['constructorId'];
 
         return $this->remember("season_team:{$season->year}:{$constructorId}", function () use ($season, $constructor, $constructorId) {
-            $team = Team::firstOrCreate(
-                ['slug' => $this->teams->slugFor($constructorId, $season->year)],
-                ['name' => $constructor['name']],
-            );
+            $slug = $this->teams->slugFor($constructorId, $season->year);
+            $teamName = $this->teams->nameFor($slug) ?? $constructor['name'];
+            $team = Team::firstOrCreate(['slug' => $slug], ['name' => $teamName]);
 
             $seasonTeam = SeasonTeam::updateOrCreate(
                 ['season_id' => $season->id, 'jolpica_constructor_id' => $constructorId],
@@ -150,8 +149,8 @@ class CoreResolver
                 ->whereRelation('season', 'year', '>', $season->year)
                 ->exists();
 
-            if ($isLatestSeason && $team->name !== $constructor['name']) {
-                $team->update(['name' => $constructor['name']]);
+            if ($isLatestSeason && $team->name !== $teamName) {
+                $team->update(['name' => $teamName]);
             }
 
             return $seasonTeam;

@@ -13,8 +13,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * optionally limited to a range of seasons because Jolpica reuses some IDs
  * (alfa was both the 1950s works team and Sauber in 2019-2023). Rules for
  * one constructor never overlap; an unmapped constructor is its own team.
+ * A rule may fix the lasting team's name, which then wins over the name of
+ * its latest season.
  */
-#[Fillable(['jolpica_constructor_id', 'from_year', 'to_year', 'team_slug', 'note'])]
+#[Fillable(['jolpica_constructor_id', 'from_year', 'to_year', 'team_slug', 'team_name', 'note'])]
 class TeamLineage extends Model
 {
     /** @use HasFactory<TeamLineageFactory> */
@@ -44,7 +46,7 @@ class TeamLineage extends Model
     /**
      * Every rule in the shape TeamResolver reads.
      *
-     * @return list<array{constructor: string, team: string, from?: int, to?: int}>
+     * @return list<array{constructor: string, team: string, from?: int, to?: int, name?: string}>
      */
     public static function rules(): array
     {
@@ -56,6 +58,7 @@ class TeamLineage extends Model
                 'team' => $lineage->team_slug,
                 'from' => $lineage->from_year,
                 'to' => $lineage->to_year,
+                'name' => $lineage->team_name,
             ], fn ($value) => $value !== null))
             ->values()
             ->all();

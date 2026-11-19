@@ -11,7 +11,8 @@ use LogicException;
 /**
  * Re-points every season team to the lasting team the lineage rules give
  * it, so a changed rule reaches the seasons already imported. A team left
- * without seasons is removed; a team takes the name of its latest season.
+ * without seasons is removed; a team takes its fixed name from the rules,
+ * else the name of its latest season.
  * Throws a LogicException (and changes nothing) when the rules would merge
  * an unmapped constructor into a lineage team.
  */
@@ -42,18 +43,26 @@ class TeamLineageSync
             }
 
             $removed = 0;
+            $teams = Team::query()
+                ->whereKey(array_keys($touched))
+                ->orWhereIn('slug', $resolver->lineageTeams())
+                ->get();
 
-            foreach (Team::query()->whereKey(array_keys($touched))->get() as $team) {
+            foreach ($teams as $team) {
                 $latest = $team->seasonTeams()
                     ->join('seasons', 'seasons.id', '=', 'season_teams.season_id')
                     ->orderByDesc('seasons.year')
                     ->value('season_teams.name');
 
+                $name = $resolver->nameFor($team->slug) ?? $latest;
+
                 if ($latest === null) {
-                    $team->delete();
-                    $removed++;
-                } elseif ($team->name !== $latest) {
-                    $team->update(['name' => $latest]);
+                    if (isset($touched[$team->id])) {
+                        $team->delete();
+                        $removed++;
+                    }
+                } elseif ($team->name !== $name) {
+                    $team->update(['name' => $name]);
                 }
             }
 

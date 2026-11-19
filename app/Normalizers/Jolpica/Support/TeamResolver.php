@@ -5,12 +5,13 @@ namespace App\Normalizers\Jolpica\Support;
 use LogicException;
 
 /**
- * Maps a Jolpica constructor in a given season to the slug of its lasting team.
+ * Maps a Jolpica constructor in a given season to the slug of its lasting
+ * team, and gives a lasting team's fixed name where a rule sets one.
  */
 class TeamResolver
 {
     /**
-     * @param  list<array{constructor: string, team: string, from?: int, to?: int}>  $lineage
+     * @param  list<array{constructor: string, team: string, from?: int, to?: int, name?: string}>  $lineage
      */
     public function __construct(private array $lineage) {}
 
@@ -29,5 +30,27 @@ class TeamResolver
         }
 
         return $constructorId;
+    }
+
+    /**
+     * The fixed name of a lasting team, from the first of its rules that has one.
+     */
+    public function nameFor(string $slug): ?string
+    {
+        foreach ($this->lineage as $rule) {
+            if ($rule['team'] === $slug && isset($rule['name'])) {
+                return $rule['name'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string> Every lasting team the rules name
+     */
+    public function lineageTeams(): array
+    {
+        return array_values(array_unique(array_column($this->lineage, 'team')));
     }
 }

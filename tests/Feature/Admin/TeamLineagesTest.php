@@ -40,6 +40,7 @@ class TeamLineagesTest extends TestCase
     public function test_lists_the_rules(): void
     {
         Livewire::test(ListTeamLineages::class)
+            ->searchTable('arrows')
             ->assertCanSeeTableRecords(TeamLineage::query()->where('team_slug', 'arrows')->get());
     }
 
@@ -56,6 +57,19 @@ class TeamLineagesTest extends TestCase
             ->assertNotified('Lineage applied');
 
         $this->assertSame('brun', $eurobrun->fresh()->team->slug);
+    }
+
+    public function test_a_fixed_team_name_renames_the_lasting_team_at_once(): void
+    {
+        $this->seasonTeam(1991, 'brun');
+        $rule = TeamLineage::factory()->create(['jolpica_constructor_id' => 'brun', 'team_slug' => 'brun']);
+
+        Livewire::test(EditTeamLineage::class, ['record' => $rule->getRouteKey()])
+            ->fillForm(['team_name' => 'EuroBrun Racing'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('EuroBrun Racing', Team::firstWhere('slug', 'brun')->name);
     }
 
     public function test_an_overlapping_rule_for_the_same_constructor_is_refused(): void

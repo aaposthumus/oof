@@ -33,6 +33,10 @@ class TeamLineageForm
                     ->regex('/^[a-z0-9_-]+$/')
                     ->datalist(fn (): array => Team::query()->orderBy('slug')->pluck('slug')->all())
                     ->helperText('An existing team, or a new slug for a new lasting team. By convention the slug of its latest name.'),
+                TextInput::make('team_name')
+                    ->label('Fixed team name')
+                    ->maxLength(255)
+                    ->helperText('Optional. The lasting team keeps this name instead of taking the name of its latest season. Set it on one rule of the team; the first rule with a name wins.'),
                 TextInput::make('from_year')
                     ->label('From season')
                     ->integer()

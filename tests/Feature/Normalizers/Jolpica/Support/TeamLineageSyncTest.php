@@ -6,6 +6,7 @@ use App\Models\Season;
 use App\Models\SeasonTeam;
 use App\Models\Team;
 use App\Models\TeamLineage;
+use App\Normalizers\Jolpica\Support\CoreResolver;
 use App\Normalizers\Jolpica\Support\TeamLineageSync;
 use App\Normalizers\Jolpica\Support\TeamResolver;
 use Database\Seeders\TeamLineageSeeder;
@@ -33,9 +34,80 @@ class TeamLineageSyncTest extends TestCase
         $this->assertSame('arrows', $resolver->slugFor('footwork', 1993));
         $this->assertSame('march', $resolver->slugFor('leyton', 1990));
         $this->assertSame('audi', $resolver->slugFor('alfa', 2020));
-        $this->assertSame('alfa', $resolver->slugFor('alfa', 1950));
+        $this->assertSame('alfa_1950s', $resolver->slugFor('alfa', 1950));
         $this->assertSame('moda', $resolver->slugFor('coloni', 1989));
         $this->assertSame('monteverdi', $resolver->slugFor('onyx', 1990));
+    }
+
+    public function test_chassis_engine_constructors_join_their_chassis_maker(): void
+    {
+        $resolver = app(TeamResolver::class);
+
+        $this->assertSame('team_lotus', $resolver->slugFor('lotus-climax', 1963));
+        $this->assertSame('team_lotus', $resolver->slugFor('team_lotus', 1978));
+        $this->assertSame('cooper', $resolver->slugFor('cooper-maserati', 1966));
+        $this->assertSame('brabham', $resolver->slugFor('brabham-repco', 1967));
+        $this->assertSame('mclaren', $resolver->slugFor('mclaren-ford', 1968));
+        $this->assertSame('march', $resolver->slugFor('march-ford', 1971));
+        $this->assertSame('eagle', $resolver->slugFor('eagle-weslake', 1967));
+        $this->assertSame('matra', $resolver->slugFor('matra-ford', 1969));
+        $this->assertSame('tomaso', $resolver->slugFor('de_tomaso-osca', 1961));
+    }
+
+    public function test_a_team_under_another_id_joins_its_lasting_team_and_shared_ids_split_by_season(): void
+    {
+        $resolver = app(TeamResolver::class);
+
+        $this->assertSame('gordini', $resolver->slugFor('simca', 1951));
+        $this->assertSame('wolf', $resolver->slugFor('iso_marlboro', 1974));
+        $this->assertSame('wolf', $resolver->slugFor('williams', 1976));
+        $this->assertSame('williams', $resolver->slugFor('williams', 1977));
+        $this->assertSame('hill', $resolver->slugFor('lola', 1974));
+        $this->assertSame('lola', $resolver->slugFor('lola', 1986));
+        $this->assertSame('larrousse', $resolver->slugFor('lola', 1991));
+        $this->assertSame('scuderia_italia', $resolver->slugFor('lola', 1993));
+        $this->assertSame('scuderia_italia', $resolver->slugFor('dallara', 1990));
+        $this->assertSame('march', $resolver->slugFor('march', 1980));
+        $this->assertSame('ram', $resolver->slugFor('march', 1982));
+        $this->assertSame('march', $resolver->slugFor('march', 1988));
+        $this->assertSame('alfa_special', $resolver->slugFor('alfa', 1965));
+        $this->assertSame('alfa', $resolver->slugFor('alfa', 1983));
+        $this->assertSame('ats_1963', $resolver->slugFor('ats', 1963));
+        $this->assertSame('ats', $resolver->slugFor('ats', 1980));
+    }
+
+    public function test_a_fixed_name_wins_over_the_latest_seasons_name(): void
+    {
+        $early = $this->seasonTeam(1958, 'cooper', 'Cooper');
+        $this->seasonTeam(1969, 'cooper-maserati', 'Cooper-Maserati');
+
+        app(TeamLineageSync::class)->run();
+
+        $this->assertSame('Cooper', $early->fresh()->team->name);
+        $this->assertSame(2, $early->fresh()->team->seasonTeams()->count());
+    }
+
+    public function test_importing_a_later_season_keeps_the_fixed_name(): void
+    {
+        $this->seasonTeam(1990, 'dallara', 'Dallara');
+        app(TeamLineageSync::class)->run();
+
+        app(CoreResolver::class)->seasonTeam(Season::firstOrCreate(['year' => 1993]), ['constructorId' => 'lola', 'name' => 'Lola']);
+
+        $team = Team::firstWhere('slug', 'scuderia_italia');
+        $this->assertSame('Scuderia Italia', $team->name);
+        $this->assertSame(['Dallara', 'Lola'], $team->seasonTeams()->orderBy('name')->pluck('name')->all());
+    }
+
+    public function test_clearing_a_fixed_name_gives_the_team_its_latest_seasons_name_again(): void
+    {
+        $this->seasonTeam(1969, 'eagle-climax', 'Eagle-Climax');
+        app(TeamLineageSync::class)->run();
+
+        TeamLineage::query()->where('team_slug', 'eagle')->update(['team_name' => null]);
+        app(TeamLineageSync::class)->run();
+
+        $this->assertSame('Eagle-Climax', Team::firstWhere('slug', 'eagle')->name);
     }
 
     public function test_ensign_and_theodore_stay_apart_while_both_raced_and_join_from_1983(): void
