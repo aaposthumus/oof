@@ -69,6 +69,52 @@ class ThisWeekInOofHistoryTest extends TestCase
         $this->assertSame([true, false], $moments->pluck('is_sensitive')->all());
     }
 
+    public function test_a_week_without_anything_falls_back_to_the_nearest_week_with_awards(): void
+    {
+        $this->award('1985-02-07');
+        $nearer = $this->award('1990-03-01');
+
+        $week = app(ThisWeekInOofHistory::class)->weekOf(CarbonImmutable::parse('2026-02-18'));
+
+        $this->assertTrue($week['is_fallback']);
+        $this->assertSame('2026-02-16', $week['requested_from']->toDateString());
+        $this->assertSame('2026-02-23', $week['from']->toDateString());
+        $this->assertSame([$nearer->id], $week['awards']->pluck('id')->all());
+    }
+
+    public function test_on_a_tie_the_earlier_week_is_shown(): void
+    {
+        $earlier = $this->award('1985-02-12');
+        $this->award('1990-02-24');
+
+        $week = app(ThisWeekInOofHistory::class)->weekOf(CarbonImmutable::parse('2026-02-18'));
+
+        $this->assertSame('2026-02-09', $week['from']->toDateString());
+        $this->assertSame([$earlier->id], $week['awards']->pluck('id')->all());
+    }
+
+    public function test_a_week_with_only_a_historic_moment_does_not_fall_back(): void
+    {
+        $this->award('1990-02-24');
+        $moment = HistoricMoment::factory()->create(['date' => '1971-02-17']);
+
+        $week = app(ThisWeekInOofHistory::class)->weekOf(CarbonImmutable::parse('2026-02-18'));
+
+        $this->assertFalse($week['is_fallback']);
+        $this->assertCount(0, $week['awards']);
+        $this->assertSame([$moment->id], $week['moments']->pluck('id')->all());
+    }
+
+    public function test_the_command_says_when_it_falls_back(): void
+    {
+        $this->award('1990-03-01');
+
+        $this->artisan('oof:history', ['date' => '2026-02-18'])
+            ->expectsOutputToContain('Nothing ever happened 16 February to 22 February: showing the nearest week instead.')
+            ->expectsOutputToContain('23 February to 1 March: 1 awards in 1 seasons')
+            ->assertSuccessful();
+    }
+
     public function test_the_command_shows_a_week(): void
     {
         $this->award('1955-05-22', ['is_sensitive' => true]);

@@ -23,7 +23,7 @@ class OofHistory extends Command
      *
      * @var string
      */
-    protected $description = 'This week in OOF history: final awards and historic moments of a calendar week in any year, sensitive ones flagged';
+    protected $description = 'This week in OOF history: final awards and historic moments of a calendar week in any year, sensitive ones flagged; a week without any falls back to the nearest one';
 
     /**
      * Execute the console command.
@@ -33,6 +33,10 @@ class OofHistory extends Command
         $week = $history->weekOf(CarbonImmutable::parse($this->argument('date') ?? 'today'));
         $awards = $week['awards'];
         $flagged = $awards->where('is_sensitive', true)->count();
+
+        if ($week['is_fallback']) {
+            $this->components->warn("Nothing ever happened {$week['requested_from']->format('j F')} to {$week['requested_to']->format('j F')}: showing the nearest week instead.");
+        }
 
         $this->components->info("{$week['from']->format('j F')} to {$week['to']->format('j F')}: {$awards->count()} awards in {$awards->pluck('round.season.year')->unique()->count()} seasons ({$flagged} flagged sensitive), {$week['moments']->count()} historic moments.");
 

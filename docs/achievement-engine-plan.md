@@ -1301,13 +1301,21 @@ statuses already give those drivers nothing, stay without a sensitivity.
   (for example 7 to 13 September: 1,433 awards in 57 seasons, 25 flagged). 16 to 22
   February and 14 to 27 December never had a championship race.
 
+Decided by the owner on 19 November 2026, after the report:
+
+- Spa 2021: the owner suppresses Verstappen's Clean Sweep by hand in the CMS (the race
+  was run only behind the safety car; most records do not count it). The engine keeps a
+  person's decision, so it stays suppressed.
+- Weeks without any race: This week in OOF history falls back to the nearest week with
+  awards or a historic moment, the earlier one on a tie (`ThisWeekInOofHistory::weekOf()`,
+  `is_fallback`; `oof:history` says so). 16 to 22 February shows 9 to 15 February, 14 to
+  20 December shows 7 to 13 December, 21 to 27 December shows 28 December to 3 January.
+
 Open for the owner:
 
-- Review `config/curated_clean_sweeps.php`, then set `approved` to true and run 1950 to
-  1995 again (44 Clean Sweeps, each replacing a Did the Thing).
-- Spa 2021: Verstappen's Clean Sweep from the data (pole, win, fastest-lap rank 1, led
-  every lap) in a race run only behind the safety car; most records do not count it.
-- Empty weeks: what This week in OOF history shows in the three weeks without any race.
+- Review `config/curated_clean_sweeps.php` (printed for review on 19 November 2026),
+  then set `approved` to true and run 1950 to 1995 again (44 Clean Sweeps, each
+  replacing a Did the Thing).
 
 ## Working notes
 

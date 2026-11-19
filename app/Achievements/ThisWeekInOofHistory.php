@@ -17,20 +17,65 @@ use Illuminate\Support\Collection;
  * their round is sensitive. A person picks from it; automatic publishing
  * reads AchievementAward::publishable() instead, which leaves out flagged
  * awards and OOF before 2023.
+ *
+ * A week without awards or historic moments in any year (16 to 22 February
+ * and 14 to 27 December never had a championship race) falls back to the
+ * nearest week that has either, the earlier one on a tie (decided by the
+ * owner on 19 November 2026).
  */
 class ThisWeekInOofHistory
 {
     /**
-     * The week (Monday to Sunday) around a day.
+     * How far the fallback looks, in weeks each way: half a year reaches any calendar week.
+     */
+    private const FALLBACK_WEEKS = 26;
+
+    /**
+     * The week (Monday to Sunday) around a day, or the nearest week with
+     * something to show. from and to are the week shown; requested_from and
+     * requested_to the week asked for.
      *
-     * @return array{from: CarbonImmutable, to: CarbonImmutable, awards: Collection<int, AchievementAward>, moments: Collection<int, HistoricMoment>}
+     * @return array{from: CarbonImmutable, to: CarbonImmutable, requested_from: CarbonImmutable, requested_to: CarbonImmutable, is_fallback: bool, awards: Collection<int, AchievementAward>, moments: Collection<int, HistoricMoment>}
      */
     public function weekOf(CarbonInterface $day): array
     {
-        $from = CarbonImmutable::parse($day)->startOfWeek();
+        $requested = CarbonImmutable::parse($day)->startOfWeek();
+        $requestedWeek = ['requested_from' => $requested, 'requested_to' => $requested->addDays(6)];
+        $week = $this->week($requested);
+
+        if ($this->hasSomething($week)) {
+            return [...$week, ...$requestedWeek, 'is_fallback' => false];
+        }
+
+        for ($offset = 1; $offset <= self::FALLBACK_WEEKS; $offset++) {
+            foreach ([-$offset, $offset] as $weeks) {
+                $candidate = $this->week($requested->addWeeks($weeks));
+
+                if ($this->hasSomething($candidate)) {
+                    return [...$candidate, ...$requestedWeek, 'is_fallback' => true];
+                }
+            }
+        }
+
+        return [...$week, ...$requestedWeek, 'is_fallback' => false];
+    }
+
+    /**
+     * @return array{from: CarbonImmutable, to: CarbonImmutable, awards: Collection<int, AchievementAward>, moments: Collection<int, HistoricMoment>}
+     */
+    private function week(CarbonImmutable $from): array
+    {
         $to = $from->addDays(6);
 
         return ['from' => $from, 'to' => $to, 'awards' => $this->awards($from, $to), 'moments' => $this->moments($from, $to)];
+    }
+
+    /**
+     * @param  array{awards: Collection<int, AchievementAward>, moments: Collection<int, HistoricMoment>}  $week
+     */
+    private function hasSomething(array $week): bool
+    {
+        return $week['awards']->isNotEmpty() || $week['moments']->isNotEmpty();
     }
 
     /**
