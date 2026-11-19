@@ -24,7 +24,8 @@ and 4 for the design, and "Working notes" at the end.
 | 8 | Recipients | Done, 18 November 2026 |
 | 9 | Nicknames and evolution events | Done, 18 November 2026 |
 | 10 | 2027 pack | Done, 18 November 2026 |
-| 11 | Historic backfill | Not started |
+| 11a | Historic data: Jolpica lap times, constructor merge | Done, 19 November 2026 |
+| 11b | Historic backfill: achievements for 1950 to 2022 | Not started |
 
 ## 0. Where the code stood on 16 November 2026
 
@@ -419,8 +420,8 @@ come from general knowledge of the Ergast data, not from this database.
    149 have an outcome in race control. Post-race time penalties, grid penalties and
    DSQ reasons need Jolpica's final result or, later, the FIA documents. A grid-penalty
    achievement can only be approximated from qualifying position against grid.
-2. **Laps led before 2023.** Jolpica `lap_times` is empty until the import runs; there
-   is nothing at all before 1996.
+2. **Laps led before 2023.** Jolpica lap times are imported for 1996 on (Phase 11a); the
+   engine does not read them yet (11b). There is nothing at all before 1996.
 3. **Pit stationary time** is sparse. Check coverage per season before trusting Table
    for One and Fine Dining; Jolpica's pit data is pit-lane time, not stationary time.
 4. **Track limits.** Practice deletions exist only from 2026; from 2024 most deletions
@@ -433,18 +434,20 @@ come from general knowledge of the Ergast data, not from this database.
    2027 weekend unless a person or the heavy-crash proposal does.
 8. **Props and reserves** are not in the database (nicknames and mottos are, as drafts,
    since Phase 9); the 2027 line-ups are not confirmed.
-9. **Team lineage** covers today's teams and, since Phase 2, the main historic renames.
-   Jolpica's chassis-engine constructors of the 1950s to 1970s (Lotus-Climax beside Team
-   Lotus, Cooper-Climax, Brabham-Repco, McLaren-Ford and so on) are still separate teams,
-   which splits their form; the owner decided to merge them in Phase 11.
+9. **Team lineage** covers today's teams, the main historic renames (Phase 2) and, since
+   Phase 11a, Jolpica's chassis-engine constructors of about 1959 to 1975, teams listed
+   under another ID, and two IDs shared by unrelated teams. Jolpica has no entrant, so a
+   constructor ID used by several teams in one season (Tyrrell's March cars of 1970,
+   private Lotuses) stays with the chassis maker.
 10. **Session dates.** Old seasons have only the race date, in UTC; a night race can
     fall on the next calendar day locally.
 11. **Jolpica quirks.** No scheduled race distance, a few wrong 2025 lap counts, grid 0
     no longer used after 2024.
 12. **No signal in the data.** Black-and-orange flags never occur; team radio has no
     transcripts and follows the broadcast; stints are noisy.
-13. **Licences.** OpenF1's free tier is personal use; Jolpica is non-commercial. Both
-    need settling before launch.
+13. **Licences.** OpenF1's free tier is personal use; Jolpica is non-commercial, both the
+    API and the free database dump. Both need settling before launch: if OOF ever becomes
+    commercial, the data sources' terms must be checked first (owner, 19 November 2026).
 
 ## 8. Build plan
 
@@ -1112,23 +1115,95 @@ Decided by the owner on 18 November 2026, done the same day:
   OOFscore Champion 2023 Piastri 810 to 785, 2025 evidence only (Antonelli 1,300); 2024
   Hamilton 815 unchanged. Re-exported: 4,645 awards in 453 contexts.
 
-**Phase 11: historic backfill.**
-Import Jolpica lap times (independent of the other phases, so it can start any time),
-lift `first_season`, run 1950 to 2022 oldest first, add a curated list for Clean Sweeps
-before the lap data, wire the This week in OOF history query.
-Done when a second full backfill changes nothing and any calendar week returns awards
-with sensitive ones flagged.
+**Phase 11a: historic data. Done.**
 
-Decided for this phase on 17 November 2026:
+Data preparation only: no achievements were run for 1950 to 2022 and `first_season` is
+still 2023.
 
-- Merge Jolpica's chassis-engine constructors into lasting teams in `team_lineages`
-  (Lotus-Climax and the other Lotus variants into Team Lotus, Cooper-Climax and the
-  other Cooper variants into Cooper, likewise Brabham, McLaren, March, Eagle, BRM,
-  Matra, Shadow, LDS and De Tomaso), so their form is not split. Do it before the
-  backfill runs. Then run `oof:dig`, which re-digs the surprise-winner excavator
-  (version 3, on team form); it has not been run since that change.
-- Open question: should the Indianapolis 500 rounds of 1950 to 1960 count for any
-  achievement at all? Today they are only out of the surprise rule.
+- Lap times from Jolpica's free CSV database dump instead of the paced API (decision 9
+  stands, but the dump takes seconds instead of about 14 hours). `oof:import:dump`
+  fetches the free dump (14 days behind the paid one), checks its SHA-256, keeps it in
+  `storage/app/private/jolpica/dumps` (not in git) and writes every race lap onto the
+  driver's race entry, one race per transaction, safe to re-run. Sprint, qualifying and
+  practice laps are left out, like the API's laps endpoint. `--file=` imports a dump on
+  disk, `--season=` limits it. The API import (`oof:import --only-laps`) stays as the
+  fallback and for races newer than the dump.
+- Local database: the dump of 2 November 2026 gave 637,858 laps in 587 races (1996 to
+  2026 round 19, every race, nothing unmatched); 2026 round 20 (Brazil) came from the API.
+  The API's laps of all 20 rounds of 2026 (249 requests, about 30 minutes) match the
+  dump's on every lap of rounds 1 to 19 (22,104 laps, no difference in position or time).
+  In all: 639,293 laps in 588 races. Lap responses are normalized only with
+  `oof:normalize --laps`, so the hourly run never writes them.
+- Laps led, Jolpica against OpenF1 on the 89 races of 2023 to 2026 round 19, both read as
+  "P1 at the end of a lap, the last lap not counted": the top lap leader is the same in all
+  89 (so Led Astray would not change) and led every lap agrees in 85. 65 races match lap
+  for lap; in most of the other 24 OpenF1 gives the leader one lap more, because its laps
+  run past the flag, and 2025 round 6 has a gap in OpenF1's laps. The engine keeps OpenF1
+  from 2023; Jolpica laps are for the seasons before.
+- Team lineage (decisions D3 to D6 below): 36 chassis-engine constructor IDs join their
+  chassis maker (Team Lotus, Cooper, Brabham, McLaren, March, Eagle, BRM, Shadow, LDS, De
+  Tomaso, Matra), teams listed under another ID join their lasting team, and Alfa Romeo
+  and ATS are split by seasons (`TeamLineageSeeder`: `CHASSIS_ENGINE_RULES`,
+  `SAME_TEAM_RULES`, `SPLIT_RULES`; written out in the migration). A rule can fix the
+  lasting team's name (`team_lineages.team_name`, CMS "Fixed team name"), which wins over
+  the name of its latest season, in the sync and on import: Cooper (not
+  "Cooper-Maserati"), Eagle, Embassy Hill, Scuderia Italia, Alfa Special. Local database:
+  teams 180 to 145, rules 50 to 116; rollback and re-apply give the same teams.
+- `oof:dig` run after the merge: surprise winners 65 to 97 (57 kept, 40 added, 8 dropped).
+  Phase 2 had estimated 108 under the version 3 rule with the teams still split; the
+  merge takes 11 of them away (for example Clark's 1967 Dutch win in the first Lotus-Ford:
+  Team Lotus now has its Lotus-BRM and Lotus-Climax history). Every other excavator is
+  unchanged but one start milestone (2026 round 20, new data). No candidate had been
+  reviewed.
+- Golden master 2023 to 2026: no differences after each step; not re-exported.
+
+Decided by the owner on 19 November 2026:
+
+- D1. Lap times from the free dump, 2023 to 2026 included for the cross-check; newer races
+  from the API; the API importer stays as the fallback.
+- D2. `first_season` stays 2023 in 11a. Lifting it is the switch for the backfill: the
+  hourly `--changed --stale` would start 1950 to 2022 on its own, and the catalogue
+  version changes. 11b first builds the "OOF counts from 2023" rule (OOF and Safety Car
+  awards before 2023 score 0 and stay out of the OOFscore, the Oofies, Close season and
+  the stamp books; glory counts from 1950), then lifts `first_season` and runs the
+  backfill by hand, season by season.
+- D3. Matra-Ford (Ken Tyrrell's Matra team, 1968 and 1969) merges into Matra, as in the
+  record books, not into Tyrrell. Neither choice changes a surprise award.
+- D4. Frank Williams' first team (Politoys 1972, Iso-Marlboro 1973 and 1974, Williams 1975
+  and 1976) merges into Wolf, which bought it in 1976; today's Williams starts in 1977.
+- D5. Seasons in a chassis no other team used that year merge into the team: Embassy
+  Hill's Lola (1974 and 1975), RAM's March (1981 and 1982), Larrousse's Lola (1991) and
+  Scuderia Italia's Lola (1993, after its Dallara seasons). Also routine: Simca (1950 to
+  1953) into Gordini; Alfa Romeo split into the 1950 and 1951 works team, de Klerk's Alfa
+  Special (1963, 1965) and the 1979 to 1985 works team; ATS split into the Italian team
+  of 1963 and the German team of 1978 to 1984.
+- D6. An optional fixed name per lineage rule (built).
+- D12. `oof:dig` stays in the daily schedule (04:50); the lineage migration must run before
+  the first dig after the deploy (deploy step 1).
+
+Decided for Phase 11b (not built in 11a, which is data only):
+
+- D7. Indianapolis 500 (1950 to 1960): results and standings stay as Jolpica has them.
+  Only the glory achievements that restate the official record (Did the Thing, Silver
+  Lining, Solid Bronze, First Time for Everything); no OOF achievements, no surprise and no
+  comparative glory such as Charging Rhino. The excavators keep leaving it out. 103
+  drivers raced only there; 6 of its 11 rounds are seeded sensitive (fatal).
+- D8. Shared drives follow the official record: every driver credited with a shared car
+  gets its glory (Fagioli's only win, 1951 France, shared with Fangio). A driver who drove
+  two cars in one race (40 races up to 1964) is judged on his best car; the car he left
+  gets no retirement award. 125 shared cars in 60 races, nearly all up to 1960; later
+  "shared" car numbers are mostly a withdrawn entry whose number went to a reserve.
+- D9. No Forgot the Keys for withdrawn entries (`W`) before 2023 (347 of them): without
+  practice data a car that never arrived cannot be told from one that failed on the grid.
+- D10. Where a round has no qualifying data (every round before 1994 and most of 1996 to
+  2002), grid 1 of the race is the pole, so Plot Twist and the first pole of First Time
+  for Everything reach back to 1950. Today they run only on qualifying sessions.
+- D11. Nearly Famous before 2010: the first place outside the points of that era (P6 in
+  the 1950s, P7 to 2002, P9 to 2009), not P11.
+- Also for 11b: Led Astray from 1996 and Clean Sweep from 2004 on Jolpica laps; the
+  curated Clean Sweeps before that; the This week in OOF history query. Done when a
+  second full backfill changes nothing and any calendar week returns awards with the
+  sensitive ones flagged.
 
 ## Working notes
 
@@ -1146,8 +1221,11 @@ When the `achievement-engine` branch is deployed to production (decided 17 Novem
 
 1. `php artisan migrate` (lineages, award schema and snapshot, sensitivity columns,
    data needs, scope and the run log, recipient type, nicknames and evolutions, practice
-   results and `is_manual`), then `php artisan oof:normalize --all --source=openf1
+   results and `is_manual`, the lineage's fixed names and the historic constructor
+   merge), then `php artisan oof:normalize --all --source=openf1
    --endpoint=session_result` to fill `practice_results` from the stored responses.
+   Deploy and migrate before 04:50: the scheduled `oof:dig` must not run on the old
+   lineage (decision D12 of Phase 11a).
 2. `php artisan oof:achievements:sync --dry-run`, then, if it lists no differences in
    sessions or stacks the owner wants kept, `php artisan oof:achievements:sync` (writes
    the catalogue's mechanics and the derived data needs, and creates the three Oofies and
@@ -1163,6 +1241,10 @@ When the `achievement-engine` branch is deployed to production (decided 17 Novem
    rebuilds the seasons it ran; this makes sure).
 6. `php artisan db:seed --class=DriverNicknameSeeder --force` (create-only; run it again
    once Câmara is imported), then `php artisan oof:nicknames` to check for breakthroughs.
-7. Do not run `oof:dig` yet; it waits for the chassis-engine merge in Phase 11.
+7. `php artisan oof:import:dump` (the free Jolpica dump: race lap times 1996 on, in
+   seconds), then `php artisan oof:import --only-laps --season=<year>` for the races
+   newer than the dump (about 10 paced requests per race; the command says the dump's
+   date) and `php artisan oof:normalize --laps --source=jolpica --season=<year>`. Then `php artisan oof:dig`, which re-digs on the merged lineage (it also runs
+   daily at 04:50).
 8. Do not close any season until the owner says so.
 9. After any later catalogue or engine change: `php artisan oof:achievements --stale`.
