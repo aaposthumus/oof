@@ -47,6 +47,17 @@ return [
     'laps_from' => 1996,
 
     /*
+    | Jolpica's CSV database dumps, used for the lap times (oof:import:dump):
+    | the free dump is 14 days behind and covers every race lap from 1996, in
+    | minutes instead of about 14 hours of paced API requests. Same
+    | non-commercial terms as the API. Stored dumps stay out of git.
+    */
+    'dumps' => [
+        'listing_url' => env('JOLPICA_DUMPS_URL', 'https://api.jolpi.ca/data/dumps/download/'),
+        'directory' => storage_path('app/private/jolpica/dumps'),
+    ],
+
+    /*
     | Credit line required by the CC BY-NC-SA 4.0 data licence, for the website
     | and posts.
     */
