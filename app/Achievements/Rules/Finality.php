@@ -47,7 +47,8 @@ class Finality
      */
     private function awaitsLapTimes(Achievement $achievement, SessionData $data): bool
     {
-        return in_array(DataSource::JolpicaLaps, $this->requirements->for($achievement->key)['sources'], true)
+        return $data->year() >= (int) config('jolpica.laps_from')
+            && in_array(DataSource::JolpicaLaps, $this->requirements->for($achievement->key)['sources'], true)
             && ! DataSource::JolpicaLaps->hasRows($data);
     }
 

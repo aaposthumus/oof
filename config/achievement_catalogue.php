@@ -1102,7 +1102,7 @@ return [
             'withheld_on_sensitive_weekends' => false,
             'trigger' => [
                 'type' => 'match', 'fact' => 'result',
-                'where' => [['position', '=', 1], 'not_disqualified', 'set_fastest_lap', 'took_pole', 'led_every_lap'],
+                'where' => [['position', '=', 1], 'not_disqualified', 'took_pole', 'fastest_lap_and_every_lap_led'],
             ],
         ],
 

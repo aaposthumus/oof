@@ -26,6 +26,7 @@ class Predicates
         'led_every_lap' => Predicates\LedEveryLap::class,
         'led_most_laps' => Predicates\LedMostLaps::class,
         'set_fastest_lap' => Predicates\SetFastestLap::class,
+        'fastest_lap_and_every_lap_led' => Predicates\FastestLapAndEveryLapLed::class,
         'first_place_outside_the_points' => Predicates\FirstPlaceOutsideThePoints::class,
         'topped_a_practice_session' => Predicates\ToppedAPracticeSession::class,
         'top_team_on_form' => Predicates\TopTeamOnForm::class,
