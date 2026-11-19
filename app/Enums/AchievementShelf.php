@@ -22,4 +22,19 @@ enum AchievementShelf: string
             self::Oofies => 'Oofies',
         };
     }
+
+    /**
+     * The first season the shelf counts (achievements.shelf_from): before it,
+     * its awards score 0, stay out of the OOFscore, the Oofies and the stamp
+     * books, and are never published automatically.
+     */
+    public function firstSeason(): int
+    {
+        return (int) (config("achievements.shelf_from.{$this->value}") ?? config('achievements.first_season'));
+    }
+
+    public function countsIn(int $year): bool
+    {
+        return $year >= $this->firstSeason();
+    }
 }

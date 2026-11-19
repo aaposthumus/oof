@@ -79,18 +79,29 @@ class Achievement extends Model
      */
     public function updateOpenSeasonAwards(): int
     {
+        $firstSeason = $this->shelf->firstSeason();
+        $snapshot = ['tier' => $this->tier?->value, 'shelf' => $this->shelf->value, 'updated_at' => now()];
+
         return $this->awards()
-            ->whereHas('season', fn ($query) => $query->whereNull('oofscore_closed_at'))
-            ->update(['tier' => $this->tier?->value, 'shelf' => $this->shelf->value, 'points' => $this->points(), 'updated_at' => now()]);
+            ->whereHas('season', fn ($query) => $query->whereNull('oofscore_closed_at')->where('year', '>=', $firstSeason))
+            ->update([...$snapshot, 'points' => $this->points()])
+            + $this->awards()
+                ->whereHas('season', fn ($query) => $query->whereNull('oofscore_closed_at')->where('year', '<', $firstSeason))
+                ->update([...$snapshot, 'points' => 0]);
     }
 
     /**
      * OOFscore points for one award, from config: the tier's points on a
-     * scoring shelf, unless the achievement has its own value.
+     * scoring shelf, unless the achievement has its own value. An award of a
+     * season before its shelf counts (achievements.shelf_from) earns 0.
      */
-    public function points(): int
+    public function points(?int $year = null): int
     {
         if ($this->tier === null || ! in_array($this->shelf->value, config('achievements.points.scoring_shelves'), true)) {
+            return 0;
+        }
+
+        if ($year !== null && ! $this->shelf->countsIn($year)) {
             return 0;
         }
 

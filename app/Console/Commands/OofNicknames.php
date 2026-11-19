@@ -15,7 +15,7 @@ class OofNicknames extends Command
      * @var string
      */
     protected $signature = 'oof:nicknames
-        {--season=* : Only these seasons (default: all from achievements.first_season)}';
+        {--season=* : Only these seasons (default: all from achievements.live_from)}';
 
     /**
      * The console command description.
@@ -30,7 +30,7 @@ class OofNicknames extends Command
     public function handle(Breakthroughs $breakthroughs): int
     {
         $proposals = Season::query()
-            ->where('year', '>=', config('achievements.first_season'))
+            ->where('year', '>=', config('achievements.live_from'))
             ->when($this->option('season'), fn ($query, array $years) => $query->whereIn('year', array_map('intval', $years)))
             ->orderBy('year')
             ->get()

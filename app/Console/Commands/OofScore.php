@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Achievements\OofScoreStandings;
+use App\Enums\AchievementShelf;
 use App\Models\Season;
 use Illuminate\Console\Command;
 
@@ -14,7 +15,7 @@ class OofScore extends Command
      * @var string
      */
     protected $signature = 'oof:oofscore
-        {--season=* : Only these seasons (default: all from achievements.first_season)}';
+        {--season=* : Only these seasons (default: all from achievements.shelf_from.oof)}';
 
     /**
      * The console command description.
@@ -29,7 +30,7 @@ class OofScore extends Command
     public function handle(OofScoreStandings $standings): int
     {
         $seasons = Season::query()
-            ->where('year', '>=', config('achievements.first_season'))
+            ->where('year', '>=', AchievementShelf::Oof->firstSeason())
             ->when($this->option('season'), fn ($query, array $years) => $query->whereIn('year', array_map('intval', $years)))
             ->orderBy('year')
             ->get();

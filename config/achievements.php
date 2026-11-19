@@ -7,12 +7,34 @@ return [
     | Seasons
     |--------------------------------------------------------------------------
     |
-    | Achievements need OpenF1's race control, laps and pit data, which start
-    | in 2023. Earlier seasons are never run.
+    | The engine runs from 1950. Each achievement still waits for the first
+    | year its data supports (OpenF1's race control, laps and pit data start
+    | in 2023; see oof:achievements:catalogue).
+    |
+    | shelf_from: the first season a shelf counts. Earlier OOF and Safety Car
+    | awards are stored for OOF Classics and This week in OOF history, but
+    | score 0, stay out of the OOFscore, the Oofies, Close season and the stamp
+    | books, and are never published automatically. Glory counts from 1950.
+    |
+    | live_from: the first season the hourly run (--changed) starts by
+    | itself. Earlier seasons are backfilled by hand, season by season; once
+    | run, --changed and --stale keep them up to date.
+    |
+    | None of these are part of the catalogue version: they choose seasons and
+    | points, not what the engine finds.
     |
     */
 
-    'first_season' => 2023,
+    'first_season' => 1950,
+
+    'shelf_from' => [
+        'oof' => 2023,
+        'safety_car' => 2023,
+        'oofies' => 2023,
+        'glory' => 1950,
+    ],
+
+    'live_from' => 2023,
 
     /*
     |--------------------------------------------------------------------------

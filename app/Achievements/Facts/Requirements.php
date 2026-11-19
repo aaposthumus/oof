@@ -4,6 +4,7 @@ namespace App\Achievements\Facts;
 
 use App\Achievements\Catalogue;
 use App\Achievements\SessionData;
+use App\Enums\AchievementShelf;
 use Illuminate\Contracts\Container\Container;
 
 /**
@@ -92,7 +93,7 @@ class Requirements
         if ($trigger['type'] === 'aggregate' && $trigger['source'] !== 'facts') {
             return [
                 'sources' => [$trigger['source'] === 'awards' ? DataSource::Awards : DataSource::OofScore],
-                'available_from' => (int) config('achievements.first_season'),
+                'available_from' => AchievementShelf::Oofies->firstSeason(),
                 'notes' => [$trigger['source'] === 'awards' ? 'Reads the season\'s final awards, once its final round is final.' : 'Reads the OOFscore standings after the season\'s last round, once it is final.'],
                 'session_sources' => [],
                 'reads_earlier_races' => false,

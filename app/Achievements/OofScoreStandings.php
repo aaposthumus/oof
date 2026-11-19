@@ -3,6 +3,7 @@
 namespace App\Achievements;
 
 use App\Achievements\Support\TeamForm;
+use App\Enums\AchievementShelf;
 use App\Enums\AwardStatus;
 use App\Enums\RecipientType;
 use App\Enums\SessionType;
@@ -33,13 +34,15 @@ class OofScoreStandings
     private const TIERS = ['platinum', 'gold', 'silver', 'bronze'];
 
     /**
-     * Rebuild a season from scratch. Returns null for a closed season.
+     * Rebuild a season from scratch. Returns null for a closed season and for
+     * one before the OOFscore counts (achievements.shelf_from.oof), which has
+     * no standings.
      *
      * @return array{rounds: int, rows: int, changed_rounds: int}|null
      */
     public function rebuild(Season $season): ?array
     {
-        if ($season->isClosed()) {
+        if ($season->isClosed() || ! AchievementShelf::Oof->countsIn($season->year)) {
             return null;
         }
 
@@ -106,7 +109,7 @@ class OofScoreStandings
 
             foreach (Achievement::query()->whereIn('id', AchievementAward::query()->where('season_id', $season->id)->select('achievement_id'))->get() as $achievement) {
                 AchievementAward::query()->where('season_id', $season->id)->where('achievement_id', $achievement->id)
-                    ->update(['tier' => $achievement->tier?->value, 'shelf' => $achievement->shelf->value, 'points' => $achievement->points(), 'updated_at' => now()]);
+                    ->update(['tier' => $achievement->tier?->value, 'shelf' => $achievement->shelf->value, 'points' => $achievement->points($season->year), 'updated_at' => now()]);
             }
 
             $this->rebuild($season->fresh());
@@ -120,6 +123,10 @@ class OofScoreStandings
     {
         if ($season->isClosed()) {
             return ['it is closed already'];
+        }
+
+        if (! AchievementShelf::Oof->countsIn($season->year)) {
+            return ['the OOFscore counts from '.AchievementShelf::Oof->firstSeason()];
         }
 
         $lastRound = Round::query()->where('season_id', $season->id)->orderByDesc('round_number')->first();

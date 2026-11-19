@@ -96,15 +96,36 @@ class AchievementAward extends Model
     }
 
     /**
-     * Awards that may be published: final and not flagged sensitive. Any
-     * publishing (automatic posts, comedic formats, feeds) must go through
-     * this scope; suppressed, pending and flagged awards never leave the CMS.
+     * Awards that may be published automatically: final, not flagged
+     * sensitive, and of a season in which their shelf counts. Any automatic
+     * publishing (posts, comedic formats, feeds) must go through this scope;
+     * suppressed, pending and flagged awards never leave the CMS, and OOF and
+     * Safety Car awards before 2023 are only ever picked by a person (OOF
+     * Classics, This week in OOF history).
      *
      * @param  Builder<self>  $query
      */
     public function scopePublishable(Builder $query): void
     {
-        $query->where('status', AwardStatus::Final)->where('is_sensitive', false);
+        $query->where('status', AwardStatus::Final)->where('is_sensitive', false)->countingOnTheirShelf();
+    }
+
+    /**
+     * Awards of a season in which their shelf counts (achievements.shelf_from):
+     * what the stamp books, trophy cabinets and automatic publishing read.
+     * Glory counts from 1950; OOF, Safety Car and the Oofies from 2023.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeCountingOnTheirShelf(Builder $query): void
+    {
+        $query->where(function (Builder $query) {
+            foreach (AchievementShelf::cases() as $shelf) {
+                $query->orWhere(fn (Builder $query) => $query
+                    ->where('shelf', $shelf)
+                    ->whereHas('season', fn (Builder $season) => $season->where('year', '>=', $shelf->firstSeason())));
+            }
+        });
     }
 
     /**
@@ -301,14 +322,15 @@ class AchievementAward extends Model
 
         if (! $this->exists && $this->shelf === null) {
             $achievement = Achievement::query()->findOrFail($this->achievement_id);
-            $frozen = Season::query()->find($this->season_id)?->isClosed()
+            $season = Season::query()->find($this->season_id);
+            $frozen = $season?->isClosed()
                 ? self::query()->where('season_id', $this->season_id)->where('achievement_id', $this->achievement_id)->first(['tier', 'shelf', 'points'])
                 : null;
 
             $this->fill([
                 'tier' => $frozen === null ? $achievement->tier : $frozen->tier,
                 'shelf' => $frozen === null ? $achievement->shelf : $frozen->shelf,
-                'points' => $frozen === null ? $achievement->points() : $frozen->points,
+                'points' => $frozen === null ? $achievement->points($season?->year) : $frozen->points,
                 'recipient_type' => $this->recipient_type ?? $achievement->recipientType(),
             ]);
         }

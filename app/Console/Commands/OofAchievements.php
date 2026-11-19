@@ -149,6 +149,7 @@ class OofAchievements extends Command
         // Breakthroughs read the final awards just stored: nickname evolutions are proposed for the seasons touched.
         $proposed = $dryRun ? collect() : Season::query()
             ->whereIn('id', $sessions->toBase()->map(fn (RaceSession $session) => $session->round->season_id)->concat(collect($seasonIds)->all())->unique()->values())
+            ->where('year', '>=', config('achievements.live_from'))
             ->orderBy('year')
             ->get()
             ->flatMap(fn (Season $season) => $breakthroughs->check($season));
@@ -245,6 +246,14 @@ class OofAchievements extends Command
         // A session filter narrows the session scope only, so the round must keep a session to hang its weekend on.
         if ($type !== null) {
             $sessions = $sessions->whereIn('round_id', $sessions->where('type', $type)->pluck('round_id'));
+        }
+
+        // The hourly run never starts a season before live_from by itself: those are backfilled by
+        // hand, season by season. Once a session has run, --changed and --stale keep it up to date.
+        if (($this->option('changed') || $this->option('stale')) && $this->option('season') === []) {
+            $sessions = $sessions
+                ->filter(fn (RaceSession $session) => $session->round->season->year >= (int) config('achievements.live_from') || $session->achievements_checked_at !== null)
+                ->values();
         }
 
         $allSeasons = $sessions->pluck('round.season_id')->unique()->values();

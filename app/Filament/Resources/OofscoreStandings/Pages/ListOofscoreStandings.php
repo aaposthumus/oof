@@ -4,6 +4,7 @@ namespace App\Filament\Resources\OofscoreStandings\Pages;
 
 use App\Achievements\OofScoreStandings;
 use App\Achievements\SeasonNotClosable;
+use App\Enums\AchievementShelf;
 use App\Filament\Resources\OofscoreStandings\OofscoreStandingResource;
 use App\Models\Season;
 use Filament\Actions\Action;
@@ -26,7 +27,7 @@ class ListOofscoreStandings extends ListRecords
                 ->requiresConfirmation()
                 ->modalDescription('Rebuild the standings of every open season from the final awards. Closed seasons stay frozen.')
                 ->action(function (OofScoreStandings $standings): void {
-                    $rebuilt = $standings->rebuildSeasons(Season::query()->where('year', '>=', config('achievements.first_season'))->pluck('id'))->filter();
+                    $rebuilt = $standings->rebuildSeasons(Season::query()->where('year', '>=', AchievementShelf::Oof->firstSeason())->pluck('id'))->filter();
                     Notification::make()->success()->title('Rebuilt '.($rebuilt->keys()->implode(', ') ?: 'nothing: every season is closed'))->send();
                 }),
             Action::make('close')
@@ -36,7 +37,7 @@ class ListOofscoreStandings extends ListRecords
                 ->schema([
                     Select::make('season_id')
                         ->label('Season')
-                        ->options(fn (): array => Season::query()->where('year', '>=', config('achievements.first_season'))->whereNull('oofscore_closed_at')->orderByDesc('year')->pluck('year', 'id')->all())
+                        ->options(fn (): array => Season::query()->where('year', '>=', AchievementShelf::Oof->firstSeason())->whereNull('oofscore_closed_at')->orderByDesc('year')->pluck('year', 'id')->all())
                         ->required(),
                 ])
                 ->modalDescription('Rebuilds the season a last time, then freezes its OOFscore and its awards\' points for good. Only once its last race is final and no award of it waits for review.')

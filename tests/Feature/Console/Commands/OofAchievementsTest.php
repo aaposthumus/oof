@@ -119,12 +119,28 @@ class OofAchievementsTest extends TestCase
 
     public function test_never_runs_seasons_before_the_first_one_or_rounds_still_to_come(): void
     {
-        $this->raceSession(SessionType::Race, $this->round(2019, 3, ['date' => '2019-04-14']));
+        $this->raceSession(SessionType::Race, $this->round(1949, 3, ['date' => '1949-04-14']));
         $this->raceSession(SessionType::Race, $this->round(2024, 20, ['date' => '2024-10-20']));
 
         $this->artisan('oof:achievements')
             ->expectsOutputToContain('0 sessions')
             ->assertSuccessful();
+    }
+
+    public function test_the_hourly_run_never_starts_a_season_before_live_from_but_keeps_a_run_one_up_to_date(): void
+    {
+        $historic = $this->raceSession(SessionType::Race, $this->round(1990, 3, ['date' => '1990-04-14']));
+        $this->resultFor($this->car($historic, 1), ['position' => 1, 'position_text' => '1', 'status' => 'Finished']);
+
+        $this->artisan('oof:achievements', ['--changed' => true])->expectsOutputToContain('0 sessions')->assertSuccessful();
+        $this->assertNull($historic->fresh()->achievements_checked_at);
+
+        $this->artisan('oof:achievements', ['--season' => [1990]])->expectsOutputToContain('1 sessions')->assertSuccessful();
+        $this->artisan('oof:achievements', ['--changed' => true])->expectsOutputToContain('0 sessions')->assertSuccessful();
+
+        $this->travel(1)->minute();
+        $this->resultFor($this->car($historic, 2), ['position' => 2, 'position_text' => '2', 'status' => 'Finished']);
+        $this->artisan('oof:achievements', ['--changed' => true])->expectsOutputToContain('1 sessions')->assertSuccessful();
     }
 
     public function test_rejects_an_unknown_session_type(): void
