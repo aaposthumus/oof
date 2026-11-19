@@ -27,14 +27,19 @@ class ToTheRescue implements Detector
         return [DataSource::JolpicaResults];
     }
 
+    /**
+     * From 1981, when teams had to build their own cars: before it Jolpica's
+     * constructor is the chassis maker, private entries included, so a new
+     * private driver would look like a replacement.
+     */
     public function availableFrom(): int
     {
-        return 1950;
+        return 1981;
     }
 
     public function notes(): array
     {
-        return ['Only meaningful with fixed line-ups; seat swaps are reviewed.'];
+        return ['Only meaningful with fixed line-ups; seat swaps are reviewed.', 'From 1981: before it a constructor includes the private entries of its chassis.'];
     }
 
     public function key(): string

@@ -37,6 +37,28 @@ return [
     'live_from' => 2023,
 
     /*
+    | Before this season an entry that only "Withdrew" (position W) never took
+    | part: without practice data a car that never arrived cannot be told from
+    | one that failed on the grid. A withdrawal whose status names a failure
+    | (engine, accident...) is a non-start, as it is from this season on.
+    */
+    'plain_withdrawals_from' => 2023,
+
+    /*
+    | The Indianapolis 500 rounds of 1950 to 1960 count in the results and
+    | standings, but give only the glory that restates the official record:
+    | no OOF, no surprise and no comparison with a field of oval specialists.
+    */
+    'indianapolis_500_achievements' => ['did_the_thing', 'silver_lining', 'solid_bronze', 'first_time_for_everything'],
+
+    /*
+    | Nearly Famous: the first place outside the points, by the season from
+    | which it holds (Grands Prix: top 5 scored to 1959, top 6 to 2002, top 8
+    | to 2009, top 10 since 2010).
+    */
+    'first_place_outside_the_points' => [1950 => 6, 1960 => 7, 2003 => 9, 2010 => 11],
+
+    /*
     |--------------------------------------------------------------------------
     | Engine version
     |--------------------------------------------------------------------------
@@ -47,7 +69,7 @@ return [
     |
     */
 
-    'engine_version' => 2,
+    'engine_version' => 3,
 
     /*
     |--------------------------------------------------------------------------

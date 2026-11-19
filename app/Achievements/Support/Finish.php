@@ -19,6 +19,11 @@ class Finish
 
     public static function didNotStart(Result $result): bool
     {
+        // A classified car started, whatever its status says (Jolpica has "Withdrew" on a few late retirements).
+        if (ctype_digit($result->position_text)) {
+            return false;
+        }
+
         return $result->position_text === 'W' || in_array($result->status, ['Did not start', 'Withdrew'], true);
     }
 

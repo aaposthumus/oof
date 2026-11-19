@@ -4,6 +4,7 @@ namespace App\Achievements\Facts;
 
 use App\Achievements\Catalogue;
 use App\Achievements\SessionData;
+use App\Achievements\Support\TeamForm;
 use App\Enums\AchievementShelf;
 use Illuminate\Contracts\Container\Container;
 
@@ -43,8 +44,9 @@ class Requirements
 
     /**
      * Whether to look for it in a session, or in a weekend built from these
-     * sessions: the year is late enough, and each source its facts come from
-     * has rows in the session (for a weekend, in at least one of them).
+     * sessions: the year is late enough, each source its facts come from has
+     * rows in the session (for a weekend, in at least one of them), and on an
+     * Indianapolis 500 round it is one of the few achievements given there.
      *
      * @param  iterable<SessionData>|null  $sessions  The weekend's sessions it reads; the session itself by default
      */
@@ -52,6 +54,11 @@ class Requirements
     {
         $needs = $this->for($key);
         $sessions = collect($sessions ?? [$data]);
+
+        // The Indianapolis 500 of 1950 to 1960 gives only the glory that restates the official record.
+        if (TeamForm::isIndianapolis500($data->session->round) && ! in_array($key, config('achievements.indianapolis_500_achievements'), true)) {
+            return false;
+        }
 
         return $data->year() >= $needs['available_from']
             && collect($needs['session_sources'])->every(fn (DataSource $source) => $sessions->contains(fn (SessionData $session) => $source->hasRows($session)));

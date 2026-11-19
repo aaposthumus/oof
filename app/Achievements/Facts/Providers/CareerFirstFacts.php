@@ -60,10 +60,29 @@ class CareerFirstFacts implements FactProvider, GatesSessions, ReadsEarlierRaces
     public function facts(SessionData $data): Collection
     {
         return match ($data->type()) {
-            SessionType::Race => $this->raceFirsts($data),
+            SessionType::Race => $this->raceFirsts($data)->concat($this->gridPoleFirsts($data))->values(),
             SessionType::Qualifying => $this->poleFirsts($data),
             default => collect(),
         };
+    }
+
+    /**
+     * In a Grand Prix of a round without qualifying data, grid 1 is the pole
+     * (Phase 11b, D10). A car with a first win the same day gets one award
+     * with both ("×2 · First win · First pole").
+     *
+     * @return Collection<int, Fact>
+     */
+    private function gridPoleFirsts(SessionData $data): Collection
+    {
+        if (QualifyingOrderFacts::hasQualifyingData($data)) {
+            return collect();
+        }
+
+        return $data->resultEntries()
+            ->filter(fn (DriverEntry $entry) => $entry->result->grid === 1 && ! $this->hadPoleBefore($data, $entry->driver_id))
+            ->map(fn (DriverEntry $entry) => $this->fact($entry, 'pole', instanceKey: 'first_pole'))
+            ->values();
     }
 
     /**
@@ -110,13 +129,13 @@ class CareerFirstFacts implements FactProvider, GatesSessions, ReadsEarlierRaces
         return collect([$this->fact($pole, 'pole')]);
     }
 
-    private function fact(DriverEntry $entry, string $first): Fact
+    private function fact(DriverEntry $entry, string $first, string $instanceKey = 'first'): Fact
     {
         return new Fact(
             type: 'career_first',
             entryId: $entry->id,
-            instanceKey: 'first',
-            eventKey: "first:{$entry->id}",
+            instanceKey: $instanceKey,
+            eventKey: "{$instanceKey}:{$entry->id}",
             attributes: ['first' => $first, 'label' => self::LABELS[$first]],
             evidence: FactEvidence::results([$entry], self::LABELS[$first].' in a Grand Prix career.'),
         );

@@ -122,6 +122,32 @@ class SessionData
     }
 
     /**
+     * Cars the engine leaves out of every achievement (Phase 11b, D8 and D9):
+     * a driver who drove more than one car in the session is judged on their
+     * best one (best classified position, else most laps), so the car they
+     * left gets nothing; and before achievements.plain_withdrawals_from an
+     * entry that only "Withdrew" never took part (a withdrawal whose status
+     * names a failure still did not start).
+     *
+     * @return list<int>
+     */
+    public function setAsideEntryIds(): array
+    {
+        return $this->loaded['set_aside'] ??= $this->resultEntries()
+            ->groupBy('driver_id')
+            ->flatMap(fn (Collection $cars) => $cars
+                ->sortBy(fn (DriverEntry $entry) => [$entry->result->position ?? PHP_INT_MAX, -((int) $entry->result->laps_completed), $entry->id])
+                ->skip(1))
+            ->concat($this->resultEntries()->filter(fn (DriverEntry $entry) => $this->year() < (int) config('achievements.plain_withdrawals_from')
+                && $entry->result->position_text === 'W'
+                && $entry->result->status === 'Withdrew'))
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
      * The session's race control messages in the order they were issued.
      *
      * @return Collection<int, ClassifiedMessage>

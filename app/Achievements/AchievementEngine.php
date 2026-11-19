@@ -93,6 +93,7 @@ class AchievementEngine
         $detections = $triggers
             ->reject(fn (Trigger $trigger) => $trigger->isLate())
             ->flatMap(fn (Trigger $trigger) => $trigger->detect($data, collect()))
+            ->reject(fn (Detection $detection) => $detection->recipient->entryId !== null && in_array($detection->recipient->entryId, $data->setAsideEntryIds(), true))
             ->values();
 
         $detections = $this->fairness->apply($detections, $catalogue);

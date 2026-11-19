@@ -26,6 +26,7 @@ class Facts
         'track_limit_deletion' => Providers\TrackLimitDeletionFacts::class,
         'result' => Providers\ResultFacts::class,
         'qualifying_result' => Providers\QualifyingResultFacts::class,
+        'qualifying_order' => Providers\QualifyingOrderFacts::class,
         'pit_stop' => Providers\PitStopFacts::class,
         'qualifying_knockout' => Providers\QualifyingKnockoutFacts::class,
         'lap_count' => Providers\LapCountFacts::class,
@@ -66,7 +67,10 @@ class Facts
         $built = $this->built[$data] ?? [];
 
         if (! isset($built[$type])) {
-            $built[$type] = $this->provider($type)->facts($data)->values();
+            $setAside = $data->setAsideEntryIds();
+            $built[$type] = $this->provider($type)->facts($data)
+                ->reject(fn (Fact $fact) => $fact->entryId !== null && in_array($fact->entryId, $setAside, true))
+                ->values();
             $this->built[$data] = $built;
         }
 
