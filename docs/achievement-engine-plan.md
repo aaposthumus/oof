@@ -25,7 +25,7 @@ and 4 for the design, and "Working notes" at the end.
 | 9 | Nicknames and evolution events | Done, 18 November 2026 |
 | 10 | 2027 pack | Done, 18 November 2026 |
 | 11a | Historic data: Jolpica lap times, constructor merge | Done, 19 November 2026 |
-| 11b | Historic backfill: achievements for 1950 to 2022 | Not started |
+| 11b | Historic backfill: achievements for 1950 to 2022 | Done, 19 November 2026 (the curated Clean Sweeps before 1996 wait for the owner's review) |
 
 ## 0. Where the code stood on 16 November 2026
 
@@ -672,7 +672,10 @@ Follow-ups decided by the owner on 17 November 2026, done the same day:
 
 **Hard requirement for any publishing work** (feeds, automatic posts, comedic formats,
 the public site, exports): read awards only through `publishable()`. Suppressed, pending
-and flagged awards never leave the CMS. A publishing change that reads awards another
+and flagged awards never leave the CMS. OOF and Safety Car awards before 2023 are never
+published automatically (decided 19 November 2026, Phase 11b Q6): `publishable()` leaves
+them out, a person picks them for OOF Classics and This week in OOF history, and stamp
+books and trophy cabinets read `countingOnTheirShelf()`. A publishing change that reads awards another
 way is not done. Likewise, publishing refuses draft nicknames (`driver_nicknames.is_draft`,
 decided 18 November 2026): a draft nickname, its motto and an edition subtitle built from
 it never leave the CMS.
@@ -1205,6 +1208,107 @@ Decided for Phase 11b (not built in 11a, which is data only):
   second full backfill changes nothing and any calendar week returns awards with the
   sensitive ones flagged.
 
+**Phase 11b: historic backfill. Done.**
+
+Decided by the owner on 19 November 2026 (step 1 report): Q1 to Q7 below, with D2 and
+D7 to D11 of Phase 11a; Spain 1977 (Lauda) and Brazil 1998 (Herbert), whose injury
+statuses already give those drivers nothing, stay without a sensitivity.
+
+- Q1, laps led: Jolpica's lap times are the source of truth, from 1996 and for every
+  race since 2023, counted the standard way (P1 at the end of a lap, the last lap
+  included; `LapsLed`). OpenF1 stands in until a race's Jolpica laps are in, the
+  winner's last lap counted. An achievement that reads Jolpica laps (Led Astray, Clean
+  Sweep) waits with the review reason "Waiting for lap times" (`Finality`, from 1996)
+  and becomes final on the next `--changed` after they arrive (`lap_times` is a change
+  source). The hourly import fetches the current season's race laps
+  (`oof:import --recent-laps`) and the hourly normalize writes them
+  (`oof:normalize --laps`). Led Astray from 1996; Clean Sweep from 1996 through
+  `fastest_lap_and_every_lap_led` (fastest-lap rank from 2004, before that the fastest
+  Jolpica lap). On 2023 to 2026 Jolpica and OpenF1 give the same 9 Clean Sweeps and the
+  same Led Astray but one: Leclerc in 2026 round 19 (Mexico), whom OpenF1's old rule
+  tied with Verstappen; Verstappen led 28 laps, not 27. That award is gone. Miami 2025
+  has a gap in OpenF1's laps; Jolpica is right and no award differs.
+- D2, OOF counts from 2023: `achievements.shelf_from` (OOF, Safety Car and Oofies 2023,
+  glory 1950). An award of a season before its shelf counts earns 0 points, also after
+  a tier change or a reopen; no OOFscore standings, Close season or Oofies before 2023.
+  `first_season` is 1950. `live_from` (2023): the hourly `--changed --stale` never
+  starts an earlier season by itself; a season run by hand is kept up to date by both.
+  Nickname breakthroughs from `live_from`. `first_season`, `shelf_from` and `live_from`
+  are not part of the catalogue version.
+- Q6: `AchievementAward::countingOnTheirShelf()`, and `publishable()` requires it (see
+  the hard requirement above).
+- D7: the Indianapolis 500 gives only Did the Thing, Silver Lining, Solid Bronze and
+  First Time for Everything (`achievements.indianapolis_500_achievements`).
+- D8: a driver in more than one car in a race is judged on the best one; the car left
+  gets nothing (`SessionData::setAsideEntryIds()`). Both drivers of a shared car keep its
+  result.
+- D9 and Q2: before 2023 an entry that only "Withdrew" takes part in nothing; a
+  withdrawal whose status names a failure is a non-start (Forgot the Keys)
+  (`achievements.plain_withdrawals_from`). Q3: a classified car is never a non-start,
+  whatever its status (Button 2013, Magnussen 2020, one in 1996).
+- D10: without qualifying data the grid is the qualifying order, grid 1 the pole
+  (fact `qualifying_order`): Plot Twist runs in races too and finds a pole there only
+  when the round has no qualifying data; First Time for Everything gives a first pole
+  from the grid (with a first win the same day: one award, "×2 · First win · First
+  pole").
+- D11: Nearly Famous is the first place outside the points of each era with no points
+  (`achievements.first_place_outside_the_points`: P6 to 1959, P7 to 2002, P9 to 2009,
+  P11 since 2010); description by migration where it still equals the seeded text.
+- Q4: To the Rescue from 1981.
+- Q5: `config/curated_clean_sweeps.php` holds the 44 published Grand Chelems of 1950 to
+  1995 (Wikipedia, "Grand Slam (Formula One)"), each checked against our data (the
+  driver won from pole: all 44 match). Nothing before 1996 is awarded while `approved`
+  is false; after the owner's review, set it to true and run 1950 to 1995 again.
+- This week in OOF history: `ThisWeekInOofHistory` (final awards of every year and shelf
+  in a calendar week, wrapping at New Year, each with its sensitive flag; historic
+  moments of the week, flagged when their round is sensitive) and `oof:history {date?}`.
+- `engine_version` 3. Golden master 2023 to 2026: only Leclerc's Led Astray differs (step
+  Q1); re-exported, 4,644 awards. No differences after the later steps and after the
+  backfill. Re-exported after the backfill so it covers 1950 to 2026: 30,639 awards in
+  2,059 contexts.
+- Backfill on the local database, by hand, oldest first, one season per command
+  (`oof:achievements --season=YEAR`), after `oof:achievements:sync` (8 fields on 5
+  achievements: Plot Twist's sessions, and the data needs and first years of Led Astray,
+  Clean Sweep, Plot Twist, To the Rescue and Built Different). Per decade, checked: 0
+  OOF points, no OOFscore rows, no Oofies, no season closed, one win award for each
+  credited winner in every race, nothing withheld stored on a sensitive weekend and
+  every award there flagged (OOF suppressed), nothing but the four glory achievements at
+  Indianapolis, no Forgot the Keys on a plain withdrawal or a classified car, no driver
+  with awards on two cars in one race, no To the Rescue before 1981, no Clean Sweep
+  before 1996, nothing pending; a second run of each season created, updated and
+  removed nothing.
+
+  | Decade | Races | Awards | Glory final | OOF final | Suppressed | Run |
+  |---|---|---|---|---|---|---|
+  | 1950s | 84 | 1,945 | 522 | 1,359 | 64 | 14 s |
+  | 1960s | 100 | 2,174 | 505 | 1,584 | 85 | 16 s |
+  | 1970s | 144 | 3,840 | 935 | 2,758 | 147 | 23 s |
+  | 1980s | 156 | 4,713 | 1,107 | 3,451 | 155 | 28 s |
+  | 1990s | 162 | 4,461 | 984 | 3,385 | 92 | 30 s |
+  | 2000s | 174 | 3,724 | 802 | 2,827 | 95 | 34 s |
+  | 2010s | 198 | 4,028 | 807 | 3,123 | 98 | 41 s |
+  | 2020 to 2022 | 61 | 1,110 | 262 | 816 | 32 | 14 s |
+  | All | 1,079 | 25,995 | 5,924 | 19,303 | 768 | 3.3 min |
+
+  1,270 awards are flagged sensitive; the suppressed ones are OOF on sensitive weekends
+  and To the Rescue seat swaps (both wait for a person, and before 2027 nobody reviews).
+  Clean Sweeps from the lap data: 22 for 1996 to 2022, the 21 published ones plus
+  Verstappen at Spa 2021 (the race run only behind the safety car); see the open points.
+- The hourly `--changed --stale` after the backfill picks up no historic session (it
+  picked the 450 sessions of 2023 to 2026 locally, whose stored awards predate the
+  branch; deploy step 5 brings them up to date).
+- This week in OOF history on the local data: 50 of the 53 weeks of 2026 return awards
+  (for example 7 to 13 September: 1,433 awards in 57 seasons, 25 flagged). 16 to 22
+  February and 14 to 27 December never had a championship race.
+
+Open for the owner:
+
+- Review `config/curated_clean_sweeps.php`, then set `approved` to true and run 1950 to
+  1995 again (44 Clean Sweeps, each replacing a Did the Thing).
+- Spa 2021: Verstappen's Clean Sweep from the data (pole, win, fastest-lap rank 1, led
+  every lap) in a race run only behind the safety car; most records do not count it.
+- Empty weeks: what This week in OOF history shows in the three weeks without any race.
+
 ## Working notes
 
 - The work lives on the branch `achievement-engine`, one commit per phase. `main` stays
@@ -1213,7 +1317,12 @@ Decided for Phase 11b (not built in 11a, which is data only):
 - When another Sail project holds the default ports, start this one beside it:
   `APP_PORT=8087 FORWARD_DB_PORT=33087 VITE_PORT=5187 vendor/bin/sail up -d`
   (and keep those variables set for later `sail` calls).
-- A full engine dry run over 2023 to 2026 takes about 30 seconds.
+- A full engine dry run over 2023 to 2026 takes about 30 seconds; the golden master, which
+  now also dry-runs 1950 to 2022, about 3.5 minutes. The backfill of 1950 to 2022 by hand
+  takes about 3.5 minutes.
+- Read-only checks: run them in a transaction that is rolled back, or as a script under
+  `storage/app/private` via `tinker --execute 'require ...'` (a file argument makes tinker
+  wait for input).
 
 ## Deploy steps
 
@@ -1234,17 +1343,24 @@ When the `achievement-engine` branch is deployed to production (decided 17 Novem
    Imperfect, Fine Dining, Nothing to See Here or Frequent Flyer: the engine leaves such a
    decided award in its old session context, beside the new weekend or season one. None
    existed locally.
-4. `php artisan oof:achievements --season=2023 --season=2024 --season=2025 --season=2026`,
-   to bring the stored awards up to date, move the weekend and season achievements to
-   their new contexts and fill the run log. Decisions made by people stay as they are.
-5. `php artisan oof:oofscore`, to build the standings of every season (step 4 already
-   rebuilds the seasons it ran; this makes sure).
-6. `php artisan db:seed --class=DriverNicknameSeeder --force` (create-only; run it again
-   once Câmara is imported), then `php artisan oof:nicknames` to check for breakthroughs.
-7. `php artisan oof:import:dump` (the free Jolpica dump: race lap times 1996 on, in
+4. `php artisan oof:import:dump` (the free Jolpica dump: race lap times 1996 on, in
    seconds), then `php artisan oof:import --only-laps --season=<year>` for the races
    newer than the dump (about 10 paced requests per race; the command says the dump's
-   date) and `php artisan oof:normalize --laps --source=jolpica --season=<year>`. Then `php artisan oof:dig`, which re-digs on the merged lineage (it also runs
-   daily at 04:50).
-8. Do not close any season until the owner says so.
-9. After any later catalogue or engine change: `php artisan oof:achievements --stale`.
+   date) and `php artisan oof:normalize --laps --source=jolpica --season=<year>`. Before
+   step 5: laps led come from them, and Led Astray and Clean Sweep wait for them. The
+   hourly schedule now runs `oof:import --recent-laps` and `oof:normalize --laps`.
+5. `php artisan oof:achievements --season=2023 --season=2024 --season=2025 --season=2026`,
+   to bring the stored awards up to date, move the weekend and season achievements to
+   their new contexts and fill the run log. Decisions made by people stay as they are.
+6. `php artisan oof:oofscore`, to build the standings of every season (step 5 already
+   rebuilds the seasons it ran; this makes sure).
+7. `php artisan db:seed --class=DriverNicknameSeeder --force` (create-only; run it again
+   once Câmara is imported), then `php artisan oof:nicknames` to check for breakthroughs.
+8. `php artisan oof:dig`, which re-digs on the merged lineage (it also runs daily at
+   04:50).
+9. The historic backfill, by hand, oldest first, one season per command:
+   `php artisan oof:achievements --season=1950`, then 1951 and so on to 2022 (about 3.5
+   minutes in all). The hourly run never starts these seasons itself; once run, it keeps
+   them up to date.
+10. Do not close any season until the owner says so.
+11. After any later catalogue or engine change: `php artisan oof:achievements --stale`.
