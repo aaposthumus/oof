@@ -114,6 +114,7 @@ class Catalogue
         return sha1(json_encode([
             $this->entries(),
             array_diff_key(config('achievements'), array_flip(['points', 'events_from', 'first_season', 'shelf_from', 'live_from'])),
+            config('curated_clean_sweeps'),
             $rows,
         ], JSON_THROW_ON_ERROR));
     }

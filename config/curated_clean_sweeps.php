@@ -22,7 +22,8 @@
 
 return [
 
-    'approved' => false,
+    // Reviewed and approved by the owner on 19 November 2026.
+    'approved' => true,
 
     'before' => 1996,
 

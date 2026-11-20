@@ -95,6 +95,16 @@ class ShelfFromTest extends TestCase
         $this->assertContains($historicGlory->id, AchievementAward::query()->publishable()->pluck('id')->all());
     }
 
+    public function test_the_curated_clean_sweeps_are_part_of_the_catalogue_version(): void
+    {
+        $this->catalogue();
+        $version = app(Catalogue::class)->version();
+
+        config(['curated_clean_sweeps.races' => [['season' => 1963, 'round' => 3, 'driver' => 'clark']]]);
+
+        $this->assertNotSame($version, app(Catalogue::class)->version());
+    }
+
     public function test_the_season_settings_are_not_part_of_the_catalogue_version(): void
     {
         $this->catalogue();

@@ -53,7 +53,7 @@ class CatalogueTest extends TestCase
         $this->assertSame('Lapped Pup', $achievement->name);
         $this->assertSame([DataSource::JolpicaResults->value], $achievement->data_sources);
         $this->assertSame(1950, $achievement->available_from);
-        $this->assertSame(1996, Achievement::firstWhere('key', 'clean_sweep')->available_from);
+        $this->assertSame(1950, Achievement::firstWhere('key', 'clean_sweep')->available_from);
 
         $this->artisan('oof:achievements:sync', ['--dry-run' => true])
             ->expectsOutputToContain('0 created, 0 fields on 0 achievements would change')
@@ -77,7 +77,7 @@ class CatalogueTest extends TestCase
     {
         $requirements = app(Requirements::class);
 
-        $this->assertSame(1996, $requirements->for('clean_sweep')['available_from']);
+        $this->assertSame(1950, $requirements->for('clean_sweep')['available_from']);
         $this->assertSame(1996, $requirements->for('led_astray')['available_from']);
         $this->assertContains(DataSource::JolpicaLaps, $requirements->for('clean_sweep')['sources']);
         $this->assertContains(DataSource::OpenF1Positions, $requirements->for('clean_sweep')['sources']);

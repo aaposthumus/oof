@@ -1311,11 +1311,20 @@ Decided by the owner on 19 November 2026, after the report:
   `is_fallback`; `oof:history` says so). 16 to 22 February shows 9 to 15 February, 14 to
   20 December shows 7 to 13 December, 21 to 27 December shows 28 December to 3 January.
 
+- Curated Clean Sweeps: reviewed and approved by the owner (19 November 2026);
+  `approved` is true, and the list is part of the catalogue version, so a later edit
+  makes `--stale` re-run. 1950 to 1995 re-run season by season on 20 November 2026: 44
+  Clean Sweeps created and 40 Did the Thing removed, nothing else (golden master over
+  1950 to 2026: exactly those 84 differences, none changed). In 4 of the 44 races the
+  win was already a Giant Slayer (a team outside the top four on form), which also
+  supersedes Did the Thing and stands beside the Clean Sweep: Siffert 1971 Austria,
+  Ickx 1972 Germany, Piquet 1980 Long Beach, Berger 1987 Australia. No such pair after
+  1995. Golden master not re-exported until the owner decides.
+
 Open for the owner:
 
-- Review `config/curated_clean_sweeps.php` (printed for review on 19 November 2026),
-  then set `approved` to true and run 1950 to 1995 again (44 Clean Sweeps, each
-  replacing a Did the Thing).
+- Clean Sweep and Giant Slayer on the same win (the 4 races above): keep both, or let
+  Clean Sweep supersede Giant Slayer so a race has one win award.
 
 ## Working notes
 
