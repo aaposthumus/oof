@@ -1319,12 +1319,16 @@ Decided by the owner on 19 November 2026, after the report:
   win was already a Giant Slayer (a team outside the top four on form), which also
   supersedes Did the Thing and stands beside the Clean Sweep: Siffert 1971 Austria,
   Ickx 1972 Germany, Piquet 1980 Long Beach, Berger 1987 Australia. No such pair after
-  1995. Golden master not re-exported until the owner decides.
-
-Open for the owner:
-
-- Clean Sweep and Giant Slayer on the same win (the 4 races above): keep both, or let
-  Clean Sweep supersede Giant Slayer so a race has one win award.
+  1995.
+- Decided by the owner on 20 November 2026: Clean Sweep and Giant Slayer both stand on
+  the same win; they tell different stories (how he won versus who won). The win check
+  is now: Did the Thing never stands beside another win award (Clean Sweep, Giant
+  Slayer, Took the Scenic Route), and every race has at least one win award;
+  combinations of those three are allowed. Result: Did the Thing never beside another,
+  10 winners with a combination, and every race of 1950 to 2026 has a win award in the
+  golden master. Locally the stored awards of 2026 round 20 (Brazil) are empty, because
+  the stored 2023 to 2026 awards predate the branch (deploy step 5). Golden master
+  re-exported over 1950 to 2026.
 
 ## Working notes
 
