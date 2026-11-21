@@ -2,6 +2,8 @@
 
 namespace App\Achievements;
 
+use App\Achievements\Facts\Facts;
+use App\Achievements\Facts\KeepsLeftCars;
 use App\Achievements\Facts\Requirements;
 use App\Achievements\Rules\Cascade;
 use App\Achievements\Rules\CrossCheck;
@@ -9,6 +11,7 @@ use App\Achievements\Rules\Fairness;
 use App\Achievements\Rules\Finality;
 use App\Achievements\Rules\Sensitivity;
 use App\Achievements\Rules\Stacking;
+use App\Achievements\Triggers\DeclarativeTrigger;
 use App\Achievements\Triggers\SeasonTrigger;
 use App\Achievements\Triggers\Trigger;
 use App\Achievements\Triggers\TriggerFactory;
@@ -64,6 +67,7 @@ class AchievementEngine
         private Stacking $stacking,
         private Finality $finality,
         private Sensitivity $sensitivity,
+        private Facts $facts,
     ) {}
 
     /**
@@ -80,6 +84,22 @@ class AchievementEngine
     }
 
     /**
+     * Rules D8 and D9: nothing for a car a driver left for another, nor for
+     * a plain withdrawal. A trigger over facts that keep the left car (the
+     * pole, earned before the race) loses only the withdrawals.
+     *
+     * @param  Collection<int, Detection>  $detections
+     * @return Collection<int, Detection>
+     */
+    private function leaveOutSetAsideCars(Trigger $trigger, Collection $detections, SessionData $data): Collection
+    {
+        $keepsLeftCars = $trigger instanceof DeclarativeTrigger && $this->facts->provider($trigger->factType()) instanceof KeepsLeftCars;
+        $setAside = $keepsLeftCars ? $data->withdrawnEntryIds() : $data->setAsideEntryIds();
+
+        return $detections->reject(fn (Detection $detection) => $detection->recipient->entryId !== null && in_array($detection->recipient->entryId, $setAside, true));
+    }
+
+    /**
      * The settled detections of a session, before they are stored.
      *
      * @return Collection<int, Detection>
@@ -92,8 +112,7 @@ class AchievementEngine
 
         $detections = $triggers
             ->reject(fn (Trigger $trigger) => $trigger->isLate())
-            ->flatMap(fn (Trigger $trigger) => $trigger->detect($data, collect()))
-            ->reject(fn (Detection $detection) => $detection->recipient->entryId !== null && in_array($detection->recipient->entryId, $data->setAsideEntryIds(), true))
+            ->flatMap(fn (Trigger $trigger) => $this->leaveOutSetAsideCars($trigger, $trigger->detect($data, collect()), $data))
             ->values();
 
         $detections = $this->fairness->apply($detections, $catalogue);

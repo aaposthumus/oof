@@ -67,7 +67,7 @@ class Facts
         $built = $this->built[$data] ?? [];
 
         if (! isset($built[$type])) {
-            $setAside = $data->setAsideEntryIds();
+            $setAside = $this->provider($type) instanceof KeepsLeftCars ? $data->withdrawnEntryIds() : $data->setAsideEntryIds();
             $built[$type] = $this->provider($type)->facts($data)
                 ->reject(fn (Fact $fact) => $fact->entryId !== null && in_array($fact->entryId, $setAside, true))
                 ->values();

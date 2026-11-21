@@ -133,16 +133,44 @@ class SessionData
      */
     public function setAsideEntryIds(): array
     {
-        return $this->loaded['set_aside'] ??= $this->resultEntries()
+        return $this->loaded['set_aside'] ??= collect($this->leftCarEntryIds())
+            ->concat($this->withdrawnEntryIds())
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * D8: the cars a driver left for another car in the session (judged on
+     * the best one: best classified position, else most laps).
+     *
+     * @return list<int>
+     */
+    public function leftCarEntryIds(): array
+    {
+        return $this->loaded['left_cars'] ??= $this->resultEntries()
             ->groupBy('driver_id')
             ->flatMap(fn (Collection $cars) => $cars
                 ->sortBy(fn (DriverEntry $entry) => [$entry->result->position ?? PHP_INT_MAX, -((int) $entry->result->laps_completed), $entry->id])
                 ->skip(1))
-            ->concat($this->resultEntries()->filter(fn (DriverEntry $entry) => $this->year() < (int) config('achievements.plain_withdrawals_from')
-                && $entry->result->position_text === 'W'
-                && $entry->result->status === 'Withdrew'))
             ->pluck('id')
-            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * D9: before achievements.plain_withdrawals_from, entries that only
+     * "Withdrew" and never took part.
+     *
+     * @return list<int>
+     */
+    public function withdrawnEntryIds(): array
+    {
+        return $this->loaded['withdrawn'] ??= $this->resultEntries()
+            ->filter(fn (DriverEntry $entry) => $this->year() < (int) config('achievements.plain_withdrawals_from')
+                && $entry->result->position_text === 'W'
+                && $entry->result->status === 'Withdrew')
+            ->pluck('id')
             ->values()
             ->all();
     }

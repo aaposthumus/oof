@@ -1526,9 +1526,51 @@ achievement that exists only in the test.
     above).
   - Seven rounds of 1950 to 1960 have no pole award: the pole sitter later took over
     another car, and D8 (judged on the best car; the car left gets nothing) sets the pole
-    car aside. Plot Twist works the same way.
+    car aside. Plot Twist works the same way. (Fixed afterwards; see "Official poles"
+    below.)
   - Five rounds have more than one: Jolpica credits grid 1 to several drivers of a shared
-    car (1952 R8, 1953 R7 and R8, 1955 R1 three, 1964 R9).
+    car (1952 R8, 1953 R7 and R8, 1955 R1 three, 1964 R9). (Fixed afterwards.)
+
+Decided by the owner on 21 November 2026, after the report: Nothing to See Here stands as
+it is. The pole follows the official record.
+
+**Official poles. Done.**
+
+- The pole is earned by one driver in qualifying, so a car swap in the race does not take
+  it away. A shared car gets exactly one pole, for the driver the record credits.
+- `SessionData::setAsideEntryIds()` is now the union of `leftCarEntryIds()` (D8) and
+  `withdrawnEntryIds()` (D9). A fact provider that implements `KeepsLeftCars` (the
+  qualifying order) loses only the withdrawals, both in `Facts` and in the engine's
+  set-aside filter. Every other achievement still ignores a left car (no retirement
+  award for it).
+- `QualifyingOrderFacts::gridPoleEntryId()`: without qualifying data, the one car
+  credited with pole.
+  - When one driver is on grid 1, that driver's car on grid 1 (the car they started in,
+    even if they left it).
+  - When several drivers are, the driver named in `config/official_poles.php` (season,
+    round, Jolpica driver; part of the catalogue version). An unlisted tie gives no pole.
+  - The other drivers on grid 1 get no qualifying order, so Early Bird and Plot Twist
+    both follow it.
+- The list holds the 9 rounds of the local data with several drivers on grid 1: 1951 R4
+  (Fangio), 1952 R8 (Ascari; Moss also on grid 1), 1953 R7 (Ascari), 1953 R8 (Fangio),
+  1955 R1 (González), 1956 R2 and R8 (Fangio; his pole car later driven by Castellotti),
+  1957 R5 (Moss), 1964 R9 (Clark). The pole sitters are the published ones (my knowledge
+  of the race records, not checked against a source in this session).
+- `took_pole` (Clean Sweep, Peaked Too Soon) and the first pole of First Time for
+  Everything have their own pole logic and are unchanged.
+- Golden master: 22 differences, all Early Bird; Plot Twist has none (no surprise pole in
+  these rounds).
+  - 9 added for the official pole sitter: Fangio 1950 R7, 1951 R4, 1953 R4, 1956 R1, R2
+    and R8; Farina 1952 R1; Moss 1957 R5 and 1960 R1.
+  - 8 removed from drivers who were not on pole: Moss 1952 R8, Villoresi 1953 R7, Bonetto
+    1953 R8, Farina and Trintignant 1955 R1, Castellotti 1956 R2 and R8, Spence 1964 R9.
+  - 5 kept with a new evidence note ("several drivers are on grid 1; the pole follows the
+    official record"): Ascari 1952 R8 and 1953 R7, Fangio 1953 R8, González 1955 R1,
+    Clark 1964 R9.
+  - Every round of 1950 to 2026 with a race now has exactly one pole award (Early Bird or
+    Plot Twist), except the 11 Indianapolis 500s. Re-exported: 32,593 awards.
+
+## Working notes
 - Local database: migrated and synced (9 created; podium sessions; All Dressed Up's data
   needs). Stored awards not brought up to date (dry runs only).
 
