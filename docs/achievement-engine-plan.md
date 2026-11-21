@@ -28,7 +28,7 @@ and 4 for the design, and "Working notes" at the end.
 | 11b | Historic backfill: achievements for 1950 to 2022 | Done, 19 November 2026 (the curated Clean Sweeps before 1996 wait for the owner's review) |
 | 12a | Rename Early Bird (false start) to Itchy Feet | Done, 21 November 2026 |
 | 12b | Engine extensions for the new achievements | Done, 21 November 2026 |
-| 12c | Race-weekend glory: Early Bird (pole), Early Chick, Fun Size, Purple Patch, Encore, In Tandem, Hometown Hero | Not started |
+| 12c | Race-weekend glory: Early Bird (pole), Early Chick, Fun Size, Purple Patch, Encore, In Tandem, Hometown Hero | Done, 21 November 2026 |
 | 12d | OOF: Bubble Burst, Dropped the Baton | Not started |
 | 12e | Fourteen season Oofies | Not started |
 | 12f | Stamp framing service, CMS preview, preview command | Not started |
@@ -1478,6 +1478,59 @@ achievement that exists only in the test.
   should find the same awards.
 - Golden master: no differences (30,643 awards); not re-exported.
 - Deploy: the two migrations go with step 1; nothing else.
+
+**Phase 12c: race-weekend glory. Done.**
+
+- Nine catalogue entries, glory shelf, as approved:
+  - Fun Size Win, Silver and Bronze (sprint P1 to P3; Gold, Silver, Bronze).
+  - Early Bird (Grand Prix pole from `qualifying_order`, event `pole:{entry}`; Gold).
+  - Early Chick (sprint qualifying P1; Silver; sprint qualifying exists only from 2023).
+  - Purple Patch (`set_fastest_lap` with points, not disqualified; Bronze).
+  - Encore (weekend scope after the race, count per driver of sprint and Grand Prix
+    wins; Gold).
+  - In Tandem (team, count of distinct positions 1 and 2; Silver).
+  - Hometown Hero (Grand Prix win and `at_home`; Gold; supersedes Did the Thing).
+- Did the Thing, Silver Lining and Solid Bronze: Grands Prix only (sessions written by
+  the sync). Their descriptions say "Grand Prix" where they still equal the seeded text.
+- All Dressed Up, Nowhere to Go on `set_fastest_lap`, so from 1996.
+- Migration `apply_phase_12c_to_achievements`: Plot Twist supersedes Early Bird, Clean
+  Sweep supersedes Purple Patch, plus the podium descriptions. It refuses to run while the
+  false-start row still has the key `early_bird`. `CatalogueSync` refuses the same through
+  `FORMER_KEYS`, so a sync without the 12a rename cannot turn false-start awards into pole
+  awards.
+- Fixed on the way (found by the golden master): the lap-time wait (`Finality`) now applies
+  to Grands Prix only. Jolpica has no sprint laps, so All Dressed Up in a sprint (it now
+  reads lap times through `set_fastest_lap`) waited forever: 2025 round 23 sprint went
+  from final to suppressed.
+- Golden master: 2,277 differences, all intended or explained below; none changed.
+
+  | Achievement | Added | Missing | Why |
+  |---|---|---|---|
+  | Early Bird | 1,070 | | Every pole that is not a Plot Twist (Plot Twist 87) |
+  | Early Chick | 24 | | Every sprint qualifying, 2023 to 2026 |
+  | Fun Size Win, Silver, Bronze | 30 each | | Every sprint, 2021 to 2026 |
+  | Did the Thing | | 101 | 30 sprint wins, 71 home wins (84 home wins, 13 of them already another win award) |
+  | Silver Lining, Solid Bronze | | 30 each | The sprint podium |
+  | Encore | 11 | | 11 of 30 sprint weekends |
+  | In Tandem | 321 | | Every one-two outside the Indianapolis 500 (SQL: 321) |
+  | Hometown Hero | 84 | | Every home win outside the Indianapolis 500 (SQL: 84) |
+  | Purple Patch | 491 | | Fastest lap in the points, 1996 to 2026, without Clean Sweeps |
+  | All Dressed Up | 22 | | 1996 to 2003, from the lap times |
+  | Nothing to See Here | | 3 | Pérez 2023 R8, Russell 2024 R7, Norris 2024 R22: their only award that weekend is now Purple Patch |
+
+  Checked in the new master: Did the Thing never beside another win award, Purple Patch
+  never beside Clean Sweep, Early Bird never beside Plot Twist, no Did the Thing, Silver
+  Lining or Solid Bronze in a sprint. Re-exported.
+- Not predicted by the plan, left as is for the owner:
+  - Nothing to See Here gives way to a glory award, as it already did to a win (the 3
+    above).
+  - Seven rounds of 1950 to 1960 have no pole award: the pole sitter later took over
+    another car, and D8 (judged on the best car; the car left gets nothing) sets the pole
+    car aside. Plot Twist works the same way.
+  - Five rounds have more than one: Jolpica credits grid 1 to several drivers of a shared
+    car (1952 R8, 1953 R7 and R8, 1955 R1 three, 1964 R9).
+- Local database: migrated and synced (9 created; podium sessions; All Dressed Up's data
+  needs). Stored awards not brought up to date (dry runs only).
 
 ## Working notes
 

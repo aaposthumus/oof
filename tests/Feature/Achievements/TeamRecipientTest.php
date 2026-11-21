@@ -21,7 +21,7 @@ use Tests\TestCase;
 
 /**
  * Team recipients, proven with a team achievement that exists only in this
- * test: no team achievement ships (decision 3 of the plan).
+ * test (In Tandem, which ships since Phase 12c, is switched off here).
  */
 class TeamRecipientTest extends TestCase
 {
@@ -135,6 +135,9 @@ class TeamRecipientTest extends TestCase
         ]]);
 
         app(CatalogueSync::class)->apply();
+
+        // In Tandem would find the same 1-2; this test is about the achievement above alone.
+        Achievement::where('key', 'in_tandem')->update(['is_enabled' => false]);
     }
 
     /**

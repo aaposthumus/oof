@@ -7,6 +7,7 @@ use App\Achievements\Facts\Requirements;
 use App\Models\Achievement;
 use BackedEnum;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * Brings the achievements table in line with the catalogue: creates
@@ -17,6 +18,16 @@ use Illuminate\Support\Facades\DB;
  */
 class CatalogueSync
 {
+    /**
+     * Keys that belonged to another achievement before a rename, with the
+     * shelf the old one was on and its new key. A row still under the old
+     * key on that shelf is the old achievement: syncing would hand it the
+     * new one's mechanics, so its awards would change meaning.
+     */
+    public const FORMER_KEYS = [
+        'early_bird' => ['shelf' => 'oof', 'now' => 'itchy_feet'],
+    ];
+
     public function __construct(private Catalogue $catalogue, private Requirements $requirements) {}
 
     /**
@@ -27,6 +38,12 @@ class CatalogueSync
     public function plan(): array
     {
         $rows = Achievement::query()->get()->keyBy('key');
+
+        foreach (self::FORMER_KEYS as $key => $former) {
+            if ($rows->get($key)?->shelf?->value === $former['shelf']) {
+                throw new RuntimeException("[{$key}] is still the former achievement (now [{$former['now']}]): run the migrations before the sync.");
+            }
+        }
         $plan = ['create' => [], 'update' => [], 'unknown' => $rows->keys()->diff($this->catalogue->keys())->values()->all()];
 
         foreach ($this->catalogue->keys() as $key) {

@@ -81,7 +81,7 @@ class CatalogueTest extends TestCase
         $this->assertSame(1996, $requirements->for('led_astray')['available_from']);
         $this->assertContains(DataSource::JolpicaLaps, $requirements->for('clean_sweep')['sources']);
         $this->assertContains(DataSource::OpenF1Positions, $requirements->for('clean_sweep')['sources']);
-        $this->assertSame(2004, $requirements->for('all_dressed_up_nowhere_to_go')['available_from']);
+        $this->assertSame(1996, $requirements->for('all_dressed_up_nowhere_to_go')['available_from']);
         $this->assertSame(1950, $requirements->for('did_the_thing')['available_from']);
         $this->assertSame(['Grid 0 meant a pit lane start until 2024.'], $requirements->for('reverse_gear')['notes']);
         $this->assertSame(1991, $requirements->for('class_dismissed')['available_from']);
@@ -94,8 +94,8 @@ class CatalogueTest extends TestCase
 
     public function test_the_engine_looks_for_an_achievement_only_from_the_year_its_data_starts(): void
     {
-        $before = $this->fastestLapOutsideThePoints(2003);
-        $from = $this->fastestLapOutsideThePoints(2004);
+        $before = $this->fastestLapOutsideThePoints(1995);
+        $from = $this->fastestLapOutsideThePoints(1996);
 
         $this->assertSame([], $this->engineFinds('all_dressed_up_nowhere_to_go', $before));
         $this->assertCount(1, $this->engineFinds('all_dressed_up_nowhere_to_go', $from));

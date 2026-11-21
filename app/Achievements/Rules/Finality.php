@@ -10,6 +10,7 @@ use App\Enums\AchievementShelf;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
 use App\Enums\AwardStatus;
+use App\Enums\SessionType;
 use App\Models\Achievement;
 use Carbon\CarbonImmutable;
 
@@ -43,11 +44,13 @@ class Finality
     }
 
     /**
-     * Whether it reads Jolpica's lap times and the race has none yet.
+     * Whether it reads Jolpica's lap times and the race has none yet. Jolpica
+     * has lap times for Grands Prix only, so a sprint never waits for them.
      */
     private function awaitsLapTimes(Achievement $achievement, SessionData $data): bool
     {
-        return $data->year() >= (int) config('jolpica.laps_from')
+        return $data->type() === SessionType::Race
+            && $data->year() >= (int) config('jolpica.laps_from')
             && in_array(DataSource::JolpicaLaps, $this->requirements->for($achievement->key)['sources'], true)
             && ! DataSource::JolpicaLaps->hasRows($data);
     }
