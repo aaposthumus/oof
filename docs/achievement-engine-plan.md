@@ -27,7 +27,7 @@ and 4 for the design, and "Working notes" at the end.
 | 11a | Historic data: Jolpica lap times, constructor merge | Done, 19 November 2026 |
 | 11b | Historic backfill: achievements for 1950 to 2022 | Done, 19 November 2026 (the curated Clean Sweeps before 1996 wait for the owner's review) |
 | 12a | Rename Early Bird (false start) to Itchy Feet | Done, 21 November 2026 |
-| 12b | Engine extensions for the new achievements | Not started |
+| 12b | Engine extensions for the new achievements | Done, 21 November 2026 |
 | 12c | Race-weekend glory: Early Bird (pole), Early Chick, Fun Size, Purple Patch, Encore, In Tandem, Hometown Hero | Not started |
 | 12d | OOF: Bubble Burst, Dropped the Baton | Not started |
 | 12e | Fourteen season Oofies | Not started |
@@ -1416,6 +1416,68 @@ step for the art. The plan as approved, with the owner's decisions:
   last export). After the change: 14 `early_bird` missing, 14 `itchy_feet` added,
   identical in every field once the key is mapped, and nothing else. Re-exported, 30,643
   awards in 2,063 contexts.
+
+**Phase 12b: engine extensions. Done.**
+
+No new achievement: only what 12c to 12e need, each proven by a feature test with an
+achievement that exists only in the test.
+
+- Count trigger:
+  - `per: driver` counts a driver's facts across the sessions a weekend entry reads
+    (Encore). The award goes on the car of the last session.
+  - `distinct: <attribute>` counts different values, so a shared car of the 1950s is one
+    place (In Tandem).
+  - Other groups still stand for their first fact, so existing instance keys are
+    unchanged.
+- Sensitivity: a driver block also holds back the team awards of that driver's team in
+  the round (`blocked_season_teams`, the Phase 8 requirement). The rule, the engine's
+  store step, the release after a dismissal and the save guard all read it
+  (`Sensitivity::allowsAward()`, `blocks()`). The teammate's own awards stay.
+- Aggregate trigger:
+  - `group: team` with a team recipient; the factory now allows a team aggregate. A team
+    award must be grouped by team, and a team group must go to a team.
+  - `reduce` (sum, min or max) for an attribute measure.
+  - `tie_break`: an attribute summed per group that decides between groups level on the
+    measure (Best in Show).
+  - `in_every: race` (Perfect Attendance, Like a Metronome).
+  - `skip_sensitive_rounds` (Homebody).
+  - `coverage: [in, at_least]`: nothing unless every session of that type is measured
+    well enough. Read from a provider that implements `MeasuresCoverage`; pit stops give
+    the share of visits with a stationary time (decision 3: Fastest Food and Slow Food).
+  - Source `championship`: the final drivers' standings with position, points, wins and
+    Grand Prix podiums (`SeasonData::championship()`; the Indianapolis 500 podiums count,
+    as in the record) (Always the Bridesmaid).
+  - The facts source now leaves the Indianapolis 500 out of every season count.
+  - The fact-only options are refused on other sources.
+- Pit stop facts: attribute `rejoined` (the car completed a lap after the stop's lap),
+  and coverage.
+- Oofie side: `achievements.side` (migration; the three Oofies so far are `oof`), a
+  mechanic written by the sync and part of the catalogue version, shown read-only in the
+  CMS.
+  - `Achievement::firstSeason()`: a glory-side Oofie counts like glory (1950), an
+    OOF-side one like the Oofies (2023).
+  - `countingOnTheirShelf()` follows the side.
+  - `Requirements` decides an Oofie no earlier than its side counts, whatever its data
+    allows.
+  - A test checks that every Oofie names its side and nothing else has one.
+- `nationality_countries` (nationality, country, note): created and filled by its
+  migration with all 40 nationalities in the data (the step 1 report said 41: a
+  miscount). Countries without a circuit keep their own name. East German maps to
+  Germany; Rhodesian to Rhodesia, with a note.
+  - CMS screen Nationalities (list, add, edit, delete).
+  - Its rows are part of the catalogue version.
+- Predicates:
+  - `at_home`: the driver's nationality is at home in the circuit's country.
+  - `retired_while_leading`: retired after at least one lap, P1 at the end of the last
+    completed lap or the one before. From 1996; it reads Jolpica laps, so it waits for
+    them.
+- `Support/RunningOrder`: position per car at the end of each lap, from Jolpica's lap
+  times, OpenF1 standing in.
+- Local database: migrated; the sync dry run shows no drift. The catalogue version
+  changed (side, nationality table), so the next `--stale` re-runs every context; it
+  should find the same awards.
+- Golden master: no differences (30,643 awards); not re-exported.
+- Deploy: the two migrations go with step 1; nothing else.
 
 ## Working notes
 

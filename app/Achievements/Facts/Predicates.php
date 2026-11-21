@@ -30,6 +30,8 @@ class Predicates
         'first_place_outside_the_points' => Predicates\FirstPlaceOutsideThePoints::class,
         'topped_a_practice_session' => Predicates\ToppedAPracticeSession::class,
         'top_team_on_form' => Predicates\TopTeamOnForm::class,
+        'retired_while_leading' => Predicates\RetiredWhileLeading::class,
+        'at_home' => Predicates\AtHome::class,
     ];
 
     /**

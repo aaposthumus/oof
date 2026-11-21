@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Achievements\Rules\Sensitivity;
 use App\Achievements\WithheldOnSensitiveWeekend;
 use App\Enums\AchievementShelf;
+use App\Enums\AchievementSide;
 use App\Enums\AchievementTier;
 use App\Enums\AwardConfidence;
 use App\Enums\AwardReviewReason;
@@ -113,18 +114,27 @@ class AchievementAward extends Model
     /**
      * Awards of a season in which their shelf counts (achievements.shelf_from):
      * what the stamp books, trophy cabinets and automatic publishing read.
-     * Glory counts from 1950; OOF, Safety Car and the Oofies from 2023.
+     * Glory counts from 1950; OOF, Safety Car and the Oofies from 2023, but
+     * a glory-side Oofie counts like glory (see Achievement::firstSeason()).
      *
      * @param  Builder<self>  $query
      */
     public function scopeCountingOnTheirShelf(Builder $query): void
     {
-        $query->where(function (Builder $query) {
+        $gloryOofies = fn (Builder $achievement) => $achievement->where('side', AchievementSide::Glory);
+
+        $query->where(function (Builder $query) use ($gloryOofies) {
             foreach (AchievementShelf::cases() as $shelf) {
                 $query->orWhere(fn (Builder $query) => $query
                     ->where('shelf', $shelf)
+                    ->when($shelf === AchievementShelf::Oofies, fn (Builder $query) => $query->whereDoesntHave('achievement', $gloryOofies))
                     ->whereHas('season', fn (Builder $season) => $season->where('year', '>=', $shelf->firstSeason())));
             }
+
+            $query->orWhere(fn (Builder $query) => $query
+                ->where('shelf', AchievementShelf::Oofies)
+                ->whereHas('achievement', $gloryOofies)
+                ->whereHas('season', fn (Builder $season) => $season->where('year', '>=', AchievementSide::Glory->countsLike()->firstSeason())));
         });
     }
 
@@ -219,7 +229,7 @@ class AchievementAward extends Model
             ->where('round_id', $roundId)
             ->where('decision_note', Sensitivity::SYSTEM_NOTE)
             ->get()
-            ->filter(fn (self $award) => Sensitivity::allows($remaining, $award->achievement, $award->driver_id))
+            ->filter(fn (self $award) => Sensitivity::allowsAward($remaining, $award->achievement, $award))
             ->each(function (self $award): void {
                 $held = $award->held_decision;
 
@@ -284,7 +294,7 @@ class AchievementAward extends Model
 
         $achievement = Achievement::query()->findOrFail($this->achievement_id);
 
-        if (! Sensitivity::allows(Sensitivity::forRound($this->round_id), $achievement, $this->driver_id)) {
+        if (! Sensitivity::allowsAward(Sensitivity::forRound($this->round_id), $achievement, $this)) {
             throw new WithheldOnSensitiveWeekend("{$achievement->name} cannot be awarded here: the weekend is sensitive or blocked.");
         }
     }

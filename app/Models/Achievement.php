@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Achievements\OofScoreStandings;
 use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
+use App\Enums\AchievementSide;
 use App\Enums\AchievementTier;
 use App\Enums\AwardScope;
 use App\Enums\RecipientType;
@@ -27,7 +28,7 @@ use Illuminate\Support\Collection;
  * @property list<string>|null $data_sources DataSource values, derived from the trigger
  * @property int|null $available_from The first year its data supports, derived from the trigger
  */
-#[Fillable(['key', 'name', 'section', 'shelf', 'recipient_type', 'tier', 'session_types', 'scope', 'decided_after', 'stacks', 'supersedes', 'description', 'is_enabled', 'withheld_on_sensitive_weekends', 'is_manual', 'score_category', 'data_sources', 'available_from'])]
+#[Fillable(['key', 'name', 'section', 'shelf', 'side', 'recipient_type', 'tier', 'session_types', 'scope', 'decided_after', 'stacks', 'supersedes', 'description', 'is_enabled', 'withheld_on_sensitive_weekends', 'is_manual', 'score_category', 'data_sources', 'available_from'])]
 class Achievement extends Model
 {
     /** @use HasFactory<AchievementFactory> */
@@ -43,6 +44,7 @@ class Achievement extends Model
         return [
             'section' => AchievementSection::class,
             'shelf' => AchievementShelf::class,
+            'side' => AchievementSide::class,
             'recipient_type' => RecipientType::class,
             'tier' => AchievementTier::class,
             'session_types' => 'array',
@@ -79,7 +81,7 @@ class Achievement extends Model
      */
     public function updateOpenSeasonAwards(): int
     {
-        $firstSeason = $this->shelf->firstSeason();
+        $firstSeason = $this->firstSeason();
         $snapshot = ['tier' => $this->tier?->value, 'shelf' => $this->shelf->value, 'updated_at' => now()];
 
         return $this->awards()
@@ -88,6 +90,21 @@ class Achievement extends Model
             + $this->awards()
                 ->whereHas('season', fn ($query) => $query->whereNull('oofscore_closed_at')->where('year', '<', $firstSeason))
                 ->update([...$snapshot, 'points' => 0]);
+    }
+
+    /**
+     * The first season its awards count (achievements.shelf_from): its
+     * shelf's, or for an Oofie the shelf its side counts like, so a
+     * glory-side Oofie counts from 1950 and an OOF-side one from 2023.
+     */
+    public function firstSeason(): int
+    {
+        return ($this->shelf === AchievementShelf::Oofies && $this->side !== null ? $this->side->countsLike() : $this->shelf)->firstSeason();
+    }
+
+    public function countsIn(int $year): bool
+    {
+        return $year >= $this->firstSeason();
     }
 
     /**
@@ -101,7 +118,7 @@ class Achievement extends Model
             return 0;
         }
 
-        if ($year !== null && ! $this->shelf->countsIn($year)) {
+        if ($year !== null && ! $this->countsIn($year)) {
             return 0;
         }
 

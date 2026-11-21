@@ -312,7 +312,7 @@ class AchievementEngine
      * @param  Closure(Detection, ?int, Achievement): array{0: AwardStatus, 1: AwardReviewReason|null}  $judge
      * @param  Closure(Detection): ?SessionData  $anchorOf  The session the award is anchored to
      * @param  Closure(?int): ?DriverEntry  $entryOf
-     * @param  array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, note: string|null}  $round
+     * @param  array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, blocked_season_teams: list<int>, note: string|null}  $round
      * @param  list<int>  $undecided  IDs of achievements not decided yet, whose awards stay as they are
      * @return Stats
      */
@@ -405,8 +405,8 @@ class AchievementEngine
             }
 
             $achievement = $catalogue->firstWhere('id', $award->achievement_id);
-            $blocked = $round['blocked_round'] || ($award->driver_id !== null && in_array($award->driver_id, $round['blocked_drivers'], true));
-            $withheld = $achievement !== null && ! Sensitivity::allows($round, $achievement, $award->driver_id);
+            $blocked = Sensitivity::blocks($round, $award);
+            $withheld = $achievement !== null && ! Sensitivity::allowsAward($round, $achievement, $award);
 
             // What the engine made itself goes; what a person decided is suppressed by the system, keeping their decision.
             $outcome = match (true) {

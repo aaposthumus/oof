@@ -63,6 +63,13 @@ class AchievementForm
                     ->disabled()
                     ->dehydrated(false)
                     ->helperText(self::CATALOGUE_OWNED),
+                TextInput::make('side')
+                    ->label('Oofie side')
+                    ->formatStateUsing(fn (?Achievement $record): string => $record?->side?->label() ?? '')
+                    ->visible(fn (?Achievement $record): bool => $record?->side !== null)
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText('Glory or OOF: the art folder and theme, and when it counts (glory from 1950, OOF from 2023). '.self::CATALOGUE_OWNED),
                 TextInput::make('scope')
                     ->label('Decided over')
                     ->formatStateUsing(fn (?Achievement $record): string => match ($record?->scope) {

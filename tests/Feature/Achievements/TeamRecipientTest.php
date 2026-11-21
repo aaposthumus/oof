@@ -97,7 +97,7 @@ class TeamRecipientTest extends TestCase
         $this->assertSame(RecipientType::SafetyCar, Achievement::firstWhere('key', 'took_the_lead')->recipient_type);
     }
 
-    public function test_a_team_achievement_needs_a_declarative_session_or_weekend_trigger(): void
+    public function test_a_team_season_award_must_be_grouped_by_team(): void
     {
         config(['achievement_catalogue.achievements.team_flyer' => [
             ...config('achievement_catalogue.achievements.frequent_flyer'),

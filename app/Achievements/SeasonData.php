@@ -2,11 +2,13 @@
 
 namespace App\Achievements;
 
+use App\Achievements\Support\Finish;
 use App\Enums\AwardScope;
 use App\Enums\AwardStatus;
 use App\Enums\SessionType;
 use App\Models\AchievementAward;
 use App\Models\DriverEntry;
+use App\Models\DriverStanding;
 use App\Models\OofscoreStanding;
 use App\Models\RaceSession;
 use App\Models\Round;
@@ -17,7 +19,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Everything the season triggers read about one season, loaded once and
- * shared: its sessions, its final awards and its OOFscore standings.
+ * shared: its sessions, its final awards, its OOFscore standings and its
+ * final drivers' standings.
  */
 class SeasonData
 {
@@ -130,6 +133,46 @@ class SeasonData
     }
 
     /**
+     * The final drivers' standings, best first, each driver with their
+     * Grand Prix podiums of the season (classified in the top three, not
+     * disqualified; the Indianapolis 500 included, as in the record).
+     *
+     * @return Collection<int, array{driver: int, name: string|null, position: int|null, points: int|float, wins: int, podiums: int}>
+     */
+    public function championship(): Collection
+    {
+        $finalRound = $this->finalRound();
+
+        if ($finalRound === null) {
+            return collect();
+        }
+
+        $podiums = $this->raceEntries()
+            ->filter(fn (DriverEntry $entry) => $entry->raceSession->type === SessionType::Race
+                && $entry->result !== null
+                && Finish::isClassifiedFinisher($entry->result)
+                && $entry->result->position <= 3)
+            ->countBy('driver_id');
+
+        return DriverStanding::query()
+            ->with('driver')
+            ->where('round_id', $finalRound->id)
+            ->orderByRaw('position is null')
+            ->orderBy('position')
+            ->orderBy('driver_id')
+            ->get()
+            ->map(fn (DriverStanding $row) => [
+                'driver' => $row->driver_id,
+                'name' => $row->driver?->family_name,
+                'position' => $row->position,
+                'points' => floor((float) $row->points) === (float) $row->points ? (int) $row->points : (float) $row->points,
+                'wins' => (int) $row->wins,
+                'podiums' => $podiums->get($row->driver_id, 0),
+            ])
+            ->values();
+    }
+
+    /**
      * The driver's entry in the last race or sprint they drove this season,
      * which gives a season award its car and team.
      */
@@ -151,7 +194,7 @@ class SeasonData
     private function raceEntries(): Collection
     {
         return $this->raceEntries ??= DriverEntry::query()
-            ->with(['driver', 'raceSession.round'])
+            ->with(['driver', 'result', 'raceSession.round'])
             ->whereHas('raceSession', fn ($query) => $query
                 ->whereIn('type', [SessionType::Race, SessionType::Sprint])
                 ->whereHas('round', fn ($query) => $query->where('season_id', $this->season->id)))

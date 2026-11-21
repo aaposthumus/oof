@@ -29,10 +29,16 @@ use App\Achievements\Triggers\Custom\ToTheRescue;
 | for the last practice session, or a session type) or season (an
 | aggregate trigger, once the final round is final).
 |
+| Side: for the Oofies only, glory or oof: the art folder and theme, and
+| when the award counts (a glory-side Oofie from 1950 like the glory
+| shelf, an OOF-side one from 2023).
+|
 | Recipient: driver (the driver of the fact's car), team (that car's season
 | team, and through it the lasting team) or safety_car. A team achievement
 | is an entry with recipient team; a count or extreme trigger then counts
-| per team. No team achievement ships yet (decision 3 of the plan).
+| per team, and an aggregate trigger is grouped by team. No team
+| achievement ships yet (decision 3 of the plan; the first ones come in
+| Phase 12).
 |
 */
 
@@ -1307,6 +1313,7 @@ return [
             'name' => 'Most Collected',
             'section' => 'oofies',
             'shelf' => 'oofies',
+            'side' => 'oof',
             'tier' => null,
             'score_category' => 'driver',
             'description' => 'Most final awards of one OOF achievement in the season, Nothing to See Here aside (at least 2; a tie is shared).',
@@ -1327,6 +1334,7 @@ return [
             'name' => 'OOFscore Champion',
             'section' => 'oofies',
             'shelf' => 'oofies',
+            'side' => 'oof',
             'tier' => null,
             'score_category' => 'driver',
             'description' => 'Top of the final OOFscore standings (a tie is shared).',
@@ -1347,6 +1355,7 @@ return [
             'name' => 'Rarest Award',
             'section' => 'oofies',
             'shelf' => 'oofies',
+            'side' => 'oof',
             'tier' => null,
             'score_category' => 'driver',
             'description' => 'Holds the OOF achievement unlocked least often in the season (a tie goes to the higher tier).',

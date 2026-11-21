@@ -3,6 +3,7 @@
 namespace App\Achievements;
 
 use App\Models\Achievement;
+use App\Models\NationalityCountry;
 use InvalidArgumentException;
 
 /**
@@ -12,12 +13,15 @@ use InvalidArgumentException;
  *
  * Recipient: driver, team or safety_car (see App\Achievements\Recipient).
  *
+ * Side: glory or oof, for an achievement on the Oofies shelf only: its art
+ * folder and theme, and the shelf it counts like (see Achievement::firstSeason()).
+ *
  * Scope: session (decided per session), weekend (once per round, after the
  * session named in decided_after: practice for the last practice session,
  * or a session type) or season (once the final round is final). A weekend
  * or season entry lists the sessions it reads.
  *
- * @phpstan-type Entry array{name: string, section: string, shelf: string, tier: string|null, score_category: string, description: string, supersedes: list<string>, sessions: list<string>, stacks: bool, recipient: string, scope: string, decided_after?: string, withheld_on_sensitive_weekends: bool, trigger: array<string, mixed>}
+ * @phpstan-type Entry array{name: string, section: string, shelf: string, side?: string, tier: string|null, score_category: string, description: string, supersedes: list<string>, sessions: list<string>, stacks: bool, recipient: string, scope: string, decided_after?: string, withheld_on_sensitive_weekends: bool, trigger: array<string, mixed>}
  */
 class Catalogue
 {
@@ -76,7 +80,7 @@ class Catalogue
     /**
      * The row's mechanics, which this file owns: sync writes them over the CMS.
      *
-     * @return array{session_types: list<string>, recipient_type: string, scope: string, decided_after: string|null, stacks: bool, withheld_on_sensitive_weekends: bool, is_manual: bool}
+     * @return array{session_types: list<string>, side: string|null, recipient_type: string, scope: string, decided_after: string|null, stacks: bool, withheld_on_sensitive_weekends: bool, is_manual: bool}
      */
     public function mechanics(string $key): array
     {
@@ -84,6 +88,7 @@ class Catalogue
 
         return [
             'session_types' => $entry['sessions'],
+            'side' => $entry['side'] ?? null,
             'recipient_type' => $entry['recipient'],
             'scope' => $entry['scope'],
             'decided_after' => $entry['decided_after'] ?? null,
@@ -96,8 +101,9 @@ class Catalogue
     /**
      * A hash of everything that decides what the engine finds: this file,
      * the engine settings in config/achievements.php (not the points, which
-     * are snapshotted apart, nor the events), and what the engine reads from
-     * the stored achievements (enabled, supersedes, the mechanics). The run
+     * are snapshotted apart, nor the events), the curated Clean Sweeps, the
+     * nationality-to-country table (Hometown Hero), and what the engine reads
+     * from the stored achievements (enabled, supersedes, the mechanics). The run
      * log keeps it per context, so oof:achievements --stale can re-run what
      * was decided on an older version. Bump achievements.engine_version when
      * a code change alters what the engine finds.
@@ -108,6 +114,7 @@ class Catalogue
             ->map(fn (Achievement $achievement) => [
                 $achievement->key, $achievement->is_enabled, $achievement->session_types, $achievement->recipient_type?->value, $achievement->scope?->value,
                 $achievement->decided_after, $achievement->stacks, $achievement->supersedes, $achievement->withheld_on_sensitive_weekends, $achievement->is_manual,
+                $achievement->side?->value,
             ])
             ->all();
 
@@ -115,6 +122,7 @@ class Catalogue
             $this->entries(),
             array_diff_key(config('achievements'), array_flip(['points', 'events_from', 'first_season', 'shelf_from', 'live_from'])),
             config('curated_clean_sweeps'),
+            NationalityCountry::query()->orderBy('nationality')->get(['nationality', 'country'])->map(fn (NationalityCountry $row) => [$row->nationality, $row->country])->all(),
             $rows,
         ], JSON_THROW_ON_ERROR));
     }

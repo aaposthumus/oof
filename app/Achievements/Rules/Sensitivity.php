@@ -4,11 +4,14 @@ namespace App\Achievements\Rules;
 
 use App\Achievements\Detection;
 use App\Achievements\SessionData;
+use App\Enums\RecipientType;
 use App\Enums\SensitivityLevel;
 use App\Enums\SensitivitySeverity;
 use App\Enums\SensitivitySource;
 use App\Enums\SessionType;
 use App\Models\Achievement;
+use App\Models\AchievementAward;
+use App\Models\DriverEntry;
 use App\Models\MomentSensitivity;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -20,7 +23,8 @@ use WeakMap;
  * names a driver. On a sensitive round the achievements withheld on
  * sensitive weekends (crashes, retirements, incidents, the Safety Car,
  * Nothing to See Here) are never awarded; every other award is flagged.
- * A block stores nothing at all for its scope: the round, or the driver.
+ * A block stores nothing at all for its scope: the round, or the driver
+ * (and the team awards of that driver's team in the round).
  *
  * Runs after Cascade, so a withheld offence takes its absorbed penalty with
  * it, and again after the late triggers. The state of a round is read once
@@ -33,17 +37,17 @@ class Sensitivity
     /**
      * The state of a context outside any round, such as a season.
      */
-    public const NONE = ['sensitive' => false, 'blocked_round' => false, 'blocked_drivers' => [], 'note' => null];
+    public const NONE = ['sensitive' => false, 'blocked_round' => false, 'blocked_drivers' => [], 'blocked_season_teams' => [], 'note' => null];
 
     /**
-     * @var WeakMap<SessionData, array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, note: string|null}>|null
+     * @var WeakMap<SessionData, array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, blocked_season_teams: list<int>, note: string|null}>|null
      */
     private ?WeakMap $cache = null;
 
     public function __construct(private HeavyCrash $heavyCrash) {}
 
     /**
-     * @return array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, note: string|null}
+     * @return array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, blocked_season_teams: list<int>, note: string|null}
      */
     public function of(SessionData $data): array
     {
@@ -53,17 +57,26 @@ class Sensitivity
     }
 
     /**
-     * @return array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, note: string|null}
+     * @return array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, blocked_season_teams: list<int>, note: string|null}
      */
     public static function forRound(int $roundId): array
     {
         $sensitivities = MomentSensitivity::query()->active()->where('round_id', $roundId)->orderByRaw('driver_id is not null')->orderBy('id')->get();
         $blocks = $sensitivities->where('level', SensitivityLevel::Blocked);
+        $blockedDrivers = $blocks->pluck('driver_id')->filter()->values()->all();
 
         return [
             'sensitive' => $sensitivities->isNotEmpty(),
             'blocked_round' => $blocks->contains(fn (MomentSensitivity $block) => $block->driver_id === null),
-            'blocked_drivers' => $blocks->pluck('driver_id')->filter()->values()->all(),
+            'blocked_drivers' => $blockedDrivers,
+            // A driver block also holds back the team awards of that driver's team in the round (Phase 8 requirement).
+            'blocked_season_teams' => $blockedDrivers === [] ? [] : DriverEntry::query()
+                ->whereIn('driver_id', $blockedDrivers)
+                ->whereHas('raceSession', fn ($query) => $query->where('round_id', $roundId))
+                ->distinct()
+                ->orderBy('season_team_id')
+                ->pluck('season_team_id')
+                ->all(),
             'note' => $sensitivities->isEmpty() ? null : $sensitivities
                 ->map(fn (MomentSensitivity $sensitivity) => $sensitivity->isProposal() ? "Proposed, not yet confirmed: {$sensitivity->note}" : $sensitivity->note)
                 ->unique()
@@ -72,14 +85,16 @@ class Sensitivity
     }
 
     /**
-     * Whether an award of this achievement may exist for this driver in this round at all.
+     * Whether an award of this achievement may exist for this driver, or
+     * for this team (a team award's season team), in this round at all.
      *
-     * @param  array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, note: string|null}  $round
+     * @param  array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, blocked_season_teams: list<int>, note: string|null}  $round
      */
-    public static function allows(array $round, Achievement $achievement, ?int $driverId): bool
+    public static function allows(array $round, Achievement $achievement, ?int $driverId, ?int $seasonTeamId = null): bool
     {
         return ! $round['blocked_round']
             && ! ($driverId !== null && in_array($driverId, $round['blocked_drivers'], true))
+            && ! ($seasonTeamId !== null && in_array($seasonTeamId, $round['blocked_season_teams'], true))
             && ! ($round['sensitive'] && $achievement->withheld_on_sensitive_weekends);
     }
 
@@ -93,8 +108,31 @@ class Sensitivity
         $round = $this->of($data);
 
         return $detections
-            ->filter(fn (Detection $detection) => self::allows($round, $catalogue[$detection->achievementKey], $data->entry($detection->recipient->entryId)?->driver_id))
+            ->filter(fn (Detection $detection) => self::allows($round, $catalogue[$detection->achievementKey], $data->entry($detection->recipient->entryId)?->driver_id, $detection->recipient->seasonTeamId))
             ->values();
+    }
+
+    /**
+     * Whether a stored award may exist in this round: a driver award by its
+     * driver, a team award by its season team.
+     *
+     * @param  array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, blocked_season_teams: list<int>, note: string|null}  $round
+     */
+    public static function allowsAward(array $round, Achievement $achievement, AchievementAward $award): bool
+    {
+        return self::allows($round, $achievement, $award->driver_id, $award->recipient_type === RecipientType::Team ? $award->season_team_id : null);
+    }
+
+    /**
+     * Whether the round's blocks leave out this stored award, whatever its achievement.
+     *
+     * @param  array{sensitive: bool, blocked_round: bool, blocked_drivers: list<int>, blocked_season_teams: list<int>, note: string|null}  $round
+     */
+    public static function blocks(array $round, AchievementAward $award): bool
+    {
+        return $round['blocked_round']
+            || ($award->driver_id !== null && in_array($award->driver_id, $round['blocked_drivers'], true))
+            || ($award->recipient_type === RecipientType::Team && in_array($award->season_team_id, $round['blocked_season_teams'], true));
     }
 
     /**

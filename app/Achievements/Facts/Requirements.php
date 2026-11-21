@@ -6,6 +6,7 @@ use App\Achievements\Catalogue;
 use App\Achievements\SessionData;
 use App\Achievements\Support\TeamForm;
 use App\Enums\AchievementShelf;
+use App\Enums\AchievementSide;
 use Illuminate\Contracts\Container\Container;
 
 /**
@@ -39,7 +40,26 @@ class Requirements
      */
     public function for(string $key): array
     {
-        return $this->derived[$key] ??= $this->derive($this->catalogue->trigger($key));
+        return $this->derived[$key] ??= $this->clampToTheSide($this->catalogue->entry($key), $this->derive($this->catalogue->trigger($key)));
+    }
+
+    /**
+     * An Oofie is decided only from the season its side counts (a glory-side
+     * one from 1950, an OOF-side one from 2023), however far its data goes back.
+     *
+     * @param  array<string, mixed>  $entry
+     * @param  Needs  $needs
+     * @return Needs
+     */
+    private function clampToTheSide(array $entry, array $needs): array
+    {
+        if ($entry['shelf'] !== AchievementShelf::Oofies->value) {
+            return $needs;
+        }
+
+        $countsLike = isset($entry['side']) ? AchievementSide::from($entry['side'])->countsLike() : AchievementShelf::Oofies;
+
+        return [...$needs, 'available_from' => max($needs['available_from'], $countsLike->firstSeason())];
     }
 
     /**
@@ -92,6 +112,16 @@ class Requirements
                 'sources' => [],
                 'available_from' => (int) config('achievements.first_season'),
                 'notes' => ['Awarded by hand in the CMS only, never by the engine.'],
+                'session_sources' => [],
+                'reads_earlier_races' => false,
+            ];
+        }
+
+        if ($trigger['type'] === 'aggregate' && $trigger['source'] === 'championship') {
+            return [
+                'sources' => [DataSource::JolpicaResults],
+                'available_from' => (int) config('achievements.first_season'),
+                'notes' => ['Reads the final drivers\' standings and the Grand Prix results, once the season\'s final round is final.'],
                 'session_sources' => [],
                 'reads_earlier_races' => false,
             ];
