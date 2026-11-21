@@ -26,6 +26,13 @@ and 4 for the design, and "Working notes" at the end.
 | 10 | 2027 pack | Done, 18 November 2026 |
 | 11a | Historic data: Jolpica lap times, constructor merge | Done, 19 November 2026 |
 | 11b | Historic backfill: achievements for 1950 to 2022 | Done, 19 November 2026 (the curated Clean Sweeps before 1996 wait for the owner's review) |
+| 12a | Rename Early Bird (false start) to Itchy Feet | Done, 21 November 2026 |
+| 12b | Engine extensions for the new achievements | Not started |
+| 12c | Race-weekend glory: Early Bird (pole), Early Chick, Fun Size, Purple Patch, Encore, In Tandem, Hometown Hero | Not started |
+| 12d | OOF: Bubble Burst, Dropped the Baton | Not started |
+| 12e | Fourteen season Oofies | Not started |
+| 12f | Stamp framing service, CMS preview, preview command | Not started |
+| 12g | Backfill and report | Not started |
 
 ## 0. Where the code stood on 16 November 2026
 
@@ -392,7 +399,7 @@ come from general knowledge of the Ergast data, not from this database.
 | Outside the Lines | OpenF1 race control, deletions | 2023 | Re-issued deletions are deduplicated on car and time |
 | Teacher's Stare, Meatball Sub, Expelled | OpenF1 race control, flags (Expelled also Jolpica DSQ) | 2023 | Meatball never occurred in 2023 to 2026; one black flag |
 | It Was Like That When I Got There, Sibling Rivalry | OpenF1 race control, incident notes with every car linked | 2023 | Involvement only, never blame |
-| Bumper Cars, Early Bird, Selective Hearing, Shortcut Tax, Line Dancing, Smile for the Camera, Extra Wide, Forgot to Indicate, Selective Vision, Queue Jumper, Failed the Driving Test, Released Into the Wild, Double Detention | OpenF1 race control, penalty naming one car and an offence | 2023 | In-session penalties only |
+| Bumper Cars, Itchy Feet (Early Bird until Phase 12a), Selective Hearing, Shortcut Tax, Line Dancing, Smile for the Camera, Extra Wide, Forgot to Indicate, Selective Vision, Queue Jumper, Failed the Driving Test, Released Into the Wild, Double Detention | OpenF1 race control, penalty naming one car and an offence | 2023 | In-session penalties only |
 | Sunday Driver | OpenF1 race control, maximum delta time noted | 2023 | |
 | High Five, Perfect Ten, Drive-Thru, Red Light Green Light | OpenF1 race control, penalties | 2023 | Post-session penalties are missing |
 | Called the Tow Truck, Whole Class Detention | OpenF1 race control: deployment plus a single-car message just before | 2023 | Inferred, always reviewed |
@@ -1330,6 +1337,86 @@ Decided by the owner on 19 November 2026, after the report:
   the stored 2023 to 2026 awards predate the branch (deploy step 5). Golden master
   re-exported over 1950 to 2026.
 
+**Phase 12: new achievements, season Oofies, stamp framing.**
+
+Planned on 21 November 2026 (step 1 report, approved by the owner the same day). New
+race-weekend achievements whose art is final, fourteen season awards, and a framing
+step for the art. The plan as approved, with the owner's decisions:
+
+- Race weekend, glory (no points). Tiers:
+  - Early Bird: pole for the Grand Prix, `qualifying_order` P1 as Plot Twist; Gold.
+  - Early Chick: sprint qualifying P1, from 2023 only (2021 and 2022 had no sprint
+    qualifying of their own); Silver.
+  - Fun Size Win, Silver and Bronze: sprint P1 to P3, from 2021; Gold, Silver and Bronze.
+    Files with a `--label` suffix are variants, not achievements.
+  - Purple Patch: Grand Prix fastest lap (`set_fastest_lap`, 1996) with points; Bronze.
+    All Dressed Up, Nowhere to Go moves to the same predicate, so the two are exact
+    complements. Clean Sweep supersedes Purple Patch.
+  - Encore: won the sprint and the Grand Prix of one weekend; Gold.
+  - In Tandem: a 1-2 finish (distinct positions), recipient the team; Silver.
+  - Hometown Hero: won at home, the driver's nationality mapped to the circuit's country
+    through a new editable table; Gold. It supersedes Did the Thing.
+  - Plot Twist supersedes Early Bird.
+  - Did the Thing, Silver Lining and Solid Bronze drop the sprint (decided): a sprint
+    podium is only a Fun Size award.
+- Race weekend, OOF:
+  - Itchy Feet: the false start, renamed from Early Bird (12a).
+  - Bubble Burst: retired while leading (P1 at the end of his last completed lap or the
+    one before it, at least one lap completed). Grand Prix only, from 1996 on Jolpica
+    laps, waits for lap times. Supersedes Home Before Dinner. Gold (decided: losing a win
+    to a breakdown should not also earn the heaviest OOF points), reliability, withheld
+    on sensitive weekends.
+  - Dropped the Baton: the team held P1 and P2 at the end of one of the 5 laps before the
+    leader's last and not at the end of the last lap, judged on the road from the lap
+    positions (decided), so post-race penalties and disqualifications do not count.
+    Recipient the team, Grand Prix only, from 1996; Platinum (its points never reach the
+    OOFscore, which reads driver awards), withheld on sensitive weekends.
+- The Oofies (decided): all fourteen on the `oofies` shelf with a new `side` (glory or
+  oof) for the art folder and theme; glory side from the data year, OOF side from 2023.
+  - Glory: Creature of Habit, Morning Person, Room with a View, Follow the Leader (1996),
+    Stampede, Fastest Food (team), Perfect Attendance, Like a Metronome.
+  - OOF: Homebody, Usual Suspect, Backpedal, Slow Food (team), Best in Show, Always the
+    Bridesmaid.
+  - Grands Prix only, except Usual Suspect (race, sprint and both qualifyings) and the
+    Food awards (race and sprint).
+  - Ties are shared, at least 1. Always the Bridesmaid follows the championship order.
+    Best in Show (decided): the number of races finished lapped, with total laps down as
+    the tie-break.
+  - Fastest Food and Slow Food (decided): OpenF1 stationary time through
+    `PitStops::countable`, leaving out stops the car never rejoined from and values under
+    1.5 s. Awarded only in a season where every race has stationary times for at least 80%
+    of its pit visits; on the local data only 2025 passes.
+  - Places gained and lost: positive per race, classified finishers only, summed.
+  - Homebody leaves out retirements on sensitive rounds.
+- These are the first team achievements that ship (decision 3 is replaced). A driver
+  block on a round also holds back that driver's team awards (the Phase 8 requirement).
+- Stamp framing (decided): a framing service, a CMS preview and a preview command only.
+  Each image is trimmed to its visible content and scaled to sit centred in the 4:5
+  window with an even empty margin of about 15 percent, at render time, on white. The
+  source files are never touched. Backgrounds are not made transparent yet. **When that
+  comes, it must use a flood fill from the image edges, not a global near-white threshold,
+  so cream and white parts inside characters survive.**
+
+**Phase 12a: Early Bird to Itchy Feet. Done.**
+
+- Migration `rename_early_bird_to_itchy_feet`: the row with key `early_bird` on the OOF
+  shelf takes key `itchy_feet`, and the name "Itchy Feet" where it was still "Early Bird"
+  (a CMS name is kept). Awards point to the row, so every award and every decision on it
+  moves with it. Every stored `supersedes` list that names the old key is rewritten. An
+  `early_bird` on the glory shelf is left alone. An empty `itchy_feet` row (a sync run
+  before the migration) is replaced; one that holds awards stops the migration.
+  Rollback puts key and name back.
+- Catalogue entry and the detector test renamed. Old migrations are unchanged.
+- Order matters on deploy: migrate before sync (deploy steps 1 and 2), and the pole Early
+  Bird (12c) lands only after this rename.
+- Local database: the 14 false-start awards (none decided by a person) are now Itchy
+  Feet; the sync dry run shows no drift.
+- Golden master: before the change one difference, not from this phase: Verstappen's
+  Clean Sweep at Spa 2021 is suppressed (the owner's decision of Phase 11b, made after the
+  last export). After the change: 14 `early_bird` missing, 14 `itchy_feet` added,
+  identical in every field once the key is mapped, and nothing else. Re-exported, 30,643
+  awards in 2,063 contexts.
+
 ## Working notes
 
 - The work lives on the branch `achievement-engine`, one commit per phase. `main` stays
@@ -1352,7 +1439,8 @@ When the `achievement-engine` branch is deployed to production (decided 17 Novem
 1. `php artisan migrate` (lineages, award schema and snapshot, sensitivity columns,
    data needs, scope and the run log, recipient type, nicknames and evolutions, practice
    results and `is_manual`, the lineage's fixed names and the historic constructor
-   merge), then `php artisan oof:normalize --all --source=openf1
+   merge, and the rename of Early Bird to Itchy Feet, which must run before the sync of
+   step 2), then `php artisan oof:normalize --all --source=openf1
    --endpoint=session_result` to fill `practice_results` from the stored responses.
    Deploy and migrate before 04:50: the scheduled `oof:dig` must not run on the old
    lineage (decision D12 of Phase 11a).

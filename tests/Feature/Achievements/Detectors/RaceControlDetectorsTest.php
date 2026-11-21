@@ -24,7 +24,7 @@ class RaceControlDetectorsTest extends TestCase
     {
         return [
             'bumper cars' => ['bumper_cars', 'CAUSING A COLLISION'],
-            'early bird' => ['early_bird', 'FALSE START - MOVING BEFORE SIGNAL'],
+            'itchy feet' => ['itchy_feet', 'FALSE START - MOVING BEFORE SIGNAL'],
             'selective hearing' => ['selective_hearing', 'FAILING TO FOLLOW RACE DIRECTORS INSTRUCTIONS'],
             'shortcut_tax' => ['shortcut_tax', 'LEAVING THE TRACK AND GAINING AN ADVANTAGE'],
             'lane discipline' => ['line_dancing', 'CROSSING THE LINE AT PIT ENTRY'],

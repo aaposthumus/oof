@@ -61,8 +61,8 @@ return [
             ],
         ],
 
-        'early_bird' => [
-            'name' => 'Early Bird',
+        'itchy_feet' => [
+            'name' => 'Itchy Feet',
             'section' => 'offence',
             'shelf' => 'oof',
             'tier' => 'gold',
