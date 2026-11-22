@@ -25,14 +25,14 @@ and 4 for the design, and "Working notes" at the end.
 | 9 | Nicknames and evolution events | Done, 18 November 2026 |
 | 10 | 2027 pack | Done, 18 November 2026 |
 | 11a | Historic data: Jolpica lap times, constructor merge | Done, 19 November 2026 |
-| 11b | Historic backfill: achievements for 1950 to 2022 | Done, 19 November 2026 (the curated Clean Sweeps before 1996 wait for the owner's review) |
+| 11b | Historic backfill: achievements for 1950 to 2022 | Done, 19 November 2026 (curated Clean Sweeps before 1996 approved 19 November) |
 | 12a | Rename Early Bird (false start) to Itchy Feet | Done, 21 November 2026 |
 | 12b | Engine extensions for the new achievements | Done, 21 November 2026 |
-| 12c | Race-weekend glory: Early Bird (pole), Early Chick, Fun Size, Purple Patch, Encore, In Tandem, Hometown Hero | Done, 21 November 2026 |
+| 12c | Race-weekend glory: Early Bird (pole), Early Chick, Fun Size, Purple Patch, Encore, In Tandem, Hometown Hero | Done, 21 November 2026 (then: official poles, one definition of pole, 22 November) |
 | 12d | OOF: Bubble Burst, Dropped the Baton | Done, 22 November 2026 |
-| 12e | Fourteen season Oofies | Done, 22 November 2026 |
-| 12f | Stamp framing service, CMS preview, preview command | Done, 22 November 2026 |
-| 12g | Backfill and report | Not started |
+| 12e | Fourteen season Oofies | Done, 22 November 2026 (then: Food coverage per race) |
+| 12f | Stamp framing service, CMS preview, preview command | Done, 22 November 2026 (then: equal visual weight) |
+| 12g | Backfill and report | Done, 22 November 2026 |
 
 ## 0. Where the code stood on 16 November 2026
 
@@ -1805,6 +1805,69 @@ tall and square ones.
     room-with-a-view, homebody, itchy-feet, stampede.
   - Tall objects also grew a little (they get the same area too).
   - Contact sheets regenerated in `~/oof-contact-sheets/framed/`.
+
+**Phase 12g: backfill and report. Done.**
+
+- `oof:achievements:sync`: 0 created, 0 fields changed (each step had synced already).
+- `oof:achievements --stale` over 1950 to 2026: 1,983 sessions, 1,169 weekends and 76
+  seasons in 291 seconds, OOFscore rebuilt for 2023 to 2026.
+  - Found 33,027, created 3,599, updated 1, removed 727, 0 pending.
+  - This brought the stored awards up to date with every Phase 12 change.
+- A second `--stale`: 0 sessions, 0 weekends, 0 seasons, nothing changed.
+- The stored awards now equal the golden master exactly: 33,027 (32,121 final, 906
+  suppressed).
+- Frequency of the new achievements: final awards per eligible Grand Prix (Indianapolis
+  500 left out), sprint, sprint qualifying or season, from each one's first year,
+  through 2026 round 20.
+
+  | Achievement | Per | From | All years | 2023 to 2026 |
+  |---|---|---|---|---|
+  | Early Bird | Grand Prix | 1950 | 1,071 / 1,158 = 0.92 (the rest are Plot Twists) | 89 / 90 = 0.99 |
+  | Early Chick | sprint qualifying | 2023 | 24 / 24 = 1.00 | 24 / 24 = 1.00 |
+  | Fun Size Win, Silver, Bronze | sprint | 2021 | 30 / 30 = 1.00 each | 24 / 24 = 1.00 each |
+  | Purple Patch | Grand Prix | 1996 | 491 / 588 = 0.84 | 72 / 90 = 0.80 |
+  | Encore | sprint weekend | 2021 | 11 / 30 = 0.37 | 9 / 24 = 0.38 |
+  | In Tandem | Grand Prix | 1950 | 321 / 1,158 = 0.28 | 23 / 90 = 0.26 |
+  | Hometown Hero | Grand Prix | 1950 | 84 / 1,158 = 0.07 | 5 / 90 = 0.06 |
+  | Itchy Feet | Grand Prix weekend | 2023 | 14 / 90 = 0.16 | 14 / 90 = 0.16 |
+  | Bubble Burst | Grand Prix | 1996 | 65 / 588 = 0.11 | 1 / 90 = 0.01 |
+  | Dropped the Baton | Grand Prix | 1996 | 10 / 588 = 0.017 | 2 / 90 = 0.022 |
+
+  | Oofie | From | Awards / seasons decided (to 2025) | Seasons with an award | 2023 to 2025 |
+  |---|---|---|---|---|
+  | Creature of Habit | 1950 | 92 / 76 | 76 | 3 |
+  | Morning Person | 1950 | 87 / 76 | 76 | 3 |
+  | Room with a View | 1950 | 100 / 76 | 76 | 3 |
+  | Follow the Leader | 1996 | 30 / 30 | 30 | 3 |
+  | Stampede | 1950 | 79 / 76 | 76 | 3 |
+  | Fastest Food | 2024 | 1 / 2 | 1 (2025) | 1 |
+  | Perfect Attendance | 1950 | 6 / 76 | 6 | 1 |
+  | Like a Metronome | 1950 | 17 / 76 | 16 | 4 |
+  | Homebody | 2023 | 6 / 3 | 3 | 6 |
+  | Usual Suspect | 2023 | 3 / 3 | 3 | 3 |
+  | Backpedal | 2023 | 3 / 3 | 3 | 3 |
+  | Slow Food | 2024 | 1 / 2 | 1 (2025) | 1 |
+  | Best in Show | 2023 | 3 / 3 | 3 | 3 |
+  | Always the Bridesmaid | 2023 | 3 / 3 | 3 | 3 |
+
+  Awards above seasons are shared ties. 2026 is not final yet, so it has no season
+  awards.
+
+Still open after Phase 12:
+
+1. Background removal for the stamp art: not built. It must flood fill from the image
+   edges, never apply a global near-white threshold, so cream and white parts inside
+   characters survive. It will also remove the faint box that the art's background
+   shading leaves around some framed objects.
+2. Art for the three original Oofies: `oof/most-collected.png`,
+   `oof/oofscore-champion.png`, `oof/rarest-award.png`.
+3. Variant thumbnails in the CMS: the route serves a variant (`?variant=`), but the
+   variants list on the achievement page shows none.
+4. Production deploy: the Phase 12 migrations go with deploy step 1 (the Early Bird
+   rename before the sync of step 2). Then `oof:achievements --stale` brings production
+   up to date, as here.
+5. Food awards: 2024 stays without (6 of 24 races timed); a season qualifies only with 90%
+   of its races at 80% of pit visits timed.
 
 ## Working notes
 
