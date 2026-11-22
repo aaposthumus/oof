@@ -27,11 +27,11 @@ return [
     'rulings' => [
         [
             'season' => 2024, 'round' => 20, 'session' => 'race', 'driver' => 'perez',
-            'document' => 'FIA stewards\' decision, 2024 Mexico City Grand Prix, Car 11: Article 48.1 c), front tyres ahead of the grid box',
+            'document' => 'FIA Document 42, 27 October 2024, "2024 Mexico City Grand Prix - Infringement - Car 11 - False Start": Article 48.1 c), front tyres ahead of the grid box',
         ],
         [
             'season' => 2024, 'round' => 22, 'session' => 'race', 'driver' => 'piastri',
-            'document' => 'FIA stewards\' decision, 2024 Las Vegas Grand Prix, Car 81: Article 48.1 c), "Incorrect Starting Position"',
+            'document' => 'FIA Document 36, 23 November 2024, "2024 Las Vegas Grand Prix - Infringement - Car 81 - Incorrect starting position": Article 48.1 c)',
         ],
     ],
 

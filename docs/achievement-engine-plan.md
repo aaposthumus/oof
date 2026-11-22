@@ -2015,6 +2015,27 @@ Still open after Phase 12:
 4. Food awards: 2024 stays without (6 of 24 races timed); a season qualifies only with 90%
    of its races at 80% of pit visits timed.
 
+**Itchy Feet is a jump start only (22 November 2026, after Phase 12g).**
+
+- Itchy Feet is a jump start: moving before the start signal (FIA Sporting Regulations
+  Art 48.1 a). A car out of position on the grid (Art 48.1 c) is not one.
+- Out of position is the starting procedure offence (`starting_procedure`), which has no
+  achievement. "FALSE START - OUT OF POSITION" routes there by its text
+  (`app/RaceControl/Offence.php`, ordered before `false_start`). Bare "FALSE START",
+  "JUMP START" and "FALSE START - MOVING BEFORE SIGNAL" stay `false_start`.
+- The bare 2024 messages do not say which it was, so `config/starting_position_rulings.php`
+  curates the ones the stewards ruled out of position, each checked against the FIA
+  decision document named in the entry: Perez 2024 R20 (Document 42) and Piastri 2024 R22
+  (Document 36). The other four bare 2024 awards (Ricciardo, Magnussen, Hamilton, Zhou)
+  were checked against their decisions and are real jump starts. The list is part of the
+  catalogue version.
+- `engine_version` is now 4 (was 3), so `oof:achievements --stale` re-runs older decisions.
+- Four awards retracted by re-running their races (Perez 2024 R20, Piastri 2024 R22,
+  Norris 2025 R4, Perez 2026 R6): High Five x3 and Drive Thru x1 took their place. Itchy
+  Feet totals 10 (the 14 in the Phase 12g table is before this). Golden master: only these
+  eight differences plus the 2024 OOFscore champion's evidence (Perez's total moved);
+  re-exported, 33,027 awards.
+
 ## Working notes
 
 - The work lives on the branch `achievement-engine`, one commit per phase. `main` stays
