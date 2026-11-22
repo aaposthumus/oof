@@ -24,6 +24,14 @@ use App\Achievements\Triggers\Custom\ToTheRescue;
 | fit) or manual (never detected: awarded by hand in the CMS only). See
 | App\Achievements\Triggers.
 |
+| Supersedes: a key an achievement replaces within one event. Standing
+| rule (22 November 2026): an achievement never supersedes a penalty
+| stamp (section penalty) of a higher tier than its own, so a heavier
+| penalty never earns fewer points while an achievement is worth the same
+| everywhere in a season. The driver keeps the heavy penalty stamp beside
+| the specific one. Any new penalty or offence stamp must follow it
+| (CataloguePenaltyRuleTest checks the whole catalogue).
+|
 | Scope: session (decided per session, in the sessions listed), weekend
 | (once per round from the sessions listed, after decided_after: practice
 | for the last practice session, or a session type) or season (an
@@ -52,7 +60,7 @@ return [
             'tier' => 'silver',
             'score_category' => 'driver',
             'description' => 'Penalty for causing a collision.',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five'], // never a penalty stamp of a higher tier than its own
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',
@@ -136,7 +144,7 @@ return [
             'tier' => 'gold',
             'score_category' => 'driver',
             'description' => 'Leaving the track and gaining an advantage, with a penalty.',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten'], // never a penalty stamp of a higher tier than its own
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',
@@ -178,7 +186,7 @@ return [
             'tier' => 'silver',
             'score_category' => 'driver',
             'description' => 'Speeding in the pit lane, with a penalty.',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five'], // never a penalty stamp of a higher tier than its own
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',
@@ -199,7 +207,7 @@ return [
             'tier' => 'gold',
             'score_category' => 'driver',
             'description' => 'Forcing another driver off the track, with a penalty.',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten'], // never a penalty stamp of a higher tier than its own
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',
@@ -241,7 +249,7 @@ return [
             'tier' => 'gold',
             'score_category' => 'driver',
             'description' => 'Ignoring a flag (yellow, blue, red), with a penalty.',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten'], // never a penalty stamp of a higher tier than its own
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',
@@ -262,7 +270,7 @@ return [
             'tier' => 'gold',
             'score_category' => 'driver',
             'description' => 'Overtaking or going too fast under a safety car or VSC, with a penalty.',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten'], // never a penalty stamp of a higher tier than its own
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',
@@ -283,7 +291,7 @@ return [
             'tier' => 'gold',
             'score_category' => 'driver',
             'description' => 'Erratic or dangerous driving, with a penalty.',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten'], // never a penalty stamp of a higher tier than its own
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',
@@ -304,7 +312,7 @@ return [
             'tier' => 'gold',
             'score_category' => 'reliability',
             'description' => 'Unsafe release, with a penalty.',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten'], // never a penalty stamp of a higher tier than its own
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',
@@ -325,7 +333,7 @@ return [
             'tier' => 'gold',
             'score_category' => 'driver',
             'description' => 'Penalty for serving a penalty incorrectly.',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten'], // never a penalty stamp of a higher tier than its own
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',
@@ -346,7 +354,7 @@ return [
             'tier' => 'silver',
             'score_category' => 'driver',
             'description' => 'Maximum delta time noted by race control (too slow).',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five'], // never a penalty stamp of a higher tier than its own
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',

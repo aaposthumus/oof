@@ -92,9 +92,10 @@ class AchievementEngineTest extends TestCase
 
         $bumperCars = $this->awards('bumper_cars')->sole();
         $this->assertSame(87, $bumperCars->driverEntry->car_number);
-        $this->assertSame('Bumper Cars · 10 s', $bumperCars->title());
+        $this->assertSame('Bumper Cars', $bumperCars->title());
         $this->assertCount(3, $bumperCars->evidence['messages']);
-        $this->assertCount(0, $this->awards('perfect_ten'));
+        $this->assertSame('Perfect Ten · 10 s', $this->awards('perfect_ten')->sole()->title(), 'A heavier penalty stamp (gold) stays beside the silver offence.');
+        $this->assertCount(0, $this->awards('high_five'));
         $this->assertSame([10], $this->awards('it_was_like_that_when_i_got_there')->map->driverEntry->pluck('car_number')->all());
     }
 

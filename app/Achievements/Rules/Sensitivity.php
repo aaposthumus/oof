@@ -4,6 +4,7 @@ namespace App\Achievements\Rules;
 
 use App\Achievements\Detection;
 use App\Achievements\SessionData;
+use App\Enums\AchievementSection;
 use App\Enums\RecipientType;
 use App\Enums\SensitivityLevel;
 use App\Enums\SensitivitySeverity;
@@ -106,9 +107,14 @@ class Sensitivity
     public function apply(Collection $detections, Collection $catalogue, SessionData $data): Collection
     {
         $round = $this->of($data);
+        $allowed = fn (Detection $detection) => self::allows($round, $catalogue[$detection->achievementKey], $data->entry($detection->recipient->entryId)?->driver_id, $detection->recipient->seasonTeamId);
+
+        // A heavier penalty stamp stays beside its offence (a lower tier never supersedes it), so it goes with a withheld offence of the same event too.
+        $withheldEvents = $detections->reject($allowed)->map(fn (Detection $detection) => "{$detection->recipient->key()}|{$detection->eventKey}")->flip();
 
         return $detections
-            ->filter(fn (Detection $detection) => self::allows($round, $catalogue[$detection->achievementKey], $data->entry($detection->recipient->entryId)?->driver_id, $detection->recipient->seasonTeamId))
+            ->filter($allowed)
+            ->reject(fn (Detection $detection) => $catalogue[$detection->achievementKey]->section === AchievementSection::Penalty && $withheldEvents->has("{$detection->recipient->key()}|{$detection->eventKey}"))
             ->values();
     }
 

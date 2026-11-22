@@ -2086,6 +2086,35 @@ editorial, so the sync does not); production runs it with the other migrations. 
 offence achievements (Bumper Cars and so on) still have the old list, so they still replace
 a Drive Thru or Red Light Green Light. Only these two were changed.
 
+**Standing rule: an achievement never supersedes a heavier penalty stamp (22 November 2026).**
+
+- An achievement never supersedes a penalty stamp (section `penalty`: High Five silver,
+  Perfect Ten gold, Drive-Thru and Red Light, Green Light platinum) of a higher tier than
+  its own. The driver keeps the heavy penalty stamp beside the specific one. Why: points
+  are a snapshot per achievement and stay uniform within a season, so a heavier penalty
+  never earns fewer points only if it is not replaced. Any new penalty or offence stamp
+  must follow it.
+- Recorded in the header of `config/achievement_catalogue.php` and enforced by
+  `CataloguePenaltyRuleTest`, which checks the whole catalogue (a test also proves a
+  breaking entry is found), so a future entry that breaks it fails the suite.
+- Applied to the ten other offence achievements, after Itchy Feet and Can't Park There:
+  silver (Bumper Cars, Smile for the Camera, Sunday Driver) keep Perfect Ten, Drive-Thru and
+  Red Light, Green Light; gold (Double Detention, Extra Wide, Failed the Driving Test,
+  Queue Jumper, Released Into the Wild, Selective Vision, Shortcut Tax) keep the two
+  platinum ones. Platinum offences (Forgot to Indicate, Line Dancing, Selective Hearing)
+  are unchanged. A same-tier stamp is still replaced (High Five under silver, Perfect Ten
+  under gold). The migration `apply_the_penalty_tier_rule_to_offence_achievements` rewrites
+  the stored lists (the sync does not); production runs it with the other migrations.
+- A penalty is no longer folded into the offence's detail when its stamp stays: "Bumper Cars"
+  is shown without "10 s", and the Perfect Ten award shows "10 s".
+- Sensitive weekends: a heavier penalty stamp used to go with a withheld offence because
+  the offence absorbed it. It no longer does, so `Sensitivity::apply()` now also drops a
+  penalty stamp of the same event and car as a withheld offence. No stored award was in a
+  sensitive round. `engine_version` is now 5.
+- Local database: 51 awards got a penalty stamp back (Perfect Ten x40, Drive-Thru x8, Red
+  Light, Green Light x3; +3,100 points). OOFscore moved: the 2025 OOFscore Champion goes from
+  Antonelli to Tsunoda (nothing is live yet, so the owner accepted it).
+
 ## Working notes
 
 - The work lives on the branch `achievement-engine`, one commit per phase. `main` stays
