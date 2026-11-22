@@ -6,12 +6,12 @@ use App\Achievements\Facts\DataSource;
 use App\Achievements\Facts\Fact;
 use App\Achievements\Facts\Predicate;
 use App\Achievements\SessionData;
-use App\Enums\SessionType;
-use App\Models\DriverEntry;
+use App\Achievements\Support\Poles;
 
 /**
- * The driver took pole: P1 in the round's qualifying, or grid 1 when the
- * round has no qualifying classification.
+ * The driver took the round's pole (see Poles, the one definition of pole):
+ * P1 in qualifying, or without qualifying data the official grid pole. It
+ * names the driver, so it holds on every car they drove that day.
  */
 class TookPole implements Predicate
 {
@@ -27,15 +27,13 @@ class TookPole implements Predicate
 
     public function notes(): array
     {
-        return ['Pole from qualifying where present, otherwise grid 1.'];
+        return ['Pole from qualifying where present, otherwise the official grid pole (config/official_poles.php settles shared cars).'];
     }
 
     public function test(Fact $fact, SessionData $data): bool
     {
-        $entry = $data->entry($fact->entryId);
-        $qualifying = $data->roundSession(SessionType::Qualifying);
-        $pole = $qualifying?->entries->first(fn (DriverEntry $other) => $other->qualifyingResult?->position === 1);
+        $driverId = $data->entry($fact->entryId)?->driver_id;
 
-        return $pole !== null ? $pole->driver_id === $entry->driver_id : $entry->result->grid === 1;
+        return $driverId !== null && Poles::driverOf($data) === $driverId;
     }
 }

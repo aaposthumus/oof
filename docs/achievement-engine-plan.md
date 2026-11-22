@@ -1530,6 +1530,8 @@ achievement that exists only in the test.
     below.)
   - Five rounds have more than one: Jolpica credits grid 1 to several drivers of a shared
     car (1952 R8, 1953 R7 and R8, 1955 R1 three, 1964 R9). (Fixed afterwards.)
+- Local database: migrated and synced (9 created; podium sessions; All Dressed Up's data
+  needs). Stored awards not brought up to date (dry runs only).
 
 Decided by the owner on 21 November 2026, after the report: Nothing to See Here stands as
 it is. The pole follows the official record.
@@ -1555,9 +1557,12 @@ it is. The pole follows the official record.
   (Fangio), 1952 R8 (Ascari; Moss also on grid 1), 1953 R7 (Ascari), 1953 R8 (Fangio),
   1955 R1 (González), 1956 R2 and R8 (Fangio; his pole car later driven by Castellotti),
   1957 R5 (Moss), 1964 R9 (Clark). The pole sitters are the published ones (my knowledge
-  of the race records, not checked against a source in this session).
+  of the race records, not checked against a source in this session). Confirmed by the
+  owner against the official record (formula1.com qualifying results and race reports)
+  on 22 November 2026.
 - `took_pole` (Clean Sweep, Peaked Too Soon) and the first pole of First Time for
-  Everything have their own pole logic and are unchanged.
+  Everything have their own pole logic and are unchanged. (Changed afterwards: see "One
+  definition of pole" below.)
 - Golden master: 22 differences, all Early Bird; Plot Twist has none (no surprise pole in
   these rounds).
   - 9 added for the official pole sitter: Fangio 1950 R7, 1951 R4, 1953 R4, 1956 R1, R2
@@ -1570,9 +1575,42 @@ it is. The pole follows the official record.
   - Every round of 1950 to 2026 with a race now has exactly one pole award (Early Bird or
     Plot Twist), except the 11 Indianapolis 500s. Re-exported: 32,593 awards.
 
-## Working notes
-- Local database: migrated and synced (9 created; podium sessions; All Dressed Up's data
-  needs). Stored awards not brought up to date (dry runs only).
+**One definition of pole. Done.**
+
+Decided by the owner on 22 November 2026: `took_pole` and First Time for Everything follow
+the same official pole as Early Bird.
+
+- `App\Achievements\Support\Poles` is the one definition: qualifying P1 where the round
+  has qualifying data, otherwise the official grid pole (left cars count, plain
+  withdrawals do not, `config/official_poles.php` settles several drivers on grid 1).
+  - The qualifying order (Early Bird, Plot Twist) reads `Poles::gridPoleEntryId()`.
+  - `took_pole` (Clean Sweep, Peaked Too Soon) compares the driver with
+    `Poles::driverOf()`, so it holds on every car the pole sitter drove that day and
+    on no co-driver of a shared car.
+  - First Time for Everything takes its grid first pole for the pole sitter only, on
+    the car they are judged on (D8), and reads earlier poles by the same rules
+    (`Poles::hadPoleBefore()`, once per round date).
+- A test runs every kind of round (qualifying with a grid penalty, grid only, a car swap,
+  a shared car, an unlisted tie). `took_pole` holds for exactly the pole award's driver,
+  and Clean Sweep and the first pole follow it.
+- Golden master: 17 differences, only First Time for Everything and Peaked Too Soon.
+  - First poles removed for co-drivers the record does not credit (5): Moss 1952 R8,
+    Villoresi 1953 R7, Bonetto 1953 R8, Trintignant 1955 R1, Spence 1964 R9.
+  - First poles moved to the real first pole (2): Moss 1955 R6, now "×2 · First win ·
+    First pole" (his grid 1 at Monza 1952 was the grid error); Brooks 1958 R2 (his grid 1
+    of 1957 R5 was Moss's pole in their shared car).
+  - Peaked Too Soon removed for co-drivers (6): Moss 1952 R8, Villoresi 1953 R7, Bonetto
+    1953 R8, Castellotti 1956 R2 and R8, Spence 1964 R9.
+  - Peaked Too Soon added for pole sitters who took over another car and still missed
+    the podium (3): Fangio 1950 R7 and 1953 R4, Farina 1952 R1 (OOF before 2023, so 0
+    points).
+  - Clean Sweep: no change. Every curated Clean Sweep already named the official pole
+    sitter.
+  - In the new master every Clean Sweep, Peaked Too Soon and first pole names the round's
+    pole-award driver, except the first poles of the 11 Indianapolis 500s, where First
+    Time for Everything restates the record (D7) and Early Bird is not given.
+  - Re-exported: 32,586 awards (2026 round 21 race, run for the first time, has no
+    awards yet).
 
 ## Working notes
 
