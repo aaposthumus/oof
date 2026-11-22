@@ -8,6 +8,7 @@ namespace App\RaceControl;
  */
 enum Offence: string
 {
+    case GridPosition = 'grid_position';
     case FalseStart = 'false_start';
     case StartingProcedure = 'starting_procedure';
     case UnsafeRelease = 'unsafe_release';
@@ -36,12 +37,16 @@ enum Offence: string
      * Patterns per offence, tried in order, so a specific offence wins over
      * the general "FAILING TO FOLLOW RACE DIRECTORS INSTRUCTIONS" it may follow.
      * The stewards word a car out of position on the grid "FALSE START - OUT
-     * OF POSITION", so the starting procedure comes before the false start:
-     * a jump start is only moving before the start signal.
+     * OF POSITION", so the grid position comes before the false start: a jump
+     * start is only moving before the start signal. Only these wordings are
+     * grid position; the generic "STARTING PROCEDURE INFRINGEMENT" (a team
+     * breach, the formation lap, "OUT OF POSITION AT SAFETY CAR LINE") stays
+     * the starting procedure.
      *
      * @var array<string, string> Offence value => reason regex
      */
     private const PATTERNS = [
+        'grid_position' => '/FALSE START\s*[-–]\s*OUT OF POSITION(?! AT SAFETY CAR LINE)|INACCURATE GRID POSITION|INCORRECT STARTING LOCATION/',
         'starting_procedure' => '/STARTING PROCEDURE|STARTING LOCATION|GRID POSITION|RESTART INFRINGEMENT|OUT OF POSITION/',
         'false_start' => '/FALSE START|JUMP START/',
         'unsafe_release' => '/UNSAFE RELEASE|RELEAS(?:ED|ING) IN (?:AN )?UNSAFE CONDITION/',
@@ -88,6 +93,7 @@ enum Offence: string
     public function label(): string
     {
         return match ($this) {
+            self::GridPosition => 'Out of position on the grid',
             self::FalseStart => 'False start',
             self::StartingProcedure => 'Starting procedure',
             self::UnsafeRelease => 'Unsafe release',

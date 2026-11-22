@@ -12,7 +12,7 @@ use Tests\TestCase;
 
 /**
  * Itchy Feet is a jump start: moving before the start signal. A car out of
- * position on the grid is a starting procedure offence, however the stewards word it.
+ * position on the grid is Can't Park There, however the stewards word it.
  */
 class ItchyFeetTest extends TestCase
 {

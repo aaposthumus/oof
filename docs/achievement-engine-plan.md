@@ -2036,6 +2036,38 @@ Still open after Phase 12:
   eight differences plus the 2024 OOFscore champion's evidence (Perez's total moved);
   re-exported, 33,027 awards.
 
+**Can't Park There: a penalised out-of-position start (22 November 2026, after Phase 12g).**
+
+- A new OOF achievement, `cant_park_there` (gold, driver, session scope). It is a car not
+  correctly in its grid box at the start (Art 48.1 c), with a penalty. Same level, points,
+  sessions and supersedes as Itchy Feet, so it replaces the penalty achievement for the
+  same incident (High Five, Drive Thru, Perfect Ten, Red Light Green Light, Sibling
+  Rivalry, It Was Like That When I Got There). The penalty is folded into its detail
+  ("5 s", "drive-through") as for Itchy Feet. Art: `oof/cant-park-there.png`, with its
+  mask committed.
+- Its rule is the new offence `grid_position` (`app/RaceControl/Offence.php`, ordered before
+  `false_start`). It matches only these wordings: "FALSE START - OUT OF POSITION",
+  "INACCURATE GRID POSITION" and "INCORRECT STARTING LOCATION", plus the two curated 2024
+  rulings in `config/starting_position_rulings.php` (Perez, Mexico City; Piastri, Las
+  Vegas). The curated rulings now route to `grid_position` (they routed to
+  `starting_procedure` in the first Itchy Feet correction).
+- Everything else stays `starting_procedure`, which still has no achievement:
+  - The generic "STARTING PROCEDURE INFRINGEMENT" does not count. It covers any start
+    breach, not only grid position.
+  - "OUT OF POSITION AT SAFETY CAR LINE" (2026 R5 and R12) is a different offence. A bare
+    "OUT OF POSITION" never counts.
+- COL 2026 R1 (Australia, stop-and-go, "STARTING PROCEDURE INFRINGEMENT"): checked against
+  the stewards' decision by the owner. It was for Alpine mechanics working on the car too
+  close to the start of the formation lap, a team breach and not grid position. So Colapinto
+  keeps Red Light Green Light and gets no Can't Park There.
+- The penalty detail was already shown wherever an award is listed (CMS awards table,
+  award page and round page, via `AchievementAward::title()`: "Itchy Feet · 5 s", "Can't
+  Park There · drive-through"). The catalogue stamp previews show art only, with no award,
+  and there is no public output yet. Nothing was added; tests pin both titles.
+- Local database: 7 awards moved to Can't Park There (Ocon 2023 R1, Alonso 2023 R2,
+  Hulkenberg 2023 R17, Perez 2024 R20, Piastri 2024 R22, Norris 2025 R4, Perez 2026 R6),
+  replacing High Five x5, Perfect Ten x1 and Drive Thru x1. Itchy Feet stays at 10.
+
 ## Working notes
 
 - The work lives on the branch `achievement-engine`, one commit per phase. `main` stays

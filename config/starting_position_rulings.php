@@ -8,14 +8,14 @@
 | In 2024 race control worded both a jump start (moving before the start
 | signal, Article 48.1 a) and a car out of position on the grid (Article
 | 48.1 c) as "FALSE START", with nothing after it. From 2025 the second
-| carries "- OUT OF POSITION" and routes to the starting procedure by its
-| text. For the bare 2024 messages only the stewards' decision document
-| tells them apart, so this list names the ones ruled out of position.
+| carries "- OUT OF POSITION" and routes to grid position by its text. For
+| the bare 2024 messages only the stewards' decision document tells them
+| apart, so this list names the ones ruled out of position.
 | Every other bare "FALSE START" stays a jump start (Itchy Feet).
 |
 | A listed entry makes the driver's "FALSE START" messages in that session
-| count as a starting procedure offence. It is part of the catalogue
-| version, so an edit makes oof:achievements --stale re-run.
+| count as a grid position offence (Can't Park There). It is part of the
+| catalogue version, so an edit makes oof:achievements --stale re-run.
 |
 | Keyed by season, round number, session type and Jolpica driver ID.
 | The FIA decision document is named per entry.

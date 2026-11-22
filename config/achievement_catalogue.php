@@ -87,6 +87,27 @@ return [
             ],
         ],
 
+        'cant_park_there' => [
+            'name' => 'Can\'t Park There',
+            'section' => 'offence',
+            'shelf' => 'oof',
+            'tier' => 'gold',
+            'score_category' => 'driver',
+            'description' => 'Out of position on the grid, with a penalty.',
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => false,
+            'trigger' => [
+                'type' => 'match', 'fact' => 'penalised_offence',
+                'where' => [['offence', 'in', ['grid_position']]],
+                'distinct' => ['incident', 'entry'],
+                'detail' => '{other_penalty}',
+            ],
+        ],
+
         'selective_hearing' => [
             'name' => 'Selective Hearing',
             'section' => 'offence',

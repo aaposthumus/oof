@@ -14,7 +14,7 @@ use App\RaceControl\Offence;
 class StartingPositionRulings
 {
     /**
-     * The classification with its offence moved to the starting procedure
+     * The classification with its offence moved to grid position
      * when every car it names is listed for this session; else unchanged.
      *
      * @param  list<int>  $entryIds
@@ -31,7 +31,7 @@ class StartingPositionRulings
             }
         }
 
-        return new MessageClassification($classification->type, $classification->detail, $classification->reason, Offence::StartingProcedure);
+        return new MessageClassification($classification->type, $classification->detail, $classification->reason, Offence::GridPosition);
     }
 
     private static function isRuledOutOfPosition(SessionData $data, ?string $jolpicaDriverId): bool
