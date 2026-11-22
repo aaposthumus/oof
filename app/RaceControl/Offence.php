@@ -35,12 +35,15 @@ enum Offence: string
     /**
      * Patterns per offence, tried in order, so a specific offence wins over
      * the general "FAILING TO FOLLOW RACE DIRECTORS INSTRUCTIONS" it may follow.
+     * The stewards word a car out of position on the grid "FALSE START - OUT
+     * OF POSITION", so the starting procedure comes before the false start:
+     * a jump start is only moving before the start signal.
      *
      * @var array<string, string> Offence value => reason regex
      */
     private const PATTERNS = [
+        'starting_procedure' => '/STARTING PROCEDURE|STARTING LOCATION|GRID POSITION|RESTART INFRINGEMENT|OUT OF POSITION/',
         'false_start' => '/FALSE START|JUMP START/',
-        'starting_procedure' => '/STARTING PROCEDURE|STARTING LOCATION|GRID POSITION|RESTART INFRINGEMENT/',
         'unsafe_release' => '/UNSAFE RELEASE|RELEAS(?:ED|ING) IN (?:AN )?UNSAFE CONDITION/',
         'leaving_the_track' => '/LEAVING THE TRACK.* GAINING AN ADVANTAGE/',
         'track_limits' => '/TRACK LIMIT/',

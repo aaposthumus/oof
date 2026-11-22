@@ -5,6 +5,7 @@ namespace App\Achievements;
 use App\Achievements\Support\ClassifiedMessage;
 use App\Achievements\Support\IncidentThread;
 use App\Achievements\Support\IncidentThreads;
+use App\Achievements\Support\StartingPositionRulings;
 use App\Enums\SessionType;
 use App\Models\DriverEntry;
 use App\Models\LapTime;
@@ -198,10 +199,12 @@ class SessionData
             ->map(function (RaceControlMessage $message) use (&$phase) {
                 $phase = $message->qualifying_phase ?? $phase;
 
+                $entryIds = $message->involvedEntries->pluck('id')->all();
+
                 return new ClassifiedMessage(
                     $message,
-                    $this->classifier->classify($message->message, $message->flag),
-                    $message->involvedEntries->pluck('id')->all(),
+                    StartingPositionRulings::apply($this->classifier->classify($message->message, $message->flag), $entryIds, $this),
+                    $entryIds,
                     $phase,
                 );
             });

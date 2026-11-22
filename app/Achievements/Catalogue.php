@@ -102,7 +102,7 @@ class Catalogue
      * A hash of everything that decides what the engine finds: this file,
      * the engine settings in config/achievements.php (not the points, which
      * are snapshotted apart, nor the events), the curated Clean Sweeps and
-     * official poles, the
+     * official poles, the starting position rulings, the
      * nationality-to-country table (Hometown Hero), and what the engine reads
      * from the stored achievements (enabled, supersedes, the mechanics). The run
      * log keeps it per context, so oof:achievements --stale can re-run what
@@ -124,6 +124,7 @@ class Catalogue
             array_diff_key(config('achievements'), array_flip(['points', 'events_from', 'first_season', 'shelf_from', 'live_from'])),
             config('curated_clean_sweeps'),
             config('official_poles'),
+            config('starting_position_rulings'),
             NationalityCountry::query()->orderBy('nationality')->get(['nationality', 'country'])->map(fn (NationalityCountry $row) => [$row->nationality, $row->country])->all(),
             $rows,
         ], JSON_THROW_ON_ERROR));

@@ -131,6 +131,8 @@ class MessageClassifierTest extends TestCase
             'released unsafely' => ['FIA STEWARDS: 10 SECOND STOP/GO PENALTY FOR CAR 87 (BEA) - RELEASING IN UNSAFE CONDITION', Offence::UnsafeRelease],
             'false start' => ['INCIDENT INVOLVING CAR 5 (BOR) NOTED - FALSE START - MOVING BEFORE SIGNAL', Offence::FalseStart],
             'jump start' => ['FIA STEWARDS: CORRECTION: INCIDENT INVOLVING CAR 4 (NOR) NO FURTHER ACTION - JUMP START', Offence::FalseStart],
+            'out of position on the grid' => ['FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 4 (NOR) - FALSE START - OUT OF POSITION', Offence::StartingProcedure],
+            'bare false start' => ['FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 3 (RIC) - FALSE START', Offence::FalseStart],
             'leaving the track' => ['FIA STEWARDS: PENALTY SERVED - 5 SECOND TIME PENALTY FOR CAR 63 (RUS) - LEAVING THE TRACK AND GAINING AN ADVANTAGE (15:04:59)', Offence::LeavingTheTrack],
             'leaving the track repeatedly' => ['FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 4 (NOR) - LEAVING THE TRACK MULTIPLE TIMES AND GAINING AN ADVANTAGE', Offence::LeavingTheTrack],
             'track limits' => ['FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 18 (STR) - TRACK LIMITS (5TH OFFENCE)', Offence::TrackLimits],
