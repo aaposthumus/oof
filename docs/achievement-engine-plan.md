@@ -2044,7 +2044,9 @@ Still open after Phase 12:
   same incident (High Five, Drive Thru, Perfect Ten, Red Light Green Light, Sibling
   Rivalry, It Was Like That When I Got There). The penalty is folded into its detail
   ("5 s", "drive-through") as for Itchy Feet. Art: `oof/cant-park-there.png`, with its
-  mask committed.
+  mask committed. The grey pavement slab is part of the scene (the meerkat warden stands
+  on it), so `config/stamps.php` keeps it with `mask_keep` boxes in 8 px rows along its
+  slanted edges; the light rim and shadow around it stay removed.
 - Its rule is the new offence `grid_position` (`app/RaceControl/Offence.php`, ordered before
   `false_start`). It matches only these wordings: "FALSE START - OUT OF POSITION",
   "INACCURATE GRID POSITION" and "INCORRECT STARTING LOCATION", plus the two curated 2024
