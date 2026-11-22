@@ -129,9 +129,84 @@ class StampArt
         $targetWidth = (int) round($width * $scale);
         $targetHeight = (int) round($height * $scale);
 
-        imagecopyresampled($canvas, $image, intdiv($window['width'] - $targetWidth, 2), intdiv($window['height'] - $targetHeight, 2), $left, $top, $targetWidth, $targetHeight, $width, $height);
+        $targetLeft = intdiv($window['width'] - $targetWidth, 2);
+        $targetTop = intdiv($window['height'] - $targetHeight, 2);
+        imagecopyresampled($canvas, $image, $targetLeft, $targetTop, $left, $top, $targetWidth, $targetHeight, $width, $height);
+
+        if (config('stamps.shadow.enabled')) {
+            [$footLeft, $footRight] = $this->footprint($image, $box);
+            $this->addShadow($canvas, $targetLeft + ($footLeft - $left + 0.5) * $scale, $targetLeft + ($footRight - $left + 0.5) * $scale, $targetTop + $targetHeight);
+        }
 
         return $canvas;
+    }
+
+    /**
+     * The left and right of the object's visible pixels in the bottom
+     * shadow.footprint share of its box, in the image's coordinates.
+     *
+     * @param  array{0: int, 1: int, 2: int, 3: int}  $box
+     * @return array{0: int, 1: int}
+     */
+    private function footprint(GdImage $image, array $box): array
+    {
+        [$left, $top, $right, $bottom] = $box;
+        $maximumAlpha = (int) floor((1 - (float) config('stamps.trim_min_opacity')) * 127);
+        $from = max($top, $bottom - (int) round(($bottom - $top + 1) * (float) config('stamps.shadow.footprint')) + 1);
+        $footLeft = $right;
+        $footRight = $left;
+
+        for ($y = $from; $y <= $bottom; $y++) {
+            for ($x = $left; $x <= $right; $x++) {
+                if (((imagecolorat($image, $x, $y) >> 24) & 0x7F) <= $maximumAlpha) {
+                    $footLeft = min($footLeft, $x);
+                    $footRight = max($footRight, $x);
+                }
+            }
+        }
+
+        return $footLeft > $footRight ? [$left, $right] : [$footLeft, $footRight];
+    }
+
+    /**
+     * Put the synthetic shadow under the object: a soft ellipse, the same for
+     * every stamp (config stamps.shadow), centred under the footprint on the
+     * object's bottom edge and composited behind the object.
+     */
+    private function addShadow(GdImage $canvas, float $footLeft, float $footRight, float $bottom): void
+    {
+        $settings = config('stamps.shadow');
+        $radiusX = ($footRight - $footLeft) * (float) $settings['width'] / 2;
+        $radiusY = $radiusX * (float) $settings['height'];
+        $centreX = ($footLeft + $footRight) / 2;
+        $centreY = $bottom + $radiusY * (float) $settings['drop'];
+        $solid = 1 - max(0.001, min(1.0, (float) $settings['blur']));
+        [$red, $green, $blue] = $settings['colour'];
+        $canvasWidth = imagesx($canvas);
+        $canvasHeight = imagesy($canvas);
+
+        for ($y = max(0, (int) floor($centreY - $radiusY)); $y <= min($canvasHeight - 1, (int) ceil($centreY + $radiusY)); $y++) {
+            for ($x = max(0, (int) floor($centreX - $radiusX)); $x <= min($canvasWidth - 1, (int) ceil($centreX + $radiusX)); $x++) {
+                $reach = sqrt((($x + 0.5 - $centreX) / $radiusX) ** 2 + (($y + 0.5 - $centreY) / $radiusY) ** 2);
+
+                if ($reach >= 1) {
+                    continue;
+                }
+
+                $fade = $reach <= $solid ? 1.0 : 1 - (($reach - $solid) / (1 - $solid));
+                $shadow = (float) $settings['opacity'] * $fade * $fade * (3 - 2 * $fade);
+                $color = imagecolorat($canvas, $x, $y);
+                $objectOpacity = (127 - (($color >> 24) & 0x7F)) / 127;
+                $opacity = $objectOpacity + $shadow * (1 - $objectOpacity);
+
+                if ($opacity <= 0) {
+                    continue;
+                }
+
+                $mix = fn (int $object, int $under) => (int) round(($object * $objectOpacity + $under * $shadow * (1 - $objectOpacity)) / $opacity);
+                imagesetpixel($canvas, $x, $y, ((127 - (int) round($opacity * 127)) << 24) | ($mix(($color >> 16) & 0xFF, $red) << 16) | ($mix(($color >> 8) & 0xFF, $green) << 8) | $mix($color & 0xFF, $blue));
+            }
+        }
     }
 
     /**

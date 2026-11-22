@@ -12,9 +12,10 @@ use Tests\TestCase;
  * Framing the achievement art for the stamp window (Phase 12f): background
  * removed, trimmed to its visible content and scaled so every object covers
  * the same share of the window, never closer than 6 percent to an edge,
- * centred, on a transparent window;
- * the sources are never changed. Fixtures are
- * drawn in a scratch folder, never in resources/images.
+ * centred, on a transparent window; the sources are never changed. The
+ * synthetic shadow is off here, so the box measured is the object's own (it
+ * has its own test in BackgroundRemovalTest). Fixtures are drawn in a
+ * scratch folder, never in resources/images.
  */
 class StampArtTest extends TestCase
 {
@@ -27,7 +28,7 @@ class StampArtTest extends TestCase
         parent::setUp();
 
         $this->root = storage_path('framework/testing/stamps-'.uniqid());
-        config(['stamps.art_path' => "{$this->root}/art", 'stamps.cache_path' => "{$this->root}/cache"]);
+        config(['stamps.art_path' => "{$this->root}/art", 'stamps.cache_path' => "{$this->root}/cache", 'stamps.shadow.enabled' => false]);
     }
 
     protected function tearDown(): void

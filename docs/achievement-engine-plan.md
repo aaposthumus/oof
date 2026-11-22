@@ -1826,11 +1826,11 @@ settings under `background` in `config/stamps.php`.
   between the background and the nearest solid object colour gets that colour, with the
   mixing share as alpha. Without this a dark anti-aliased disc keeps 628 light edge
   pixels; with it, none.
-- Enclosed background regions (not connected to the edge) are kept. Each one from
+- Enclosed background regions (not connected to the edge): each one from
   `enclosed_min_pixels` 400 is reported with its size, box, a seed point (the pixel
-  nearest the centre of its box) and its mean distance. Seeds listed under
-  `remove_enclosed`, per art file, remove that region. A seed that hits nothing is
-  reported with the reason.
+  nearest the centre of its box) and its mean distance. Smaller ones are always kept.
+  First version: kept unless a seed removed them. Changed by the owner the same day to a
+  rule with a keep-list (see "Enclosed regions: rule and keep-list" below).
 - The transparent copy and its report (JSON) are cached under
   `storage/app/private/stamps/framed/cutout`, keyed by the source, the removal settings
   and that file's seeds. The framed copy is keyed on top of that. The sources are never
@@ -1863,6 +1863,92 @@ settings under `background` in `config/stamps.php`.
     eating light fur, because the shadow and the feet meet without an edge.
   - The enclosed regions show as white patches: gaps between legs closed by a shadow,
     holes in handles and rings, cage bars, the film frame in deleted-scene.
+
+**Enclosed regions: rule and keep-list. Done.**
+
+Decided by the owner on 22 November 2026.
+
+- An enclosed region from 400 pixels is removed when its mean distance is 6 or less
+  (`remove_enclosed_up_to`), and kept above that (a light surface).
+- `keep_enclosed` lists regions never to remove, per art file, by a point inside each.
+  A keep-list point that matches no region is reported with the reason. It is empty:
+  the four first entries (early-bird, early-chick, morning-person, perfect-ten) turned
+  out on the review sheets to be gaps, not white surfaces. The clock faces and the
+  scorecard are cream, beyond the tolerance, so they are never enclosed regions.
+- oof/deleted-scene: the blank middle film frame is removed on purpose. It is the cut-out
+  scene, and the stamp background shows through it.
+- The report gives each region removed or kept, and why.
+- Review sheets (teal, magenta = removed, cyan = kept) in `~/oof-contact-sheets/regions/`.
+- Floor-shadow ovals: first kept for now, to be judged again on the real theme
+  backgrounds. Changed by the owner the same day to "remove now": see "Object masks and
+  a synthetic shadow" below.
+
+**Object masks and a synthetic shadow. Done.**
+
+Decided by the owner on 22 November 2026: the white floor-shadow ovals and rims read as
+white residue on any non-white background (line-dancing, extra-wide,
+it-was-like-that-when-i-got-there, by-a-whisker), so they go now.
+
+- `bin/stamp-masks.py`: a preprocessing step outside the Laravel runtime. rembg 2.0.61 in
+  a venv at `~/.venvs/oof-rembg` (Python 3.9, CPU only), models cached in `~/.u2net`.
+  One greyscale mask per art file, in
+  `storage/app/private/stamps/masks/<model>/<sha1 of the source>.png`.
+  - The CPU provider is forced: onnxruntime's CoreML provider hangs while compiling
+    birefnet-general.
+- BackgroundRemoval: where a mask exists, the final opacity is the flood-fill and
+  colour-to-alpha result times the mask's opacity. The mask's opacity is 0 up to 32 and
+  1 from 128 (`background.mask`). The mask is part of the cache key.
+- StampArt: one synthetic shadow (`shadow`, off by default): a soft ellipse behind the
+  object, centred under its footprint (the visible width of its bottom 12%), 1.15 times
+  that width, height 0.14 of its width, opacity 0.28, edge fading over 70% of the radius.
+- Tested on 8 files (the hardest cases): bunny, polar bear, line-dancing, extra-wide,
+  it-was-like-that-when-i-got-there, by-a-whisker, released-into-the-wild, itchy-feet.
+  - birefnet-general (about 7 s per file on the CPU): no residue. Keeps the blue track mat
+    in itchy-feet and the vase shards.
+  - isnet-general-use (under 0.5 s per file): no residue either, but it drops the blue
+    track mat in itchy-feet and cuts the cream face off the large vase shard.
+  - Sheet: `~/oof-contact-sheets/shadow-test/shadow-test.png`.
+- Approved by the owner the same day: birefnet-general, the mask multiplied into the
+  flood-fill alpha, the footprint-based shadow. Masks made for all 97 art files and the
+  shadow switched on (`shadow.enabled` true).
+- Run on all 97 files: about 7 s per mask, every cut-out made with its mask, framed
+  copies and contact sheets regenerated. No white residue left.
+  - The mask cut off real parts in five files:
+    - outside-the-lines: the drawing paper under the panda
+    - holding-the-door: the right post of the door frame
+    - charging-rhino: the dust cloud behind it
+    - encore: part of the dark red back curtain
+    - meatball-sub--submarine: a few small bubbles
+  - Decided by the owner the same day, per file in `background.mask.files`:
+    - `mask_keep`: boxes in source pixels inside which the mask removes nothing (the
+      flood-fill alpha applies there).
+    - `'mask' => false`: flood fill only.
+    - outside-the-lines (the paper), holding-the-door (the post) and charging-rhino (the
+      dust clouds) get keep boxes, approved with their small leftovers below.
+      meatball-sub--submarine is left as is.
+    - encore: first mask off, but that brought back its white floor-shadow rim under the
+      stage. Instead the mask stays on, with keep boxes over the curtain in 20 px
+      columns, from the top of the image down to the stage's top edge (+ 3 px), or to
+      the lowest curtain pixel the mask removed (+ 2 px) where that is lower. Checked:
+      no curtain pixel is removed and no white rim remains under the stage.
+  - The boxes follow the parts' measured outlines: the lowest or rightmost pixel with
+    saturation 40 or more (the parts are 43 or more, the shadows 34 or less), in 20 px
+    slices.
+  - Floor shadow that comes back inside the boxes, all small:
+    - outside-the-lines: light teeth of 2 to 4 px along the paper's slanted right edge,
+      and a thin band under its bottom edge
+    - holding-the-door: a light wedge of about 20 x 40 px left of the base's bottom bevel
+    - charging-rhino: thin slivers under the left puffs, and a smear of about 15 x 8 px
+      at the tip of the dust. The pale puff in the clouds shows half transparent with a
+      dark crescent (the flood fill takes its near-white parts as background).
+  - Sheet: `~/oof-contact-sheets/shadow-test/mask-fixes.png`.
+- Deploy implication, choice left open: the masks need rembg with birefnet-general
+  (about 1 GB of model, Python, CPU) outside Laravel. Production either gets the same
+  setup (venv, model, `bin/stamp-masks.py` run after new art arrives), or receives the
+  masks generated locally (copied into `storage/app/private/stamps/masks/birefnet-general/`,
+  named by the sha1 of each art file, so they match only the exact same art). Without
+  a mask, an art file falls back to the flood fill alone, floor shadow included, while
+  the synthetic shadow is still added.
 
 **Phase 12g: backfill and report. Done.**
 
@@ -1913,10 +1999,8 @@ settings under `background` in `config/stamps.php`.
 
 Still open after Phase 12:
 
-1. Background removal, for the owner: which enclosed regions to remove (seeds in
-   `config/stamps.php`, from the `oof:stamps:preview` report), and what to do about the
-   light floor-shadow ovals on dark stamps (keep them, or ask for art without floor
-   shadows).
+1. Stamp masks in production: the same rembg + birefnet setup there, or masks generated
+   locally and copied over (see "Object masks and a synthetic shadow").
 2. Art for the three original Oofies: `oof/most-collected.png`,
    `oof/oofscore-champion.png`, `oof/rarest-award.png`.
 3. Variant thumbnails in the CMS: the route serves a variant (`?variant=`), but the

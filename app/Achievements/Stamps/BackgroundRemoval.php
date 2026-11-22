@@ -25,11 +25,24 @@ use RuntimeException;
  * so anti-aliased edges stay smooth without a light halo.
  *
  * Background-coloured regions not connected to the edge (a doughnut hole, a
- * gap inside a cage) are kept and reported. Such a region is removed only
- * when config/stamps.php marks it with a seed point for that image.
+ * gap inside a cage) are found too. One from enclosed_min_pixels is removed
+ * when its mean distance from the background colour is at most
+ * remove_enclosed_up_to, unless the keep-list in config/stamps.php names it
+ * by a point inside it (a white clock face); every other one is kept. All of
+ * them are reported (decided by the owner on 22 November 2026).
+ *
+ * When an object mask from an AI segmentation model exists for the source
+ * (made beforehand by bin/stamp-masks.py, outside the Laravel runtime), every
+ * pixel outside it becomes transparent as well: the final opacity is the one
+ * above times the mask's, ramped from mask.transparent_below to
+ * mask.opaque_from. That takes away floor shadows and light rims; the flood
+ * fill still shapes the object's own edges. Per art file, mask.files can
+ * switch the mask off ('mask' => false) or list boxes in source pixels
+ * ('mask_keep') inside which the mask removes nothing, where the model cut
+ * off part of the art.
  *
  * The sources are never changed; the transparent copy and its report are
- * cached by the source's content and the settings.
+ * cached by the source's content, its mask and the settings.
  */
 class BackgroundRemoval
 {
@@ -46,7 +59,7 @@ class BackgroundRemoval
 
     private const ENCLOSED = "\2";
 
-    private const SEEDED = "\3";
+    private const REMOVED = "\3";
 
     /**
      * The cached transparent copy of an art file: made once, then served from the cache.
@@ -62,7 +75,21 @@ class BackgroundRemoval
                 throw new RuntimeException("Not a readable PNG: {$source}");
             }
 
-            $result = $this->remove($image, self::seedsFor($source));
+            $maskPath = self::maskPath($source);
+            $mask = $maskPath === null ? null : @imagecreatefrompng($maskPath);
+            $keepBoxes = self::maskKeepFor($source);
+
+            if ($mask) {
+                imagepalettetotruecolor($mask);
+
+                foreach ($keepBoxes as [$left, $top, $right, $bottom]) {
+                    imagefilledrectangle($mask, $left, $top, $right, $bottom, 0xFFFFFF);
+                }
+            }
+
+            $result = $this->remove($image, self::keepSeedsFor($source), $mask ?: null);
+            $result['mask'] = $maskPath === null ? null : config('stamps.background.mask.model');
+            $result['mask_keep'] = $maskPath === null ? [] : $keepBoxes;
             File::ensureDirectoryExists(dirname($base));
             imagesavealpha($result['image'], true);
             imagepng($result['image'], "{$base}.png", 6);
@@ -75,10 +102,10 @@ class BackgroundRemoval
 
     /**
      * What the removal found for an art file: the background colour, the
-     * enclosed background regions (kept, or removed by a seed) and the seeds
-     * that matched nothing.
+     * enclosed background regions (removed or kept, and why) and the
+     * keep-list seeds that matched no region.
      *
-     * @return array{width: int, height: int, background: array{0: int, 1: int, 2: int}, enclosed: list<array{pixels: int, share: float, left: int, top: int, right: int, bottom: int, seed: array{0: int, 1: int}, mean_distance: float, removed: bool}>, unused_seeds: list<array{seed: array{0: int, 1: int}, reason: string}>}
+     * @return array{width: int, height: int, background: array{0: int, 1: int, 2: int}, enclosed: list<array{pixels: int, share: float, left: int, top: int, right: int, bottom: int, seed: array{0: int, 1: int}, mean_distance: float, removed: bool, why: string}>, unused_seeds: list<array{seed: array{0: int, 1: int}, reason: string}>, mask: string|null}
      */
     public function report(string $source): array
     {
@@ -89,39 +116,90 @@ class BackgroundRemoval
 
     /**
      * The cache key of an art file's transparent copy: its content, the
-     * removal settings and the seeds marked for it.
+     * removal settings and its keep-list seeds.
      */
     public static function cacheKey(string $source): string
     {
-        $settings = array_diff_key((array) config('stamps.background'), ['remove_enclosed' => true]);
+        $settings = array_diff_key((array) config('stamps.background'), ['keep_enclosed' => true]);
+        $settings['mask'] = array_diff_key((array) ($settings['mask'] ?? []), ['files' => true]);
+        $mask = self::maskPath($source);
 
-        return sha1(implode('|', [hash_file('sha1', $source), json_encode($settings), json_encode(self::seedsFor($source))]));
+        return sha1(implode('|', [hash_file('sha1', $source), json_encode($settings), json_encode(self::keepSeedsFor($source)), $mask === null ? 'no mask' : hash_file('sha1', $mask), json_encode(self::maskKeepFor($source))]));
     }
 
     /**
-     * The seed points marked in config for an art file: enclosed background
-     * regions to remove.
-     *
-     * @return list<array{0: int, 1: int}>
+     * An art file's path relative to art_path, or null outside it.
      */
-    public static function seedsFor(string $source): array
+    private static function relativePath(string $source): ?string
     {
         $root = rtrim((string) config('stamps.art_path'), '/').'/';
 
-        if (! str_starts_with($source, $root)) {
-            return [];
+        return str_starts_with($source, $root) ? substr($source, strlen($root)) : null;
+    }
+
+    /**
+     * The per-file mask settings of an art file (mask.files): 'mask' => false
+     * and/or 'mask_keep' boxes.
+     *
+     * @return array{mask?: bool, mask_keep?: list<array{0: int, 1: int, 2: int, 3: int}>}
+     */
+    private static function maskSettingsFor(string $source): array
+    {
+        $relative = self::relativePath($source);
+
+        return $relative === null ? [] : (array) (((array) config('stamps.background.mask.files'))[$relative] ?? []);
+    }
+
+    /**
+     * The boxes ([left, top, right, bottom] in source pixels, inclusive) inside
+     * which the mask removes nothing for an art file.
+     *
+     * @return list<array{0: int, 1: int, 2: int, 3: int}>
+     */
+    public static function maskKeepFor(string $source): array
+    {
+        return array_values(self::maskSettingsFor($source)['mask_keep'] ?? []);
+    }
+
+    /**
+     * The object mask made for an art file by the segmentation model, or null
+     * when there is none or mask.files switches it off for the file:
+     * <mask.path>/<model>/<sha1 of the source>.png.
+     */
+    public static function maskPath(string $source): ?string
+    {
+        $model = config('stamps.background.mask.model');
+
+        if (! is_string($model) || $model === '' || (self::maskSettingsFor($source)['mask'] ?? true) === false) {
+            return null;
         }
 
-        return array_values(((array) config('stamps.background.remove_enclosed'))[substr($source, strlen($root))] ?? []);
+        $path = rtrim((string) config('stamps.background.mask.path'), '/')."/{$model}/".hash_file('sha1', $source).'.png';
+
+        return is_file($path) ? $path : null;
+    }
+
+    /**
+     * The keep-list of an art file: enclosed regions never to remove, by a
+     * point inside each.
+     *
+     * @return list<array{0: int, 1: int}>
+     */
+    public static function keepSeedsFor(string $source): array
+    {
+        $relative = self::relativePath($source);
+
+        return $relative === null ? [] : array_values(((array) config('stamps.background.keep_enclosed'))[$relative] ?? []);
     }
 
     /**
      * Make the background of an image transparent.
      *
-     * @param  list<array{0: int, 1: int}>  $seeds  Enclosed background regions to remove, by a point inside each
-     * @return array{image: GdImage, width: int, height: int, background: array{0: int, 1: int, 2: int}, enclosed: list<array{pixels: int, share: float, left: int, top: int, right: int, bottom: int, seed: array{0: int, 1: int}, mean_distance: float, removed: bool}>, unused_seeds: list<array{seed: array{0: int, 1: int}, reason: string}>}
+     * @param  list<array{0: int, 1: int}>  $keep  Enclosed regions never to remove, by a point inside each
+     * @param  GdImage|null  $mask  The object mask from the segmentation model (white = object), same size
+     * @return array{image: GdImage, width: int, height: int, background: array{0: int, 1: int, 2: int}, enclosed: list<array{pixels: int, share: float, left: int, top: int, right: int, bottom: int, seed: array{0: int, 1: int}, mean_distance: float, removed: bool, why: string}>, unused_seeds: list<array{seed: array{0: int, 1: int}, reason: string}>}
      */
-    public function remove(GdImage $source, array $seeds = []): array
+    public function remove(GdImage $source, array $keep = [], ?GdImage $mask = null): array
     {
         imagepalettetotruecolor($source);
         $width = imagesx($source);
@@ -133,44 +211,70 @@ class BackgroundRemoval
 
         $this->spread($this->edgeIndexes($width, $height), $region, $distance, $width, $tolerance, self::BACKGROUND);
 
+        $minimum = (int) config('stamps.background.enclosed_min_pixels');
+        $removeUpTo = (float) config('stamps.background.remove_enclosed_up_to');
+        $keepIndexes = [];
+
+        foreach ($keep as [$x, $y]) {
+            if ($x >= 0 && $y >= 0 && $x < $width && $y < $height) {
+                $keepIndexes[$y * $width + $x] = [$x, $y];
+            }
+        }
+
+        $matched = [];
         $enclosed = [];
-        $unused = [];
 
-        foreach ($seeds as [$x, $y]) {
-            $index = $y * $width + $x;
-            $reason = match (true) {
-                $x < 0 || $y < 0 || $x >= $width || $y >= $height => 'outside the image',
-                $region[$index] === self::BACKGROUND => 'already background, connected to the edge',
-                $region[$index] === self::SEEDED => 'already removed by another seed',
-                ord($distance[$index]) > $tolerance => 'not the background colour',
-                default => null,
-            };
-
-            if ($reason !== null) {
-                $unused[] = ['seed' => [$x, $y], 'reason' => $reason];
-
+        for ($index = 0, $count = strlen($region); $index < $count; $index++) {
+            if ($region[$index] !== self::OPEN || ord($distance[$index]) > $tolerance) {
                 continue;
             }
 
-            $enclosed[] = $this->spread([$index], $region, $distance, $width, $tolerance, self::SEEDED) + ['removed' => true];
-        }
+            $found = $this->spread([$index], $region, $distance, $width, $tolerance, self::ENCLOSED);
+            $members = $found['members'];
+            unset($found['members']);
 
-        $minimum = (int) config('stamps.background.enclosed_min_pixels');
+            if ($found['pixels'] < $minimum) {
+                continue;
+            }
 
-        for ($index = 0, $count = strlen($region); $index < $count; $index++) {
-            if ($region[$index] === self::OPEN && ord($distance[$index]) <= $tolerance) {
-                $found = $this->spread([$index], $region, $distance, $width, $tolerance, self::ENCLOSED);
+            $kept = array_intersect_key($keepIndexes, array_flip($members));
+            $matched += $kept;
+            $removed = $kept === [] && $found['mean_distance'] <= $removeUpTo;
 
-                if ($found['pixels'] >= $minimum) {
-                    $enclosed[] = $found + ['removed' => false];
+            if ($removed) {
+                foreach ($members as $member) {
+                    $region[$member] = self::REMOVED;
                 }
             }
+
+            $enclosed[] = $found + ['removed' => $removed, 'why' => match (true) {
+                $removed => "mean distance {$found['mean_distance']} up to {$removeUpTo}",
+                $kept !== [] => 'keep-list',
+                default => "mean distance {$found['mean_distance']} above {$removeUpTo}",
+            }];
+        }
+
+        $unused = [];
+
+        foreach ($keep as [$x, $y]) {
+            $index = $y * $width + $x;
+
+            if (isset($matched[$index])) {
+                continue;
+            }
+
+            $unused[] = ['seed' => [$x, $y], 'reason' => match (true) {
+                ! isset($keepIndexes[$index]) => 'outside the image',
+                $region[$index] === self::BACKGROUND => 'background connected to the edge',
+                ord($distance[$index]) > $tolerance => 'not the background colour',
+                default => 'in a region below enclosed_min_pixels',
+            }];
         }
 
         usort($enclosed, fn (array $a, array $b) => $b['pixels'] <=> $a['pixels']);
 
         return [
-            'image' => $this->render($source, $background, $distance, $region),
+            'image' => $this->render($source, $background, $distance, $region, $mask),
             'width' => $width,
             'height' => $height,
             'background' => $background,
@@ -276,10 +380,11 @@ class BackgroundRemoval
     /**
      * Flood fill from the start pixels through 4-connected open pixels within
      * the tolerance, marking them; returns the size and place of what it
-     * filled, with as seed the filled pixel nearest the centre of its box.
+     * filled, with as seed the filled pixel nearest the centre of its box,
+     * and (except for the edge region) the filled pixels.
      *
      * @param  list<int>  $start
-     * @return array{pixels: int, share: float, left: int, top: int, right: int, bottom: int, seed: array{0: int, 1: int}, mean_distance: float}
+     * @return array{pixels: int, share: float, left: int, top: int, right: int, bottom: int, seed: array{0: int, 1: int}, mean_distance: float, members: list<int>}
      */
     private function spread(array $start, string &$region, string $distance, int $width, int $tolerance, string $mark): array
     {
@@ -347,6 +452,7 @@ class BackgroundRemoval
             'bottom' => $bottom,
             'seed' => [$seed % $width, intdiv($seed, $width)],
             'mean_distance' => round($sum / max(1, $pixels), 1),
+            'members' => $members,
         ];
     }
 
@@ -356,7 +462,7 @@ class BackgroundRemoval
      *
      * @param  array{0: int, 1: int, 2: int}  $background
      */
-    private function render(GdImage $source, array $background, string $distance, string $region): GdImage
+    private function render(GdImage $source, array $background, string $distance, string $region, ?GdImage $mask): GdImage
     {
         [$red, $green, $blue] = $background;
         $width = imagesx($source);
@@ -364,9 +470,10 @@ class BackgroundRemoval
         $clear = (int) config('stamps.background.transparent_within');
         $span = max(1, (int) config('stamps.background.tolerance') - $clear);
         $curve = (float) config('stamps.background.opacity_curve');
-        $solid = strtr($region, self::OPEN.self::BACKGROUND.self::ENCLOSED.self::SEEDED, "\1\0\1\0");
+        $solid = strtr($region, self::OPEN.self::BACKGROUND.self::ENCLOSED.self::REMOVED, "\1\0\1\0");
         $outline = $this->outline($source, $background, $solid, $width, $height);
         $transparent = (127 << 24) | ($red << 16) | ($green << 8) | $blue;
+        [$maskBytes, $gates] = $mask === null ? [null, []] : $this->maskOpacities($mask, $width, $height);
 
         $image = imagecreatetruecolor($width, $height);
         imagealphablending($image, false);
@@ -377,16 +484,26 @@ class BackgroundRemoval
         for ($y = 0; $y < $height; $y++) {
             for ($x = 0; $x < $width; $x++, $index++) {
                 $edge = $outline[$index] ?? null;
+                $gate = $maskBytes === null ? 1.0 : $gates[ord($maskBytes[$index])];
 
-                if ($edge === null && $solid[$index] === "\1") {
+                if ($gate <= 0.0) {
+                    imagesetpixel($image, $x, $y, $transparent);
+
+                    continue;
+                }
+
+                if ($edge === null && $solid[$index] === "\1" && $gate >= 1.0) {
                     continue;
                 }
 
                 $color = imagecolorat($source, $x, $y);
-                $opacity = (127 - (($color >> 24) & 0x7F)) / 127;
+                $opacity = (127 - (($color >> 24) & 0x7F)) / 127 * $gate;
 
                 if ($edge !== null) {
                     [$alpha, $rgb] = $edge;
+                } elseif ($solid[$index] === "\1") {
+                    $alpha = 1.0;
+                    $rgb = $color & 0xFFFFFF;
                 } else {
                     $value = ord($distance[$index]);
 
@@ -406,6 +523,39 @@ class BackgroundRemoval
         }
 
         return $image;
+    }
+
+    /**
+     * The mask as one byte per pixel, and the opacity for each byte value:
+     * 0 up to mask.transparent_below, 1 from mask.opaque_from, linear between.
+     *
+     * @return array{0: string, 1: list<float>}
+     */
+    private function maskOpacities(GdImage $mask, int $width, int $height): array
+    {
+        if (imagesx($mask) !== $width || imagesy($mask) !== $height) {
+            $mask = imagescale($mask, $width, $height, IMG_BILINEAR_FIXED);
+        }
+
+        imagepalettetotruecolor($mask);
+        $low = (int) config('stamps.background.mask.transparent_below');
+        $high = max($low + 1, (int) config('stamps.background.mask.opaque_from'));
+        $bytes = str_repeat("\0", $width * $height);
+        $index = 0;
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++, $index++) {
+                $value = (imagecolorat($mask, $x, $y) >> 8) & 0xFF;
+
+                if ($value > 0) {
+                    $bytes[$index] = chr($value);
+                }
+            }
+        }
+
+        $opacities = array_map(fn (int $value) => max(0.0, min(1.0, ($value - $low) / ($high - $low))), range(0, 255));
+
+        return [$bytes, $opacities];
     }
 
     /**

@@ -66,8 +66,8 @@ class OofStampsPreview extends Command
     }
 
     /**
-     * The enclosed background regions per art file: kept unless a seed in
-     * config/stamps.php removes them; and the seeds that matched nothing.
+     * The enclosed background regions per art file, removed or kept and why;
+     * and the keep-list seeds that matched no region.
      *
      * @param  Collection<int, SplFileInfo>  $files
      */
@@ -88,7 +88,7 @@ class OofStampsPreview extends Command
                     "({$region['left']}, {$region['top']}) to ({$region['right']}, {$region['bottom']})",
                     "[{$region['seed'][0]}, {$region['seed'][1]}]",
                     $region['mean_distance'],
-                    $region['removed'] ? 'removed' : 'kept',
+                    ($region['removed'] ? 'removed' : 'kept').": {$region['why']}",
                 ];
             }
 
@@ -100,12 +100,12 @@ class OofStampsPreview extends Command
         if ($rows === []) {
             $this->components->info('No enclosed background regions.');
         } else {
-            $this->components->warn(count($rows).' enclosed background regions (kept unless a seed in config/stamps.php background.remove_enclosed removes them):');
+            $this->components->warn(count($rows).' enclosed background regions (removed up to background.remove_enclosed_up_to, unless on background.keep_enclosed in config/stamps.php):');
             $this->table(['Art', 'Pixels', 'Share', 'Box', 'Seed', 'Mean distance', 'State'], $rows);
         }
 
         if ($unused !== []) {
-            $this->components->warn(count($unused).' seeds in config/stamps.php matched no enclosed region:');
+            $this->components->warn(count($unused).' keep-list seeds in config/stamps.php matched no enclosed region:');
             $this->table(['Art', 'Seed', 'Why'], $unused);
         }
     }
