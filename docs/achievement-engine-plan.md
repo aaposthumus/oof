@@ -1892,7 +1892,8 @@ it-was-like-that-when-i-got-there, by-a-whisker), so they go now.
 - `bin/stamp-masks.py`: a preprocessing step outside the Laravel runtime. rembg 2.0.61 in
   a venv at `~/.venvs/oof-rembg` (Python 3.9, CPU only), models cached in `~/.u2net`.
   One greyscale mask per art file, in
-  `storage/app/private/stamps/masks/<model>/<sha1 of the source>.png`.
+  `resources/stamp-masks/<model>/<sha1 of the source>.png` (first in
+  `storage/app/private/stamps/masks/`, moved when the deploy was decided, see below).
   - The CPU provider is forced: onnxruntime's CoreML provider hangs while compiling
     birefnet-general.
 - BackgroundRemoval: where a mask exists, the final opacity is the flood-fill and
@@ -1942,13 +1943,18 @@ it-was-like-that-when-i-got-there, by-a-whisker), so they go now.
       at the tip of the dust. The pale puff in the clouds shows half transparent with a
       dark crescent (the flood fill takes its near-white parts as background).
   - Sheet: `~/oof-contact-sheets/shadow-test/mask-fixes.png`.
-- Deploy implication, choice left open: the masks need rembg with birefnet-general
-  (about 1 GB of model, Python, CPU) outside Laravel. Production either gets the same
-  setup (venv, model, `bin/stamp-masks.py` run after new art arrives), or receives the
-  masks generated locally (copied into `storage/app/private/stamps/masks/birefnet-general/`,
-  named by the sha1 of each art file, so they match only the exact same art). Without
-  a mask, an art file falls back to the flood fill alone, floor shadow included, while
-  the synthetic shadow is still added.
+- Deploy, decided by the owner on 22 November 2026: the masks are built locally and
+  committed. Production does not get the rembg setup (about 1 GB of model, Python, CPU);
+  it only reads the masks.
+  - The masks live in `resources/stamp-masks/birefnet-general/`, one PNG per art file,
+    named by the sha1 of that file. The 97 masks take 4.35 MB.
+  - After new or changed art, run `bin/stamp-masks.py` locally
+    (`~/.venvs/oof-rembg/bin/python -I bin/stamp-masks.py`; it skips masks that exist)
+    and commit the new masks with the art.
+  - A changed art file has a new sha1, so it needs a new mask. The old mask then matches
+    nothing and can be deleted.
+  - Without a mask, an art file falls back to the flood fill alone, floor shadow
+    included, while the synthetic shadow is still added.
 
 **Phase 12g: backfill and report. Done.**
 
@@ -1999,16 +2005,14 @@ it-was-like-that-when-i-got-there, by-a-whisker), so they go now.
 
 Still open after Phase 12:
 
-1. Stamp masks in production: the same rembg + birefnet setup there, or masks generated
-   locally and copied over (see "Object masks and a synthetic shadow").
-2. Art for the three original Oofies: `oof/most-collected.png`,
+1. Art for the three original Oofies: `oof/most-collected.png`,
    `oof/oofscore-champion.png`, `oof/rarest-award.png`.
-3. Variant thumbnails in the CMS: the route serves a variant (`?variant=`), but the
+2. Variant thumbnails in the CMS: the route serves a variant (`?variant=`), but the
    variants list on the achievement page shows none.
-4. Production deploy: the Phase 12 migrations go with deploy step 1 (the Early Bird
+3. Production deploy: the Phase 12 migrations go with deploy step 1 (the Early Bird
    rename before the sync of step 2). Then `oof:achievements --stale` brings production
    up to date, as here.
-5. Food awards: 2024 stays without (6 of 24 races timed); a season qualifies only with 90%
+4. Food awards: 2024 stays without (6 of 24 races timed); a season qualifies only with 90%
    of its races at 80% of pit visits timed.
 
 ## Working notes

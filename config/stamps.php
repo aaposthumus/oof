@@ -108,10 +108,10 @@ return [
         'keep_enclosed' => [
         ],
 
-        // Object masks from an AI segmentation model (rembg), made beforehand by bin/stamp-masks.py into path/<model>/<sha1 of the source>.png. Where a mask exists, every pixel outside it becomes transparent too (floor shadows, light rims). The mask's value (0 to 255) gives opacity 0 up to transparent_below and 1 from opaque_from. No model: no masks.
+        // Object masks from an AI segmentation model (rembg), made locally by bin/stamp-masks.py into path/<model>/<sha1 of the source>.png and committed; production only reads them (decided by the owner on 22 November 2026). Where a mask exists, every pixel outside it becomes transparent too (floor shadows, light rims). The mask's value (0 to 255) gives opacity 0 up to transparent_below and 1 from opaque_from. No model: no masks.
         'mask' => [
             'model' => 'birefnet-general',
-            'path' => storage_path('app/private/stamps/masks'),
+            'path' => resource_path('stamp-masks'),
             'transparent_below' => 32,
             'opaque_from' => 128,
 
