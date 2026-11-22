@@ -31,7 +31,7 @@ and 4 for the design, and "Working notes" at the end.
 | 12c | Race-weekend glory: Early Bird (pole), Early Chick, Fun Size, Purple Patch, Encore, In Tandem, Hometown Hero | Done, 21 November 2026 |
 | 12d | OOF: Bubble Burst, Dropped the Baton | Done, 22 November 2026 |
 | 12e | Fourteen season Oofies | Done, 22 November 2026 |
-| 12f | Stamp framing service, CMS preview, preview command | Not started |
+| 12f | Stamp framing service, CMS preview, preview command | Done, 22 November 2026 |
 | 12g | Backfill and report | Not started |
 
 ## 0. Where the code stood on 16 November 2026
@@ -1741,6 +1741,46 @@ Implementation:
   - Both "· 2 races without full timing data" (Australia and Canada).
   - 2024 stays without (6 of 24 races timed). 2023 is before the timing data (the Food
     awards start in 2024). 2026 is not final yet.
+
+**Phase 12f: stamp framing. Done.**
+
+- `App\Achievements\Stamps\StampArt` (GD, no new dependency), settings in
+  `config/stamps.php`, kept out of `config/achievements.php` so the catalogue version
+  does not change.
+  - Art path: `<art_path>/<folder>/<key in kebab case>[--label].png`. The folder is the
+    shelf (glory, oof, safety-car) or, for an Oofie, its side.
+  - Framing, at render time only: trim to the visible content (a pixel counts when any
+    channel is below 245 and it is not transparent; a row or column needs 3 such pixels,
+    so stray specks do not count). The content is scaled to fit the 800 x 1000 window
+    (4:5) with a 15% margin, centred, on white. The limiting side gets exactly 15%; the
+    other side gets more, as the aspect ratio is kept.
+  - Cached under `storage/app/private/stamps/framed`, keyed by the source's hash and the
+    settings. The sources are never written.
+  - `missing()` lists catalogue achievements without art.
+- Background removal is not done (decision 8). When it comes, it must flood fill from the
+  image edges, never apply a global near-white threshold, so cream and white parts inside
+  characters survive (noted in `config/stamps.php` too).
+- CMS: an Art column on the achievements list and a large framed image on the achievement
+  page. Both are served by `stamps.show` (`/_nimda/stamps/{key}.png`, admins only, 404
+  without art, `?variant=` for a variant).
+- `oof:stamps:preview [--only=] [--out=]`: frames every art file into
+  `storage/app/private/stamps/preview` and reports the catalogue achievements without
+  art.
+- Tests:
+  - `StampArtTest` (8): tall and wide objects (15% on the limiting side, centred), a
+    stray speck, a transparent source, the cache and the source left unchanged, the
+    paths per shelf, side and variant, the missing-art report, the command.
+  - `Admin/StampArtPreviewTest` (3): an admin gets the PNG; guests and non-admins get
+    403 and missing art 404; the list column and the page show the thumbnail.
+- Run on the local art: 97 files framed in about 28 seconds, the source hashes unchanged.
+  - Without art: Most Collected, OOFscore Champion, Rarest Award.
+  - Every art file belongs to a catalogue achievement (5 variants).
+  - Contact sheets in `~/oof-contact-sheets/framed/` (outside the repo).
+- Seen on the contact sheets: the art's background is not flat white near the objects
+  (soft shading just above the threshold), so the trimmed rectangle shows as a faint box
+  on the pure white canvas for some objects. Background removal (above) will take it
+  away. Until then a lower threshold or a feathered edge could soften it; for the owner.
+- Golden master: no differences.
 
 ## Working notes
 

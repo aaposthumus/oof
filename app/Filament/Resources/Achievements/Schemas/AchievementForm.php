@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Achievements\Schemas;
 
 use App\Achievements\Facts\DataSource;
+use App\Achievements\Stamps\StampArt;
 use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
@@ -16,6 +17,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Schemas\Schema;
 
 class AchievementForm
@@ -27,6 +29,12 @@ class AchievementForm
         return $schema
             ->columns(2)
             ->components([
+                ImageEntry::make('art')
+                    ->label('Stamp art (framed for the stamp window)')
+                    ->state(fn (?Achievement $record): ?string => $record === null ? null : app(StampArt::class)->url($record))
+                    ->imageHeight(240)
+                    ->placeholder('No art yet: see oof:stamps:preview for where it is expected.')
+                    ->columnSpanFull(),
                 TextInput::make('key')
                     ->disabled()
                     ->helperText('Ties the achievement to its entry in the catalogue (config/achievement_catalogue.php).'),

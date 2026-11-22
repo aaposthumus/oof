@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Achievements\Tables;
 
+use App\Achievements\Stamps\StampArt;
 use App\Enums\AchievementSection;
 use App\Enums\AchievementShelf;
 use App\Enums\AchievementTier;
@@ -10,6 +11,7 @@ use App\Enums\SessionType;
 use App\Models\Achievement;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -23,6 +25,10 @@ class AchievementsTable
             ->modifyQueryUsing(fn (Builder $query) => $query->withCount('awards'))
             ->defaultSort('id')
             ->columns([
+                ImageColumn::make('art')
+                    ->label('Art')
+                    ->state(fn (Achievement $record): ?string => app(StampArt::class)->url($record))
+                    ->imageHeight(60),
                 TextColumn::make('name')
                     ->description(fn ($record): string => $record->description)
                     ->searchable(),
