@@ -34,7 +34,7 @@ class ResultFacts implements DescribesAttributes, FactProvider
 
     public function attributeYears(): array
     {
-        return ['fastest_lap_rank' => 2004];
+        return ['fastest_lap_rank' => 2004, 'laps_led' => 1996];
     }
 
     public function attributeNotes(): array

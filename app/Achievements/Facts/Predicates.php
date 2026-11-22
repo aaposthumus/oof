@@ -32,6 +32,7 @@ class Predicates
         'top_team_on_form' => Predicates\TopTeamOnForm::class,
         'retired_while_leading' => Predicates\RetiredWhileLeading::class,
         'at_home' => Predicates\AtHome::class,
+        'saw_the_flag' => Predicates\SawTheFlag::class,
     ];
 
     /**

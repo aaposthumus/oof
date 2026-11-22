@@ -30,7 +30,7 @@ and 4 for the design, and "Working notes" at the end.
 | 12b | Engine extensions for the new achievements | Done, 21 November 2026 |
 | 12c | Race-weekend glory: Early Bird (pole), Early Chick, Fun Size, Purple Patch, Encore, In Tandem, Hometown Hero | Done, 21 November 2026 |
 | 12d | OOF: Bubble Burst, Dropped the Baton | Done, 22 November 2026 |
-| 12e | Fourteen season Oofies | Not started |
+| 12e | Fourteen season Oofies | Done, 22 November 2026 |
 | 12f | Stamp framing service, CMS preview, preview command | Not started |
 | 12g | Backfill and report | Not started |
 
@@ -1665,6 +1665,56 @@ the same official pole as Early Bird.
   the same as for laps led (Led Astray, Clean Sweep, Follow the Leader): P1 at the end of
   the lap, pit-cycle laps included.
 - Re-exported: 32,596 awards.
+
+**Phase 12e: the fourteen season Oofies. Done.**
+
+- Fourteen catalogue entries on the Oofies shelf (no tier, 0 points), season scope,
+  aggregate triggers over facts. Grands Prix only, except where noted; ties shared.
+  - Glory side, each from its data year:
+    - Creature of Habit (wins), Morning Person (poles, the one definition of pole),
+      Room with a View (podiums): from 1950.
+    - Follow the Leader (laps led): from 1996 (`laps_led` is dated 1996 in
+      `ResultFacts`).
+    - Stampede (positive places gained of classified finishers, summed): from 1950.
+    - Fastest Food (team; races and sprints; fastest single stop of at least 1.5 s
+      after which the car rejoined; coverage gate): from 2024.
+    - Perfect Attendance (points in every Grand Prix): from 1950.
+    - Like a Metronome (new predicate `saw_the_flag`: running at the flag and not
+      disqualified in every Grand Prix, so a retirement classified at 90% breaks it):
+      from 1950.
+  - OOF side, from 2023:
+    - Homebody (retirements, sensitive rounds left out).
+    - Usual Suspect (penalties in races, sprints and both qualifyings).
+    - Backpedal (positive places lost of classified finishers, summed).
+    - Slow Food (team; slowest single stop on the same rules as Fastest Food).
+    - Best in Show (races finished lapped, laps down as the tie-break).
+    - Always the Bridesmaid (best championship position with points and no Grand Prix
+      podium).
+- Engine: aggregate option `value_format: seconds` ("2.1 s" in the Food details).
+- Tests (`SeasonOofiesTest`, 14): one tiny season per award. They cover:
+  - ties shared and minimums
+  - every-Grand-Prix rules with a missed round
+  - the coverage gate and the rejoined rule
+  - Always the Bridesmaid by the standings
+  - Homebody without a sensitive round
+  - the OOF side absent in 2022 and the glory side present in 1990
+- Golden master: 429 differences, all added in season contexts, nothing missing or
+  changed elsewhere. Seasons awarded:
+
+  | Oofie | Seasons |
+  |---|---|
+  | Creature of Habit, Morning Person, Room with a View, Stampede | 76 (1950 to 2025) |
+  | Follow the Leader | 30 (1996 to 2025) |
+  | Like a Metronome | 16 (first 1953) |
+  | Perfect Attendance | 6 (first 1954) |
+  | the six OOF-side ones | 3 (2023 to 2025) |
+  | Fastest Food, Slow Food | 0 |
+
+  2026 is not final yet.
+- Fastest Food and Slow Food give nothing on the local data. The coverage gate wants
+  every race at 80% of pit visits measured. 2025 is fully measured but for Australia
+  (34 of 82 visits) and Canada (33 of 82); 2024 and 2026 are far below. For the owner.
+- Re-exported: 33,025 awards.
 
 ## Working notes
 

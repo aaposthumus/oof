@@ -13,6 +13,7 @@ use App\Achievements\Recipient;
 use App\Achievements\Rules\Sensitivity;
 use App\Achievements\SeasonData;
 use App\Achievements\SessionData;
+use App\Achievements\Support\PitStops;
 use App\Achievements\Support\TeamForm;
 use App\Enums\RecipientType;
 use App\Enums\SessionType;
@@ -61,6 +62,8 @@ use InvalidArgumentException;
  * - coverage: with source facts, [in => session type, at_least => share]:
  *   the season gives nothing unless every session of that type has at least
  *   that share measured (see MeasuresCoverage)
+ * - value_format: seconds, to show a value in milliseconds as "2.1 s" in
+ *   the templates (the pit stop awards)
  * - to: group (the group's driver or team, or nobody for season and
  *   achievement groups) or holders (every driver with an item in the
  *   winning group)
@@ -70,9 +73,9 @@ use InvalidArgumentException;
  */
 final class AggregateTrigger implements SeasonTrigger
 {
-    private const OPTIONS = ['type', 'source', 'fact', 'where', 'shelf', 'except', 'per', 'group', 'measure', 'reduce', 'pick', 'at_least', 'tie_break', 'ties', 'in_every', 'skip_sensitive_rounds', 'coverage', 'to', 'instance', 'event', 'detail', 'note'];
+    private const OPTIONS = ['type', 'source', 'fact', 'where', 'shelf', 'except', 'per', 'group', 'measure', 'reduce', 'pick', 'at_least', 'tie_break', 'ties', 'in_every', 'skip_sensitive_rounds', 'coverage', 'value_format', 'to', 'instance', 'event', 'detail', 'note'];
 
-    private const FACT_ONLY_OPTIONS = ['reduce', 'tie_break', 'in_every', 'skip_sensitive_rounds', 'coverage'];
+    private const FACT_ONLY_OPTIONS = ['reduce', 'tie_break', 'in_every', 'skip_sensitive_rounds', 'coverage', 'value_format'];
 
     private const TIER_RANK = ['platinum' => 4, 'gold' => 3, 'silver' => 2, 'bronze' => 1];
 
@@ -280,7 +283,7 @@ final class AggregateTrigger implements SeasonTrigger
         $first = $group['items']->first();
         $achievement = $first['achievement'] ?? null;
         $values = [
-            'value' => $group['value'],
+            'value' => ($this->definition['value_format'] ?? null) === 'seconds' ? PitStops::seconds((int) $group['value']) : $group['value'],
             'count' => $group['items']->count(),
             'achievement' => $achievement?->name,
             'points' => $first['points'] ?? null,
