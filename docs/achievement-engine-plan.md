@@ -1753,7 +1753,8 @@ Implementation:
     channel is below 245 and it is not transparent; a row or column needs 3 such pixels,
     so stray specks do not count). The content is scaled to fit the 800 x 1000 window
     (4:5) with a 15% margin, centred, on white. The limiting side gets exactly 15%; the
-    other side gets more, as the aspect ratio is kept.
+    other side gets more, as the aspect ratio is kept. (Changed afterwards: see "Equal
+    visual weight" below.)
   - Cached under `storage/app/private/stamps/framed`, keyed by the source's hash and the
     settings. The sources are never written.
   - `missing()` lists catalogue achievements without art.
@@ -1781,6 +1782,29 @@ Implementation:
   on the pure white canvas for some objects. Background removal (above) will take it
   away. Until then a lower threshold or a feathered edge could soften it; for the owner.
 - Golden master: no differences.
+
+**Equal visual weight. Done.**
+
+Decided by the owner on 22 November 2026: wide compositions came out much smaller than
+tall and square ones.
+
+- `StampArt::scale()` now scales every trimmed object so its bounding box covers the same
+  share of the window: `area_share` 0.392, which is what a square object got with the 15%
+  margin (560 x 560 of 800 x 1000), so a square object is unchanged.
+- No edge comes closer than `min_margin` 6% to the window; when the area target would
+  break that, the margin wins. Still centred. Both are in `config/stamps.php`; `margin`
+  is gone.
+- Tests:
+  - a square object is unchanged (15% left and right, 22% top and bottom)
+  - a wide object covers the same area and gets more width than before
+  - a very wide one stops at exactly 6%, with less area
+  - a tall one covers the same area and stays inside the minimum margin
+- On the local art (97 files): every object covers 0.366 to 0.393 of the window.
+  - Two stop at the 6% margin: backpedal (0.366) and meatball-sub--submarine (0.374).
+  - The wide ones the owner named now cover 0.392: creature-of-habit, fastest-food,
+    room-with-a-view, homebody, itchy-feet, stampede.
+  - Tall objects also grew a little (they get the same area too).
+  - Contact sheets regenerated in `~/oof-contact-sheets/framed/`.
 
 ## Working notes
 

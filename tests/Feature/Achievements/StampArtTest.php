@@ -10,8 +10,9 @@ use Tests\TestCase;
 
 /**
  * Framing the achievement art for the stamp window (Phase 12f): trimmed to
- * its visible content, centred with an even empty margin of 15 percent on
- * the limiting side, on white; the sources are never changed. Fixtures are
+ * its visible content and scaled so every object covers the same share of
+ * the window, never closer than 6 percent to an edge, centred, on white;
+ * the sources are never changed. Fixtures are
  * drawn in a scratch folder, never in resources/images.
  */
 class StampArtTest extends TestCase
@@ -72,40 +73,78 @@ class StampArtTest extends TestCase
         return ['left' => $left / $width, 'right' => ($width - 1 - $right) / $width, 'top' => $top / $height, 'bottom' => ($height - 1 - $bottom) / $height];
     }
 
-    public function test_a_tall_object_off_centre_is_trimmed_and_centred_with_15_percent_top_and_bottom(): void
+    /**
+     * The share of the window the framed object's bounding box covers.
+     */
+    private function areaShare(GdImage $framed): float
+    {
+        [$left, $top, $right, $bottom] = app(StampArt::class)->contentBox($framed);
+
+        return ($right - $left + 1) * ($bottom - $top + 1) / (imagesx($framed) * imagesy($framed));
+    }
+
+    public function test_a_square_object_is_unchanged_15_percent_left_and_right(): void
+    {
+        $framed = app(StampArt::class)->frame($this->art('glory/square.png', 80, 700, 400, 400));
+        $margins = $this->margins($framed);
+
+        $this->assertSame([800, 1000], [imagesx($framed), imagesy($framed)]);
+        $this->assertEqualsWithDelta(0.15, $margins['left'], 0.002);
+        $this->assertEqualsWithDelta(0.15, $margins['right'], 0.002);
+        $this->assertEqualsWithDelta(0.22, $margins['top'], 0.002);
+        $this->assertEqualsWithDelta(0.22, $margins['bottom'], 0.002);
+        $this->assertEqualsWithDelta(0.392, $this->areaShare($framed), 0.003);
+    }
+
+    public function test_a_wide_object_covers_the_same_area_and_gets_more_width_than_a_15_percent_margin(): void
+    {
+        $framed = app(StampArt::class)->frame($this->art('glory/wide.png', 300, 50, 500, 350));
+        $margins = $this->margins($framed);
+
+        $this->assertEqualsWithDelta(0.392, $this->areaShare($framed), 0.003);
+        $this->assertLessThan(0.15, $margins['left'], 'Wider than the old 15% margin gave it.');
+        $this->assertGreaterThanOrEqual(0.06, $margins['left']);
+        $this->assertEqualsWithDelta($margins['left'], $margins['right'], 0.002);
+        $this->assertEqualsWithDelta($margins['top'], $margins['bottom'], 0.002);
+    }
+
+    public function test_a_very_wide_object_stops_at_the_6_percent_minimum_margin(): void
+    {
+        $framed = app(StampArt::class)->frame($this->art('glory/very-wide.png', 600, 50, 500, 200));
+        $margins = $this->margins($framed);
+
+        $this->assertEqualsWithDelta(0.06, $margins['left'], 0.002);
+        $this->assertEqualsWithDelta(0.06, $margins['right'], 0.002);
+        $this->assertLessThan(0.392, $this->areaShare($framed), 'The minimum margin wins over the area.');
+        $this->assertEqualsWithDelta($margins['top'], $margins['bottom'], 0.002);
+    }
+
+    public function test_a_tall_object_covers_the_same_area_and_stays_inside_the_minimum_margin(): void
     {
         $framed = app(StampArt::class)->frame($this->art('glory/tall.png', 80, 700, 300, 600));
         $margins = $this->margins($framed);
 
-        $this->assertSame([800, 1000], [imagesx($framed), imagesy($framed)]);
-        $this->assertEqualsWithDelta(0.15, $margins['top'], 0.002);
-        $this->assertEqualsWithDelta(0.15, $margins['bottom'], 0.002);
-        $this->assertEqualsWithDelta($margins['left'], $margins['right'], 0.002);
-        $this->assertGreaterThan(0.15, $margins['left']);
-    }
-
-    public function test_a_wide_object_gets_15_percent_left_and_right_and_is_centred_vertically(): void
-    {
-        $margins = $this->margins(app(StampArt::class)->frame($this->art('glory/wide.png', 600, 50, 500, 200)));
-
-        $this->assertEqualsWithDelta(0.15, $margins['left'], 0.002);
-        $this->assertEqualsWithDelta(0.15, $margins['right'], 0.002);
+        $this->assertEqualsWithDelta(0.392, $this->areaShare($framed), 0.003);
+        $this->assertGreaterThanOrEqual(0.06, $margins['top']);
         $this->assertEqualsWithDelta($margins['top'], $margins['bottom'], 0.002);
+        $this->assertEqualsWithDelta($margins['left'], $margins['right'], 0.002);
     }
 
     public function test_a_stray_speck_does_not_count_as_content(): void
     {
-        $margins = $this->margins(app(StampArt::class)->frame($this->art('glory/speck.png', 400, 400, 400, 500, speck: true)));
+        $framed = app(StampArt::class)->frame($this->art('glory/speck.png', 400, 400, 400, 500, speck: true));
+        $margins = $this->margins($framed);
 
-        $this->assertEqualsWithDelta(0.15, $margins['top'], 0.002);
+        $this->assertEqualsWithDelta(0.392, $this->areaShare($framed), 0.003);
         $this->assertEqualsWithDelta($margins['left'], $margins['right'], 0.002);
+        $this->assertEqualsWithDelta($margins['top'], $margins['bottom'], 0.002);
     }
 
     public function test_a_transparent_background_counts_as_empty_and_the_output_is_on_white(): void
     {
         $framed = app(StampArt::class)->frame($this->art('glory/clear.png', 100, 100, 400, 500, transparent: true));
 
-        $this->assertEqualsWithDelta(0.15, $this->margins($framed)['top'], 0.002);
+        $this->assertEqualsWithDelta(0.392, $this->areaShare($framed), 0.003);
         $this->assertSame(0xFFFFFF, imagecolorat($framed, 2, 2) & 0xFFFFFF);
     }
 
@@ -120,7 +159,7 @@ class StampArtTest extends TestCase
         $this->assertSame($before, hash_file('sha1', $source));
         $this->assertStringStartsWith("{$this->root}/cache/", $first);
 
-        config(['stamps.margin' => 0.2]);
+        config(['stamps.area_share' => 0.3]);
         $this->assertNotSame($first, $art->framed($source), 'Other settings give another copy.');
     }
 

@@ -19,9 +19,10 @@ use RuntimeException;
  * Framing, at render time only (the sources are never changed): the image
  * is trimmed to its visible content (every pixel that is not near-white or
  * transparent; a row or column needs a few such pixels, so stray specks do
- * not count) and scaled to sit centred in the window with an even empty
- * margin on all sides, on white (config/stamps.php). The framed copy is
- * cached by the source's content and the settings.
+ * not count) and scaled so its bounding box covers the same share of the
+ * window for every image (area_share), never closer than min_margin to an
+ * edge, centred, on white (config/stamps.php). The framed copy is cached by
+ * the source's content and the settings.
  */
 class StampArt
 {
@@ -110,7 +111,6 @@ class StampArt
 
         imagepalettetotruecolor($image);
         $window = config('stamps.window');
-        $margin = (float) config('stamps.margin');
         $canvas = imagecreatetruecolor($window['width'], $window['height']);
         imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
         $box = $this->contentBox($image);
@@ -122,7 +122,7 @@ class StampArt
         [$left, $top, $right, $bottom] = $box;
         $width = $right - $left + 1;
         $height = $bottom - $top + 1;
-        $scale = min($window['width'] * (1 - 2 * $margin) / $width, $window['height'] * (1 - 2 * $margin) / $height);
+        $scale = self::scale($width, $height, $window['width'], $window['height']);
         $targetWidth = (int) round($width * $scale);
         $targetHeight = (int) round($height * $scale);
 
@@ -130,6 +130,20 @@ class StampArt
         imagecopyresampled($canvas, $image, intdiv($window['width'] - $targetWidth, 2), intdiv($window['height'] - $targetHeight, 2), $left, $top, $targetWidth, $targetHeight, $width, $height);
 
         return $canvas;
+    }
+
+    /**
+     * How much to scale a trimmed object: so its bounding box covers
+     * area_share of the window, unless that would bring it closer than
+     * min_margin to an edge, in which case the margin wins.
+     */
+    public static function scale(int $width, int $height, int $windowWidth, int $windowHeight): float
+    {
+        $minimum = (float) config('stamps.min_margin');
+        $byArea = sqrt((float) config('stamps.area_share') * $windowWidth * $windowHeight / ($width * $height));
+        $byMargin = min($windowWidth * (1 - 2 * $minimum) / $width, $windowHeight * (1 - 2 * $minimum) / $height);
+
+        return min($byArea, $byMargin);
     }
 
     /**
