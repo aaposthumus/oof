@@ -2041,9 +2041,9 @@ Still open after Phase 12:
 - A new OOF achievement, `cant_park_there` (gold, driver, session scope). It is a car not
   correctly in its grid box at the start (Art 48.1 c), with a penalty. Same level, points,
   sessions and supersedes as Itchy Feet, so it replaces the penalty achievement for the
-  same incident (High Five, Drive Thru, Perfect Ten, Red Light Green Light, Sibling
-  Rivalry, It Was Like That When I Got There). The penalty is folded into its detail
-  ("5 s", "drive-through") as for Itchy Feet. Art: `oof/cant-park-there.png`, with its
+  same incident, but only a penalty stamp of its own tier or lower: High Five, Perfect
+  Ten, Sibling Rivalry and It Was Like That When I Got There (see the rule below). The
+  penalty is folded into its detail ("5 s") as for Itchy Feet. Art: `oof/cant-park-there.png`, with its
   mask committed. The grey pavement slab is part of the scene (the meerkat warden stands
   on it), so `config/stamps.php` keeps it with `mask_keep` boxes in 8 px rows along its
   slanted edges; the light rim and shadow around it stay removed.
@@ -2068,7 +2068,23 @@ Still open after Phase 12:
   and there is no public output yet. Nothing was added; tests pin both titles.
 - Local database: 7 awards moved to Can't Park There (Ocon 2023 R1, Alonso 2023 R2,
   Hulkenberg 2023 R17, Perez 2024 R20, Piastri 2024 R22, Norris 2025 R4, Perez 2026 R6),
-  replacing High Five x5, Perfect Ten x1 and Drive Thru x1. Itchy Feet stays at 10.
+  replacing High Five x5 and Perfect Ten x1. Perez 2026 R6 keeps his Drive Thru (below).
+  Itchy Feet stays at 10.
+
+**Rule: a heavier penalty stamp stays (22 November 2026).** Itchy Feet and Can't Park There
+are gold. They supersede only penalty stamps of the same or a lower tier (High Five,
+Perfect Ten; Sibling Rivalry and It Was Like That When I Got There are race stamps, kept in
+the list). They do not supersede the platinum ones (Drive Thru, Red Light Green Light): the
+driver keeps the heavy penalty stamp and also gets the specific one. Why: an achievement
+stays worth the same everywhere in a season (points are a snapshot per achievement, kept
+uniform), so the only way a heavier penalty never earns fewer points is to not replace it.
+Perez 2026 R6 first lost his Drive Thru (100) to Can't Park There (50); he now holds both.
+Because a Drive Thru is no longer folded in, Can't Park There shows no penalty detail there
+and the Drive Thru award shows "drive-through". The migration
+`limit_what_itchy_feet_and_cant_park_there_supersede` rewrites the stored lists (they are
+editorial, so the sync does not); production runs it with the other migrations. The other
+offence achievements (Bumper Cars and so on) still have the old list, so they still replace
+a Drive Thru or Red Light Green Light. Only these two were changed.
 
 ## Working notes
 

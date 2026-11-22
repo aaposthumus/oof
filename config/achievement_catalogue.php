@@ -73,7 +73,7 @@ return [
             'tier' => 'gold',
             'score_category' => 'driver',
             'description' => 'False start, with a penalty.',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten'], // penalty stamps of its own tier or lower only: a heavier penalty (Drive Thru, Red Light Green Light) stays beside it
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',
@@ -94,7 +94,7 @@ return [
             'tier' => 'gold',
             'score_category' => 'driver',
             'description' => 'Out of position on the grid, with a penalty.',
-            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten', 'drive_thru', 'red_light_green_light'],
+            'supersedes' => ['it_was_like_that_when_i_got_there', 'sibling_rivalry', 'high_five', 'perfect_ten'], // penalty stamps of its own tier or lower only: a heavier penalty (Drive Thru, Red Light Green Light) stays beside it
             'sessions' => ['race', 'sprint', 'qualifying', 'sprint_qualifying'],
             'stacks' => false,
             'recipient' => 'driver',

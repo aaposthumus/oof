@@ -105,7 +105,7 @@ class CantParkThereTest extends TestCase
         $this->assertSame('Can\'t Park There · 5 s', $awards->firstWhere('achievement.key', 'cant_park_there')->title());
     }
 
-    public function test_a_drive_through_shows_as_the_detail(): void
+    public function test_a_heavier_penalty_keeps_its_own_stamp_beside_it(): void
     {
         $this->catalogue();
         $race = $this->raceSession();
@@ -116,8 +116,36 @@ class CantParkThereTest extends TestCase
         $this->runEngine($race);
 
         $awards = $this->awards();
-        $this->assertSame(['cant_park_there'], $awards->pluck('achievement.key')->intersect(['cant_park_there', 'drive_thru'])->values()->all());
-        $this->assertSame('Can\'t Park There · drive-through', $awards->firstWhere('achievement.key', 'cant_park_there')->title());
+        $this->assertEqualsCanonicalizing(['cant_park_there', 'drive_thru'], $awards->pluck('achievement.key')->intersect(['cant_park_there', 'drive_thru', 'high_five'])->values()->all());
+        $this->assertSame('drive-through', $awards->firstWhere('achievement.key', 'drive_thru')->detail);
+    }
+
+    public function test_a_stop_and_go_keeps_its_own_stamp_beside_a_jump_start(): void
+    {
+        $this->catalogue();
+        $race = $this->raceSession();
+        $this->car($race, 4);
+        $this->message($race, 'INCIDENT INVOLVING CAR 4 (NOR) NOTED - FALSE START - MOVING BEFORE SIGNAL');
+        $this->message($race, 'FIA STEWARDS: STOP-AND-GO PENALTY FOR CAR 4 (NOR) - FALSE START - MOVING BEFORE SIGNAL');
+
+        $this->runEngine($race);
+
+        $keys = $this->awards()->pluck('achievement.key');
+        $this->assertEqualsCanonicalizing(['itchy_feet', 'red_light_green_light'], $keys->intersect(['itchy_feet', 'red_light_green_light', 'high_five'])->values()->all());
+    }
+
+    public function test_a_gold_penalty_is_still_replaced(): void
+    {
+        $this->catalogue();
+        $race = $this->raceSession();
+        $this->car($race, 4);
+        $this->message($race, 'INCIDENT INVOLVING CAR 4 (NOR) NOTED - INACCURATE GRID POSITION');
+        $this->message($race, 'FIA STEWARDS: 10 SECOND TIME PENALTY FOR CAR 4 (NOR) - INACCURATE GRID POSITION');
+
+        $this->runEngine($race);
+
+        $keys = $this->awards()->pluck('achievement.key');
+        $this->assertSame(['cant_park_there'], $keys->intersect(['cant_park_there', 'perfect_ten', 'high_five'])->values()->all());
     }
 
     public function test_itchy_feet_shows_its_penalty_too(): void
