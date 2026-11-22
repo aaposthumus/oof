@@ -260,6 +260,69 @@ class SeasonOofiesTest extends TestCase
         $this->assertCount(0, $this->awards('slow_food'));
     }
 
+    /**
+     * Ten races of 2025 with a red and a blue car, each with one timed stop
+     * (red 3.0 s, blue 2.6 s); the races named get an extra untimed visit
+     * for both cars, so only a third of their visits is timed.
+     *
+     * @param  list<int>  $poorlyTimed  Round numbers
+     * @return array{0: SeasonTeam, 1: SeasonTeam, 2: array<int, array{0: DriverEntry, 1: DriverEntry}>}
+     */
+    private function tenRaces(array $poorlyTimed): array
+    {
+        $red = SeasonTeam::factory()->create(['season_id' => Season::firstOrCreate(['year' => 2025])->id]);
+        $blue = SeasonTeam::factory()->create(['season_id' => $red->season_id]);
+        $cars = [];
+
+        foreach (range(1, 9) as $roundNumber) {
+            $race = $this->race(2025, $roundNumber);
+            $cars[$roundNumber] = [$this->finish($race, 1, Driver::factory()->create(), 1, team: $red), $this->finish($race, 2, Driver::factory()->create(), 2, team: $blue)];
+        }
+
+        // The tenth race, in October, so the round numbers stay single digits in the dates.
+        $race = $this->raceSession(SessionType::Race, $this->round(2025, 10, ['date' => '2025-10-01']));
+        $race->update(['achievements_checked_at' => now()]);
+        $cars[10] = [$this->finish($race, 1, Driver::factory()->create(), 1, team: $red), $this->finish($race, 2, Driver::factory()->create(), 2, team: $blue)];
+
+        foreach ($cars as $roundNumber => [$redCar, $blueCar]) {
+            $this->stop($redCar, 3_000);
+            $this->stop($blueCar, 2_600);
+
+            if (in_array($roundNumber, $poorlyTimed, true)) {
+                $this->stop($redCar, null, 35);
+                $this->stop($blueCar, null, 35);
+            }
+        }
+
+        return [$red, $blue, $cars];
+    }
+
+    public function test_a_race_without_full_timing_data_is_left_out_for_every_team_and_the_detail_says_so(): void
+    {
+        [$red, $blue, $cars] = $this->tenRaces([3]);
+        // In the poorly timed race red had the quickest and the slowest stop of the season.
+        $this->stop($cars[3][0], 1_900, 10);
+        $this->stop($cars[3][0], 12_000, 40);
+
+        $this->runSeason(2025);
+
+        $fastest = $this->awards('fastest_food')->sole();
+        $this->assertSame([$blue->id, '2.6 s · 1 race without full timing data'], [$fastest->season_team_id, $fastest->detail]);
+        $this->assertStringContainsString('Left out without full timing data: Round 3 Race.', $fastest->evidence['note']);
+        $slowest = $this->awards('slow_food')->sole();
+        $this->assertSame([$red->id, '3.0 s · 1 race without full timing data'], [$slowest->season_team_id, $slowest->detail]);
+    }
+
+    public function test_a_season_needs_ninety_percent_of_its_races_fully_timed(): void
+    {
+        $this->tenRaces([3, 7]);
+
+        $this->runSeason(2025);
+
+        $this->assertCount(0, $this->awards('fastest_food'), '8 of 10 races timed: below 90%.');
+        $this->assertCount(0, $this->awards('slow_food'));
+    }
+
     public function test_perfect_attendance_needs_points_in_every_grand_prix(): void
     {
         [$alice, $bob, $carol] = $this->drivers();

@@ -1713,8 +1713,34 @@ the same official pole as Early Bird.
   2026 is not final yet.
 - Fastest Food and Slow Food give nothing on the local data. The coverage gate wants
   every race at 80% of pit visits measured. 2025 is fully measured but for Australia
-  (34 of 82 visits) and Canada (33 of 82); 2024 and 2026 are far below. For the owner.
+  (34 of 82 visits) and Canada (33 of 82); 2024 and 2026 are far below. (Changed
+  afterwards; see "Food coverage per race" below.)
 - Re-exported: 33,025 awards.
+
+**Food coverage per race. Done.**
+
+Decided by the owner on 22 November 2026: keep the 80% bar, but per race.
+
+- A race with less than 80% of its pit visits timed is left out of Fastest Food and
+  Slow Food entirely, for every team.
+- A season is awarded when at least 90% of its races pass.
+- The detail says when races were left out ("2.1 s · 2 races without full timing
+  data"), and the evidence note names them.
+
+Implementation:
+- The aggregate `coverage` option takes `season_at_least` and `detail`.
+- The left-out sessions are removed from the season's sessions before anything is
+  counted (`AggregateTrigger::isCovered()`, `seasonSessions()`).
+- Descriptions by migration `update_food_award_descriptions`, only where still seeded.
+- Tests: a poorly timed race with the season's quickest and slowest stops is left out
+  for every team, with the detail and the note. Two of ten races poorly timed (80%) give
+  nothing.
+- Golden master: 2 added, nothing else.
+  - 2025 Fastest Food: McLaren, 1.8 s (Piastri, Qatar R23, lap 42).
+  - 2025 Slow Food: Haas, 29.0 s (Bearman, Emilia Romagna R7, lap 31).
+  - Both "· 2 races without full timing data" (Australia and Canada).
+  - 2024 stays without (6 of 24 races timed). 2023 is before the timing data (the Food
+    awards start in 2024). 2026 is not final yet.
 
 ## Working notes
 

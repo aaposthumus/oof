@@ -59,9 +59,13 @@ use InvalidArgumentException;
  * - skip_sensitive_rounds: with source facts, true to leave out the
  *   sessions of sensitive rounds (Homebody does not count a retirement the
  *   weekend's own award is withheld for)
- * - coverage: with source facts, [in => session type, at_least => share]:
- *   the season gives nothing unless every session of that type has at least
- *   that share measured (see MeasuresCoverage)
+ * - coverage: with source facts, [in => session type, at_least => share,
+ *   season_at_least => share, detail => template] (see MeasuresCoverage): a
+ *   session of that type measured below at_least is left out entirely, for
+ *   every group; the season gives nothing unless at least season_at_least of
+ *   those sessions pass (1, every one, by default); the detail template,
+ *   with {left_out} the number left out, is added to the award's detail
+ *   when any were (the pit stop awards)
  * - value_format: seconds, to show a value in milliseconds as "2.1 s" in
  *   the templates (the pit stop awards)
  * - to: group (the group's driver or team, or nobody for season and
@@ -78,6 +82,13 @@ final class AggregateTrigger implements SeasonTrigger
     private const FACT_ONLY_OPTIONS = ['reduce', 'tie_break', 'in_every', 'skip_sensitive_rounds', 'coverage', 'value_format'];
 
     private const TIER_RANK = ['platinum' => 4, 'gold' => 3, 'silver' => 2, 'bronze' => 1];
+
+    /**
+     * The sessions the coverage option leaves out of the season being decided.
+     *
+     * @var Collection<int, SessionData>
+     */
+    private Collection $leftOut;
 
     /**
      * @param  array<string, mixed>  $definition
@@ -131,6 +142,8 @@ final class AggregateTrigger implements SeasonTrigger
 
     public function detectSeason(SeasonData $season): Collection
     {
+        $this->leftOut = collect();
+
         if (! $this->isCovered($season)) {
             return collect();
         }
@@ -147,9 +160,10 @@ final class AggregateTrigger implements SeasonTrigger
     }
 
     /**
-     * Whether every session of the type the coverage option names is
-     * measured well enough. A session with nothing to measure does not count
-     * against it.
+     * Whether the season is measured well enough for the coverage option:
+     * the sessions of its type measured below the bar are left out (kept in
+     * leftOut), and enough of them must pass. A session with nothing to
+     * measure passes.
      */
     private function isCovered(SeasonData $season): bool
     {
@@ -163,11 +177,12 @@ final class AggregateTrigger implements SeasonTrigger
             throw new InvalidArgumentException("The facts of [{$this->key}] do not measure their coverage.");
         }
 
-        $type = SessionType::from($this->definition['coverage']['in']);
+        $coverage = $this->definition['coverage'];
+        $type = SessionType::from($coverage['in']);
+        $judged = $this->readSessions($season)->filter(fn (SessionData $data) => $data->type() === $type)->values();
+        $this->leftOut = $judged->filter(fn (SessionData $data) => ($provider->coverage($data) ?? 1.0) < $coverage['at_least'])->values();
 
-        return $this->seasonSessions($season)
-            ->filter(fn (SessionData $data) => $data->type() === $type)
-            ->every(fn (SessionData $data) => ($provider->coverage($data) ?? 1.0) >= $this->definition['coverage']['at_least']);
+        return $judged->isEmpty() || ($judged->count() - $this->leftOut->count()) / $judged->count() >= ($coverage['season_at_least'] ?? 1.0);
     }
 
     /**
@@ -291,14 +306,24 @@ final class AggregateTrigger implements SeasonTrigger
         $instance = $contestKey !== '' ? $contestKey : ($this->definition['group'] === 'achievement' ? $group['key'] : 'season');
         $fact = new Fact('aggregate', null, $instance, "season:{$instance}", [], FactEvidence::rows($this->evidenceSource(), []));
         $instanceKey = isset($this->definition['instance']) ? Template::render($this->definition['instance'], $fact, $values) : $instance;
-        $evidence = $this->evidence($group, $ranked, $season, Template::render($this->definition['note'] ?? null, $fact, $values));
+        $note = Template::render($this->definition['note'] ?? null, $fact, $values);
+        $detail = Template::render($this->definition['detail'] ?? null, $fact, $values);
+
+        if ($this->leftOut->isNotEmpty()) {
+            $sessions = $this->leftOut->map(fn (SessionData $data) => "Round {$data->session->round->round_number} {$data->type()->label()}")->implode(', ');
+            $note = trim(($note ?? '').' Left out without full timing data: '.$sessions.'.');
+            $leftOut = Template::render($this->definition['coverage']['detail'] ?? null, $fact, ['left_out' => $this->leftOut->count()]);
+            $detail = $leftOut === null ? $detail : implode(' · ', array_filter([$detail, $leftOut]));
+        }
+
+        $evidence = $this->evidence($group, $ranked, $season, $note);
         $detection = fn (Recipient $recipient) => new Detection(
             achievementKey: $this->key,
             recipient: $recipient,
             instanceKey: $instanceKey,
             eventKey: isset($this->definition['event']) ? Template::render($this->definition['event'], $fact, $values) : "season:{$instanceKey}",
             evidence: $evidence,
-            detail: Template::render($this->definition['detail'] ?? null, $fact, $values),
+            detail: $detail,
         );
 
         if ($this->recipient === RecipientType::Team) {
@@ -363,13 +388,26 @@ final class AggregateTrigger implements SeasonTrigger
     }
 
     /**
-     * The season's sessions a facts source reads: of the types the entry
-     * lists, without the Indianapolis 500 (no season award counts it) and,
-     * with skip_sensitive_rounds, without the sessions of sensitive rounds.
+     * The season's sessions a facts source reads, without those the coverage
+     * option left out.
      *
      * @return Collection<int, SessionData>
      */
     private function seasonSessions(SeasonData $season): Collection
+    {
+        $leftOut = $this->leftOut->map(fn (SessionData $data) => $data->session->id)->all();
+
+        return $this->readSessions($season)->reject(fn (SessionData $data) => in_array($data->session->id, $leftOut, true))->values();
+    }
+
+    /**
+     * The sessions of the types the entry lists, without the Indianapolis
+     * 500 (no season award counts it) and, with skip_sensitive_rounds,
+     * without the sessions of sensitive rounds.
+     *
+     * @return Collection<int, SessionData>
+     */
+    private function readSessions(SeasonData $season): Collection
     {
         return $season->sessions($this->sessions)
             ->reject(fn (SessionData $data) => TeamForm::isIndianapolis500($data->session->round))
