@@ -656,6 +656,42 @@ return [
             'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => ['retired'], 'detail' => '{status}'],
         ],
 
+        'bubble_burst' => [
+            'name' => 'Bubble Burst',
+            'section' => 'race',
+            'shelf' => 'oof',
+            'tier' => 'gold',
+            'score_category' => 'reliability',
+            'description' => 'Retired while leading the race.',
+            'supersedes' => ['home_before_dinner'],
+            'sessions' => ['race'],
+            'stacks' => false,
+            'recipient' => 'driver',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => true,
+            'trigger' => ['type' => 'match', 'fact' => 'result', 'where' => ['retired_while_leading'], 'detail' => 'lap {laps_completed} · {status}'],
+        ],
+
+        'dropped_the_baton' => [
+            'name' => 'Dropped the Baton',
+            'section' => 'race',
+            'shelf' => 'oof',
+            'tier' => 'platinum',
+            'score_category' => 'driver',
+            'description' => 'Running one-two in the final laps, and not one-two at the flag.',
+            'supersedes' => [],
+            'sessions' => ['race'],
+            'stacks' => false,
+            'recipient' => 'team',
+            'scope' => 'session',
+            'withheld_on_sensitive_weekends' => true,
+            'trigger' => [
+                'type' => 'match', 'fact' => 'lost_one_two',
+                'instance' => 'one_two', 'event' => 'lost_one_two',
+                'detail' => '1-2 on lap {last_lap} of {laps} · {finish}',
+            ],
+        ],
+
         'sent_to_your_room' => [
             'name' => 'Sent to Your Room',
             'section' => 'race',

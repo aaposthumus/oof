@@ -35,6 +35,7 @@ class Facts
         'cause' => Providers\CauseFacts::class,
         'speed_trap' => Providers\SpeedTrapFacts::class,
         'career_first' => Providers\CareerFirstFacts::class,
+        'lost_one_two' => Providers\LostOneTwoFacts::class,
     ];
 
     /**

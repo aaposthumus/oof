@@ -29,7 +29,7 @@ and 4 for the design, and "Working notes" at the end.
 | 12a | Rename Early Bird (false start) to Itchy Feet | Done, 21 November 2026 |
 | 12b | Engine extensions for the new achievements | Done, 21 November 2026 |
 | 12c | Race-weekend glory: Early Bird (pole), Early Chick, Fun Size, Purple Patch, Encore, In Tandem, Hometown Hero | Done, 21 November 2026 |
-| 12d | OOF: Bubble Burst, Dropped the Baton | Not started |
+| 12d | OOF: Bubble Burst, Dropped the Baton | Done, 22 November 2026 |
 | 12e | Fourteen season Oofies | Not started |
 | 12f | Stamp framing service, CMS preview, preview command | Not started |
 | 12g | Backfill and report | Not started |
@@ -1611,6 +1611,60 @@ the same official pole as Early Bird.
     Time for Everything restates the record (D7) and Early Bird is not given.
   - Re-exported: 32,586 awards (2026 round 21 race, run for the first time, has no
     awards yet).
+
+**Phase 12d: Bubble Burst and Dropped the Baton. Done.**
+
+- Bubble Burst: OOF, Gold, reliability. Grand Prix: `retired_while_leading` (Phase 12b).
+  It supersedes Home Before Dinner, is withheld on sensitive weekends and waits for
+  Jolpica lap times. Detail "lap 27 · Turbo".
+- Dropped the Baton: OOF, Platinum, recipient team, withheld on sensitive weekends. New
+  fact provider `lost_one_two` (`LostOneTwoFacts`), on `RunningOrder`: the team's two
+  cars ran P1 and P2 at the end of one of the 5 laps before the leader's last lap, and
+  not at the end of that lap.
+  - Judged on the road, so post-race penalties and disqualifications do not count, and
+    teammates swapping places still finish one-two.
+  - One fact per team. It waits for lap times. Its points are snapshotted, but as a team
+    award it never reaches the OOFscore.
+  - Detail "1-2 on lap 49 of 50 · P1 and P3".
+- Tests (`LapOofTest`, 12): Bubble Burst
+  - on a car that slowed on its last lap, replacing Home Before Dinner
+  - not for a leader passed before retiring
+  - not for a lap-1 retirement (Early Lunch only)
+  - withheld on a sensitive weekend
+  - waits for lap times
+
+  Dropped the Baton:
+  - lost on the last lap, for the team
+  - not when lost before the final laps
+  - not for teammates swapping
+  - not for a disqualification after the race
+  - withheld on a sensitive weekend
+  - held back by a driver block on either car
+  - waits for lap times
+- Golden master: 140 differences, nothing changed. 65 Bubble Bursts, each replacing a
+  Home Before Dinner (65 missing), and 10 Dropped the Batons.
+  - The step 1 SQL said about 63 and 14. Bubble Burst finds 2 more because `retired` also
+    counts cars classified at 90% distance.
+  - Dropped the Baton leaves out the 3 post-race decisions (Silverstone 2016,
+    Austria 2020, Spa 2024) and Brazil 2003, a seeded sensitive weekend.
+
+  | Era | Races | Bubble Burst | per race | Dropped the Baton | per race |
+  |---|---|---|---|---|---|
+  | 1996 to 1999 | 65 | 18 | 0.28 | 0 | 0 |
+  | 2000s | 174 | 27 | 0.16 | 3 | 0.017 |
+  | 2010s | 198 | 15 | 0.08 | 4 | 0.020 |
+  | 2020 to 2026 | 151 | 5 | 0.03 | 3 | 0.020 |
+  | All | 588 | 65 | 0.11 | 10 | 0.017 |
+
+  In the scoring seasons (2023 to 2026): 1 Bubble Burst (Russell 2026 R5) and 2 Dropped
+  the Batons (2023 R21, 2026 R9).
+- Bubble Burst counts a lead during a pit cycle, as Jolpica records it at the end of the
+  lap. Hamilton at Monza 2021 (P1 at the end of laps 24 and 25, after the cars ahead had
+  pitted) and Webber at the 2003 United States Grand Prix (P1 on laps 20 and 21) come
+  from such laps. Decided by the owner on 22 November 2026: they stand. "Leading" means
+  the same as for laps led (Led Astray, Clean Sweep, Follow the Leader): P1 at the end of
+  the lap, pit-cycle laps included.
+- Re-exported: 32,596 awards.
 
 ## Working notes
 
