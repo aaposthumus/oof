@@ -31,7 +31,7 @@ and 4 for the design, and "Working notes" at the end.
 | 12c | Race-weekend glory: Early Bird (pole), Early Chick, Fun Size, Purple Patch, Encore, In Tandem, Hometown Hero | Done, 21 November 2026 (then: official poles, one definition of pole, 22 November) |
 | 12d | OOF: Bubble Burst, Dropped the Baton | Done, 22 November 2026 |
 | 12e | Fourteen season Oofies | Done, 22 November 2026 (then: Food coverage per race) |
-| 12f | Stamp framing service, CMS preview, preview command | Done, 22 November 2026 (then: equal visual weight) |
+| 12f | Stamp framing service, CMS preview, preview command | Done, 22 November 2026 (then: equal visual weight, background removal) |
 | 12g | Backfill and report | Done, 22 November 2026 |
 
 ## 0. Where the code stood on 16 November 2026
@@ -1758,9 +1758,8 @@ Implementation:
   - Cached under `storage/app/private/stamps/framed`, keyed by the source's hash and the
     settings. The sources are never written.
   - `missing()` lists catalogue achievements without art.
-- Background removal is not done (decision 8). When it comes, it must flood fill from the
-  image edges, never apply a global near-white threshold, so cream and white parts inside
-  characters survive (noted in `config/stamps.php` too).
+- Background removal was not part of this phase (decision 8). It came afterwards: see
+  "Background removal" below.
 - CMS: an Art column on the achievements list and a large framed image on the achievement
   page. Both are served by `stamps.show` (`/_nimda/stamps/{key}.png`, admins only, 404
   without art, `?variant=` for a variant).
@@ -1805,6 +1804,65 @@ tall and square ones.
     room-with-a-view, homebody, itchy-feet, stampede.
   - Tall objects also grew a little (they get the same area too).
   - Contact sheets regenerated in `~/oof-contact-sheets/framed/`.
+
+**Background removal. Done.**
+
+Asked for by the owner on 22 November 2026. `App\Achievements\Stamps\BackgroundRemoval`,
+settings under `background` in `config/stamps.php`.
+
+- The background colour is the median of the image's edge pixels (254, 254, 254 on nearly
+  all art; 253 on three). Distance: the largest channel difference from it, 0 to 255.
+- Flood fill from every edge pixel, 4-connected, taking in pixels within `tolerance` 16.
+  There is no global threshold, so cream and white parts inside characters survive (the
+  polar bear, the bunny, bellies). Measured on the bunny: at 28 the fill eats its toes,
+  and a fill limited by the step between neighbours (tolerance 90, step 4) runs through
+  the whole bunny. 16 leaves every character whole on the contact sheets.
+- Colour to alpha inside the flooded region: transparent up to `transparent_within` 2,
+  then opacity `((d - 2) / 14) ^ opacity_curve` (2), reaching 1 at the tolerance, with the
+  colour unmixed from the background. Over the old background each pixel looks as before.
+  The curve turns the faint shading near the objects into a dark, nearly transparent
+  shadow; a straight ramp (curve 1) left it as a dotted light fringe on navy.
+- Outline: `edge_width` 2 pixels on either side of it. Each pixel that lies on the line
+  between the background and the nearest solid object colour gets that colour, with the
+  mixing share as alpha. Without this a dark anti-aliased disc keeps 628 light edge
+  pixels; with it, none.
+- Enclosed background regions (not connected to the edge) are kept. Each one from
+  `enclosed_min_pixels` 400 is reported with its size, box, a seed point (the pixel
+  nearest the centre of its box) and its mean distance. Seeds listed under
+  `remove_enclosed`, per art file, remove that region. A seed that hits nothing is
+  reported with the reason.
+- The transparent copy and its report (JSON) are cached under
+  `storage/app/private/stamps/framed/cutout`, keyed by the source, the removal settings
+  and that file's seeds. The framed copy is keyed on top of that. The sources are never
+  written.
+- Framing: as before, from the transparent copy. The trim counts a pixel from
+  `trim_min_opacity` 0.1 (it replaces `white_threshold`), so the faint box is gone. The
+  window is transparent, not white.
+- `oof:stamps:preview` now also prints the enclosed regions per file and any unused seeds.
+- Tests: `BackgroundRemovalTest` (8):
+  - a cream object, a white belly and a near-white cream patch survive
+  - a soft shadow becomes partly transparent, fading out, darker than the background, and
+    looks as before over the old background
+  - a dark anti-aliased edge keeps partial alpha and has no light halo
+  - an enclosed hole is kept and reported with a seed inside it
+  - a seeded hole is removed, a stray seed is reported, and seeds apply to their own file only
+  - the source is never changed, and the copies are cached
+  - the trim ignores faint shading, and the window is transparent
+  - the preview command reports the regions
+  - `StampArtTest`: the transparent-source test now expects a transparent window.
+- Run on the local art: 97 files in 2 minutes 38 seconds (about 1.5 s each, cached after),
+  the source hashes unchanged.
+  - Area shares unchanged: 0.366 to 0.393. The same two stop at the 6% margin.
+  - 210 enclosed regions in 68 files, none removed yet (no seeds).
+  - Contact sheets on dusty teal (#5F8F8C) and deep navy (#14213D) in
+    `~/oof-contact-sheets/transparent/` (outside the repo).
+- Seen on the contact sheets:
+  - No character loses a part, and dark outlines show no halo.
+  - The cores of the floor shadows are darker than the tolerance, so they stay as soft
+    light ovals under most characters on a dark stamp. The fill cannot take them without
+    eating light fur, because the shadow and the feet meet without an edge.
+  - The enclosed regions show as white patches: gaps between legs closed by a shadow,
+    holes in handles and rings, cage bars, the film frame in deleted-scene.
 
 **Phase 12g: backfill and report. Done.**
 
@@ -1855,10 +1913,10 @@ tall and square ones.
 
 Still open after Phase 12:
 
-1. Background removal for the stamp art: not built. It must flood fill from the image
-   edges, never apply a global near-white threshold, so cream and white parts inside
-   characters survive. It will also remove the faint box that the art's background
-   shading leaves around some framed objects.
+1. Background removal, for the owner: which enclosed regions to remove (seeds in
+   `config/stamps.php`, from the `oof:stamps:preview` report), and what to do about the
+   light floor-shadow ovals on dark stamps (keep them, or ask for art without floor
+   shadows).
 2. Art for the three original Oofies: `oof/most-collected.png`,
    `oof/oofscore-champion.png`, `oof/rarest-award.png`.
 3. Variant thumbnails in the CMS: the route serves a variant (`?variant=`), but the

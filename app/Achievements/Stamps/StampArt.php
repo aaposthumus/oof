@@ -16,17 +16,18 @@ use RuntimeException;
  * the folder being the shelf (glory, oof, safety-car) or, for an Oofie, its
  * side; a variant is <name>--<label>.png.
  *
- * Framing, at render time only (the sources are never changed): the image
- * is trimmed to its visible content (every pixel that is not near-white or
- * transparent; a row or column needs a few such pixels, so stray specks do
- * not count) and scaled so its bounding box covers the same share of the
- * window for every image (area_share), never closer than min_margin to an
- * edge, centred, on white (config/stamps.php). The framed copy is cached by
- * the source's content and the settings.
+ * Framing, at render time only (the sources are never changed): the
+ * background is made transparent (BackgroundRemoval), then the image is
+ * trimmed to its visible content (every pixel from trim_min_opacity; a row
+ * or column needs a few such pixels, so stray specks do not count) and
+ * scaled so its bounding box covers the same share of the window for every
+ * image (area_share), never closer than min_margin to an edge, centred, on
+ * a transparent window (config/stamps.php). The transparent and framed
+ * copies are cached by the source's content and the settings.
  */
 class StampArt
 {
-    public function __construct(private Catalogue $catalogue) {}
+    public function __construct(private Catalogue $catalogue, private BackgroundRemoval $removal) {}
 
     /**
      * The art folder for a shelf, or for an Oofie its side.
@@ -87,11 +88,12 @@ class StampArt
     public function framed(string $source): string
     {
         $settings = config('stamps');
-        $target = rtrim($settings['cache_path'], '/').'/'.sha1(implode('|', [hash_file('sha1', $source), json_encode(array_diff_key($settings, array_flip(['art_path', 'cache_path'])))])).'.png';
+        $target = rtrim($settings['cache_path'], '/').'/'.sha1(implode('|', [BackgroundRemoval::cacheKey($source), json_encode(array_diff_key($settings, array_flip(['art_path', 'cache_path', 'background'])))])).'.png';
 
         if (! is_file($target)) {
             File::ensureDirectoryExists(dirname($target));
             $framed = $this->frame($source);
+            imagesavealpha($framed, true);
             imagepng($framed, $target, 6);
         }
 
@@ -99,20 +101,21 @@ class StampArt
     }
 
     /**
-     * Frame an art file for the stamp window.
+     * Frame an art file for the stamp window, from its transparent copy.
      */
     public function frame(string $source): GdImage
     {
-        $image = imagecreatefrompng($source);
+        $image = imagecreatefrompng($this->removal->cutout($source));
 
         if ($image === false) {
             throw new RuntimeException("Not a readable PNG: {$source}");
         }
 
-        imagepalettetotruecolor($image);
         $window = config('stamps.window');
         $canvas = imagecreatetruecolor($window['width'], $window['height']);
-        imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+        imagefill($canvas, 0, 0, imagecolorallocatealpha($canvas, 255, 255, 255, 127));
         $box = $this->contentBox($image);
 
         if ($box === null) {
@@ -126,7 +129,6 @@ class StampArt
         $targetWidth = (int) round($width * $scale);
         $targetHeight = (int) round($height * $scale);
 
-        imagealphablending($canvas, true);
         imagecopyresampled($canvas, $image, intdiv($window['width'] - $targetWidth, 2), intdiv($window['height'] - $targetHeight, 2), $left, $top, $targetWidth, $targetHeight, $width, $height);
 
         return $canvas;
@@ -147,14 +149,14 @@ class StampArt
     }
 
     /**
-     * The bounding box of the visible content: [left, top, right, bottom], or
-     * null for an empty image.
+     * The bounding box of the visible content (from trim_min_opacity):
+     * [left, top, right, bottom], or null for an empty image.
      *
      * @return array{0: int, 1: int, 2: int, 3: int}|null
      */
     public function contentBox(GdImage $image): ?array
     {
-        $threshold = (int) config('stamps.white_threshold');
+        $maximumAlpha = (int) floor((1 - (float) config('stamps.trim_min_opacity')) * 127);
         $minimum = (int) config('stamps.min_content_pixels');
         $width = imagesx($image);
         $height = imagesy($image);
@@ -165,11 +167,7 @@ class StampArt
             for ($x = 0; $x < $width; $x++) {
                 $color = imagecolorat($image, $x, $y);
 
-                if ((($color >> 24) & 0x7F) >= 100) {
-                    continue;
-                }
-
-                if ((($color >> 16) & 0xFF) < $threshold || (($color >> 8) & 0xFF) < $threshold || ($color & 0xFF) < $threshold) {
+                if ((($color >> 24) & 0x7F) <= $maximumAlpha) {
                     $rows[$y]++;
                     $columns[$x]++;
                 }

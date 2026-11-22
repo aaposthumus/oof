@@ -9,9 +9,10 @@ use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 /**
- * Framing the achievement art for the stamp window (Phase 12f): trimmed to
- * its visible content and scaled so every object covers the same share of
- * the window, never closer than 6 percent to an edge, centred, on white;
+ * Framing the achievement art for the stamp window (Phase 12f): background
+ * removed, trimmed to its visible content and scaled so every object covers
+ * the same share of the window, never closer than 6 percent to an edge,
+ * centred, on a transparent window;
  * the sources are never changed. Fixtures are
  * drawn in a scratch folder, never in resources/images.
  */
@@ -140,12 +141,12 @@ class StampArtTest extends TestCase
         $this->assertEqualsWithDelta($margins['top'], $margins['bottom'], 0.002);
     }
 
-    public function test_a_transparent_background_counts_as_empty_and_the_output_is_on_white(): void
+    public function test_a_transparent_background_counts_as_empty_and_the_window_is_transparent(): void
     {
         $framed = app(StampArt::class)->frame($this->art('glory/clear.png', 100, 100, 400, 500, transparent: true));
 
         $this->assertEqualsWithDelta(0.392, $this->areaShare($framed), 0.003);
-        $this->assertSame(0xFFFFFF, imagecolorat($framed, 2, 2) & 0xFFFFFF);
+        $this->assertSame(127, (imagecolorat($framed, 2, 2) >> 24) & 0x7F);
     }
 
     public function test_the_framed_copy_is_cached_and_the_source_is_never_changed(): void
