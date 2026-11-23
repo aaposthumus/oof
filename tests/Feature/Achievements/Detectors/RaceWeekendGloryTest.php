@@ -54,12 +54,18 @@ class RaceWeekendGloryTest extends TestCase
     }
 
     /**
-     * An earlier race in the team-form window, so a team without history is a surprise.
+     * An earlier race in the team-form window in which the given team is
+     * fifth, outside the top four, so its win or pole is a surprise.
      */
-    private function earlierRace(Round $round): void
+    private function earlierRace(Round $round, SeasonTeam $team): void
     {
         $earlier = $this->raceSession(SessionType::Race, $this->round($round->season->year, $round->round_number - 1));
-        $this->finish($earlier, 99, 1, ['points' => 25]);
+
+        foreach ([25, 18, 15, 12] as $index => $points) {
+            $this->finish($earlier, 90 + $index, $index + 1, ['points' => $points]);
+        }
+
+        $this->finish($earlier, 99, 5, ['points' => 0], $team);
     }
 
     // Early Bird
@@ -91,8 +97,9 @@ class RaceWeekendGloryTest extends TestCase
     public function test_a_surprise_pole_is_plot_twist_instead_of_early_bird(): void
     {
         $qualifying = $this->raceSession(SessionType::Qualifying);
-        $this->earlierRace($qualifying->round);
-        $this->qualifying($this->car($qualifying, 1), 1, 90_000, 89_000, 88_000);
+        $pole = $this->car($qualifying, 1);
+        $this->earlierRace($qualifying->round, $pole->seasonTeam);
+        $this->qualifying($pole, 1, 90_000, 89_000, 88_000);
 
         $this->runEngine($qualifying);
 
@@ -355,13 +362,13 @@ class RaceWeekendGloryTest extends TestCase
     public function test_hometown_hero_replaces_did_the_thing_and_stands_beside_giant_slayer(): void
     {
         $race = $this->raceAt('Monaco', 'Monaco Grand Prix');
-        $this->finish($race, 16, 1, driver: Driver::factory()->create(['nationality' => 'Monegasque']));
+        $winner = $this->finish($race, 16, 1, driver: Driver::factory()->create(['nationality' => 'Monegasque']));
 
         $this->runEngine($race);
         $this->assertContains('hometown_hero', $this->storedKeys());
         $this->assertNotContains('did_the_thing', $this->storedKeys());
 
-        $this->earlierRace($race->round);
+        $this->earlierRace($race->round, $winner->seasonTeam);
         $this->runEngine($race);
         $this->assertSame(['giant_slayer', 'hometown_hero'], array_values(array_intersect($this->storedKeys(), ['did_the_thing', 'giant_slayer', 'hometown_hero'])));
     }

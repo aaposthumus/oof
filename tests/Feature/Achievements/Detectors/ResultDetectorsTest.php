@@ -223,7 +223,7 @@ class ResultDetectorsTest extends TestCase
         $this->assertCount(0, $this->detect('giant_slayer', $this->race));
     }
 
-    public function test_a_team_without_a_race_in_the_window_is_a_surprise_but_the_first_race_ever_is_not(): void
+    public function test_neither_a_team_without_a_race_in_the_window_nor_the_first_race_ever_is_a_surprise(): void
     {
         $this->finisher(10, 1);
         $this->assertCount(0, $this->detect('giant_slayer', $this->race));
@@ -231,7 +231,7 @@ class ResultDetectorsTest extends TestCase
         $teams = $this->fiveTeams();
         $this->earlierRace(2024, 4, [$teams[0][2024]->id => 25]);
 
-        $this->assertSame('No race for the team in the last race', $this->detect('giant_slayer', $this->race)->sole()->detail);
+        $this->assertCount(0, $this->detect('giant_slayer', $this->race));
     }
 
     public function test_an_indianapolis_500_is_never_a_surprise(): void

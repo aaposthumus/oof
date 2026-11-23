@@ -69,7 +69,7 @@ return [
     |
     */
 
-    'engine_version' => 5,
+    'engine_version' => 6,
 
     /*
     |--------------------------------------------------------------------------
@@ -209,7 +209,9 @@ return [
     | top top_teams on form: the points its cars scored in the last
     | window_races Grands Prix before the round (across season boundaries,
     | no sprints, no Indianapolis 500), divided by the window's races it
-    | entered. A team with no race in the window counts as outside the top.
+    | entered. A team with no race in the window (a debut, a long absence)
+    | has no form, so its win or pole is no surprise. The OOFscore
+    | multipliers still put such a team in the rest band (deliberately).
     |
     */
 

@@ -13,8 +13,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Wins that are a surprise by the same rule as Giant Slayer (the lasting
- * team outside the top on rolling team form, see Surprise), or a driver's
- * only career win.
+ * team outside the top on rolling team form, see Surprise; a team without
+ * form is no surprise), or a driver's only career win.
  */
 class SurpriseWinnerExcavator implements Excavator
 {
@@ -27,7 +27,7 @@ class SurpriseWinnerExcavator implements Excavator
 
     public function version(): int
     {
-        return 3;
+        return 4;
     }
 
     public function dig(DigParameters $parameters): Collection
@@ -75,11 +75,10 @@ class SurpriseWinnerExcavator implements Excavator
     }
 
     /**
-     * How far down the form the team stood: 0 = best, 1 = last. A team
-     * without a race in the window counts as last.
+     * How far down the form the team stood: 0 = best, 1 = last.
      */
-    private static function relative(?int $rank, int $teams): float
+    private static function relative(int $rank, int $teams): float
     {
-        return $rank === null || $teams <= 1 ? 1.0 : ($rank - 1) / ($teams - 1);
+        return $teams <= 1 ? 1.0 : ($rank - 1) / ($teams - 1);
     }
 }

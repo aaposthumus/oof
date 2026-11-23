@@ -86,9 +86,10 @@ return [
     |
     | A winner is a hit when the win is a surprise by the rule of Giant
     | Slayer (achievements.surprise: the lasting team outside the top on
-    | rolling team form), or when it was their only career win. Raw score:
-    | 100 × how far down the form the team stood (0 = best, 1 = last or no
-    | race in the window), plus only_win_bonus for an only career win.
+    | rolling team form; a team without a race in the window is no
+    | surprise), or when it was their only career win. Raw score: 100 × how
+    | far down the form the team stood (0 = best, 1 = last), plus
+    | only_win_bonus for an only career win.
     |
     */
 

@@ -120,6 +120,21 @@ class SurpriseWinnerExcavatorTest extends TestCase
         $this->assertSame(2, $candidate->evidence['window_races']);
     }
 
+    public function test_a_win_by_a_team_without_form_is_no_surprise_but_an_only_career_win_still_counts(): void
+    {
+        $season = Season::factory()->create(['year' => 1954]);
+        $this->race($season, 1, $this->teams($season), winner: 0);
+        $debut = $this->race($season, 2, $this->teams($season), winner: 0);
+        $onlyWin = $this->race($season, 3, $this->teams($season), winner: 5);
+
+        $candidates = app(SurpriseWinnerExcavator::class)->dig(new DigParameters)->keyBy('roundId');
+
+        $this->assertFalse($candidates->has($debut->id));
+        $this->assertSame(40.0, $candidates[$onlyWin->id]->score);
+        $this->assertNull($candidates[$onlyWin->id]->evidence['team_form_rank']);
+        $this->assertNull($candidates[$onlyWin->id]->evidence['window_races']);
+    }
+
     public function test_an_indianapolis_500_win_is_never_a_team_surprise(): void
     {
         $season = Season::factory()->create(['year' => 1955]);

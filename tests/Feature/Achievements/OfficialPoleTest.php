@@ -138,12 +138,19 @@ class OfficialPoleTest extends TestCase
 
     public function test_plot_twist_follows_the_same_pole(): void
     {
-        $this->entered($this->raceSession(SessionType::Race, $this->round(1955, 9)), 9, Driver::factory()->create(), ['grid' => 1, 'position' => 1, 'position_text' => '1', 'points' => 8]);
         [$race, $poleCar, , $fangio] = $this->argentina1956();
+        $earlier = $this->raceSession(SessionType::Race, $this->round(1955, 9));
+
+        foreach ([8, 6, 4, 3] as $index => $points) {
+            $this->entered($earlier, $index + 1, Driver::factory()->create(), ['grid' => $index + 1, 'position' => $index + 1, 'position_text' => (string) ($index + 1), 'points' => $points]);
+        }
+
+        $lastOnForm = SeasonTeam::factory()->create(['season_id' => $earlier->round->season_id, 'team_id' => $poleCar->seasonTeam->team_id]);
+        $this->entered($earlier, 9, Driver::factory()->create(), ['grid' => 5, 'position' => 5, 'position_text' => '5', 'points' => 0], $lastOnForm);
 
         $this->runEngine($race);
 
-        // Fangio's team has no race in the window, so his pole is a surprise and Plot Twist replaces Early Bird.
+        // Fangio's team is fifth on form, so his pole is a surprise and Plot Twist replaces Early Bird.
         $twist = $this->awards('plot_twist')->sole();
         $this->assertSame([$fangio->id, $poleCar->id], [$twist->driver_id, $twist->driver_entry_id]);
         $this->assertCount(0, $this->awards('early_bird'));
