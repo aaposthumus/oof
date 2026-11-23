@@ -385,7 +385,12 @@ ssh oof@142.93.134.177 "cd ~/oof-o6o894df.on-forge.com/current && php artisan oo
   last two or three races (2026 R19 to R21).
 - Not timed on an empty table: estimate 2 to 10 minutes.
 
-The races newer than the dump come from the API, at about 75 seconds per race:
+The races newer than the dump come from the API, at about 75 seconds per race.
+`--only-laps` skips every round whose race already has lap times (from the dump) and is final
+(race date plus 3 days), and counts it as skipped, so only the races the dump misses are
+fetched. `--refresh` fetches every round again. Before this skip existed (the deploy of
+23 November 2026), the same command fetched all 21 rounds of 2026 again: 259 pages, about
+35 minutes.
 
 ```bash
 ssh oof@142.93.134.177 "cd ~/oof-o6o894df.on-forge.com/current && php artisan oof:import --only-laps --season=2026 && php artisan oof:normalize --laps --source=jolpica --season=2026"
@@ -445,12 +450,14 @@ ssh oof@142.93.134.177 "cd ~/oof-o6o894df.on-forge.com/current && php artisan oo
 the server, so a dropped connection does not stop it:
 
 ```bash
-ssh oof@142.93.134.177 "cd ~/oof-o6o894df.on-forge.com/current && nohup bash -c 'for y in \$(seq 1950 2022); do echo \"== \$y\"; php artisan oof:achievements --season=\$y || exit 1; done; echo BACKFILL DONE' > storage/logs/deploy-backfill.log 2>&1 &"
+ssh oof@142.93.134.177 "cd ~/oof-o6o894df.on-forge.com/current && nohup bash -c 'for y in \$(seq 1950 2022); do echo \"== \$y\"; php artisan oof:achievements --season=\$y || exit 1; done; echo BACKFILL DONE' > storage/logs/deploy-backfill.log 2>&1 < /dev/null &"
 ssh oof@142.93.134.177 "cd ~/oof-o6o894df.on-forge.com/current && tail -3 storage/logs/deploy-backfill.log"
 ```
 
-Repeat the second line every minute or two until it shows `BACKFILL DONE`. If it stops at a
-season instead, the last `== year` names it.
+- `< /dev/null` matters: without it the job keeps the connection's stdin and the SSH session
+  hangs until the job ends. Any command sent to the background over SSH needs it.
+- Repeat the second line every minute or two until it shows `BACKFILL DONE`. If it stops at
+  a season instead, the last `== year` names it.
 
 **9c. Proof and standings:**
 
@@ -524,7 +531,8 @@ In the CMS:
 - Rounds, 2026 R1 Australia: Colapinto has Red Light, Green Light and no Can't Park There.
 - Rounds, 2026 R21 Las Vegas (new on production): awards present, nothing pending that looks
   wrong.
-- One historic round (e.g. 1975): glory awards present, OOF awards scored 0.
+- One historic round (e.g. 1975): glory awards present, OOF awards have 0 points and no
+  OOFscore weighting (–).
 - No new errors in the log:
   `ssh oof@142.93.134.177 "cd ~/oof-o6o894df.on-forge.com/current && tail -20 storage/logs/laravel.log"`.
 
@@ -575,7 +583,10 @@ code ignores them. Keep the art line in the deploy script; it is harmless.
   `ssh oof@142.93.134.177 "cd ~/oof-o6o894df.on-forge.com/current && rm -rf storage/app/private/stamps/preview"`.
 - Keep `~/backups/oof-before-engine-2026-11-23.sql.gz` (server and Mac) for a week. Set up the
   S3 backups if not done yet.
-- Do not close any season until the owner says so (plan deploy step 10).
+- Do not close any season until the owner says so (plan deploy step 10). When closing one over
+  SSH, pass `--force`: `php artisan oof:oofscore:close` asks for confirmation, and over SSH
+  without a terminal `confirm()` reads nothing and aborts. The alternative is `ssh -t`, which
+  gives the command a terminal so you can answer the question.
 - After any later catalogue or engine change: `php artisan oof:achievements --stale` (the
   hourly schedule also does this).
 
