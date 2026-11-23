@@ -2,7 +2,9 @@
 
 namespace App\Jolpica;
 
+use App\Enums\SessionType;
 use App\Models\RawResponse;
+use App\Models\Round;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Closure;
@@ -10,7 +12,9 @@ use Closure;
 /**
  * Fetches Jolpica responses into raw_responses. A stored response is fetched
  * again only while it may still change (until a few days after the race it
- * covers), so re-running resumes where an interrupted run stopped.
+ * covers), so re-running resumes where an interrupted run stopped. Lap
+ * times are not fetched for a final round whose race has them already, for
+ * example from the CSV dump (oof:import:dump), unless refreshing.
  */
 class Importer
 {
@@ -66,7 +70,15 @@ class Importer
                 $wanted = $includeLaps || $onlyLaps || $year === now()->year;
 
                 if ($wanted && $year >= config('jolpica.laps_from')) {
+                    $roundsWithLaps = $this->refresh ? [] : $this->roundsWithLapTimes($year);
+
                     foreach ($this->pastRounds($schedules[$year]) as $round => $date) {
+                        if (in_array($round, $roundsWithLaps, true) && $this->finalSince($date)->lte(now())) {
+                            $this->report['skipped']++;
+
+                            continue;
+                        }
+
                         $this->ensureAllPages(new JolpicaRequest('laps', $year, $round), $this->finalSince($date));
                     }
                 }
@@ -159,6 +171,22 @@ class Importer
             array_map(fn (array $round) => $round['date'], $schedule),
             fn (CarbonImmutable $date) => $date->lte(now()),
         );
+    }
+
+    /**
+     * Round numbers of the season whose race already has lap times, however
+     * they came in (the API or the CSV dump).
+     *
+     * @return list<int>
+     */
+    private function roundsWithLapTimes(int $year): array
+    {
+        return Round::query()
+            ->whereRelation('season', 'year', $year)
+            ->whereHas('raceSessions', fn ($query) => $query->where('type', SessionType::Race)->whereHas('driverEntries.lapTimes'))
+            ->pluck('round_number')
+            ->map(fn ($round) => (int) $round)
+            ->all();
     }
 
     /**

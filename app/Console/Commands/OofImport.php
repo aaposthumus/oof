@@ -28,7 +28,7 @@ class OofImport extends Command
         {--laps : Jolpica only: also import lap times (1996 onwards), a long extra step}
         {--only-laps : Jolpica only: only import lap times}
         {--recent-laps : Jolpica only: also the lap times of the races of the current season (the hourly run, for laps led)}
-        {--refresh : Fetch again even when the stored response is final}
+        {--refresh : Fetch again even when the stored response is final, and lap times of rounds that have them}
         {--dry-run : Count the requests needed without fetching anything}';
 
     /**
@@ -95,13 +95,13 @@ class OofImport extends Command
 
         if ($this->option('dry-run')) {
             $minutes = (int) ceil($report['planned'] * config('jolpica.min_request_interval_ms') / 60_000);
-            $this->components->info("Jolpica: {$report['planned']} requests to fetch (about {$minutes} min), {$report['skipped']} stored responses are final.");
+            $this->components->info("Jolpica: {$report['planned']} requests to fetch (about {$minutes} min), {$report['skipped']} are final (stored responses, or rounds whose lap times are in).");
             $this->components->warn('Seasons without a stored schedule also need per-round requests that cannot be counted yet.');
 
             return;
         }
 
-        $this->components->info("Jolpica: fetched {$report['fetched']} responses, skipped {$report['skipped']} final ones. Next: php artisan oof:normalize");
+        $this->components->info("Jolpica: fetched {$report['fetched']} responses, skipped {$report['skipped']} final ones (stored responses, or rounds whose lap times are in). Next: php artisan oof:normalize");
     }
 
     private function importOpenF1(OpenF1Importer $importer): void

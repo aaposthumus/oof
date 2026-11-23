@@ -3,7 +3,12 @@
 namespace Tests\Feature\Jolpica;
 
 use App\Jolpica\Importer;
+use App\Models\DriverEntry;
+use App\Models\LapTime;
+use App\Models\RaceSession;
 use App\Models\RawResponse;
+use App\Models\Round;
+use App\Models\Season;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -57,6 +62,17 @@ class ImporterTest extends TestCase
     private function requestsTo(string $path): int
     {
         return Http::recorded(fn (Request $request) => str_contains($request->url(), "/ergast/f1/{$path}?"))->count();
+    }
+
+    /**
+     * A race with one lap time stored, as the CSV dump leaves it.
+     */
+    private function raceWithLapTimes(int $year, int $round): void
+    {
+        $round = Round::factory()->for(Season::factory()->state(['year' => $year]))->create(['round_number' => $round]);
+        $entry = DriverEntry::factory()->create(['race_session_id' => RaceSession::factory()->create(['round_id' => $round->id])->id]);
+
+        LapTime::create(['driver_entry_id' => $entry->id, 'lap' => 1, 'position' => 1, 'time_millis' => 95_000]);
     }
 
     public function test_stores_every_page_of_every_endpoint_under_its_request_key(): void
@@ -141,6 +157,53 @@ class ImporterTest extends TestCase
         $this->assertSame(1, $this->requestsTo('2026/2/laps.json'));
         $this->assertSame(0, $this->requestsTo('2026/3/laps.json'));
         $this->assertSame(1, $this->requestsTo('2026/results.json'));
+    }
+
+    public function test_skips_the_laps_of_a_final_round_that_has_lap_times(): void
+    {
+        $this->travelTo('2026-11-23 20:00:00');
+        $this->fakeJolpica([2026 => [20 => '2026-11-08', 21 => '2026-11-22']]);
+        $this->raceWithLapTimes(2026, 20);
+
+        $report = app(Importer::class)->import([2026], onlyLaps: true);
+
+        $this->assertSame(0, $this->requestsTo('2026/20/laps.json'));
+        $this->assertSame(1, $this->requestsTo('2026/21/laps.json'));
+        $this->assertSame(1, $report['skipped']);
+    }
+
+    public function test_refresh_fetches_the_laps_of_a_round_that_has_lap_times(): void
+    {
+        $this->travelTo('2026-11-23 20:00:00');
+        $this->fakeJolpica([2026 => [20 => '2026-11-08']]);
+        $this->raceWithLapTimes(2026, 20);
+
+        app(Importer::class)->import([2026], onlyLaps: true, refresh: true);
+
+        $this->assertSame(1, $this->requestsTo('2026/20/laps.json'));
+    }
+
+    public function test_fetches_the_laps_of_a_round_with_lap_times_until_it_is_final(): void
+    {
+        $this->travelTo('2026-11-23 20:00:00');
+        $this->fakeJolpica([2026 => [21 => '2026-11-22']]);
+        $this->raceWithLapTimes(2026, 21);
+
+        app(Importer::class)->import([2026], onlyLaps: true);
+
+        $this->assertSame(1, $this->requestsTo('2026/21/laps.json'));
+    }
+
+    public function test_dry_run_counts_rounds_with_lap_times_as_skipped(): void
+    {
+        $this->travelTo('2026-11-23 20:00:00');
+        $this->fakeJolpica([2026 => [20 => '2026-11-08']]);
+        $this->raceWithLapTimes(2026, 20);
+        app(Importer::class)->import([2026], onlyLaps: true);
+
+        $report = app(Importer::class)->import([2026], onlyLaps: true, dryRun: true);
+
+        $this->assertSame(['fetched' => 0, 'skipped' => 3, 'planned' => 0], $report);
     }
 
     public function test_dry_run_counts_requests_without_fetching(): void
