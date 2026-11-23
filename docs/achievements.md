@@ -33,7 +33,7 @@ awarded once per instance; otherwise once per driver per session.
 | Table for One | Pit stop longer than 5 seconds stationary | Bronze |
 | Fine Dining | Slowest pit stop of the whole weekend, sprint included | Bronze |
 | Meatball Sub | Black flag with orange circle ("meatball flag"); stacks | Platinum |
-| Outside the Lines | Lap time deleted for track limits | Bronze |
+| Outside the Lines | 2 or more lap times deleted for track limits in one race or sprint | Bronze |
 | Teacher's Stare | Black-and-white warning flag in a race or qualifying, for any reason (track limits, driving slowly, etc.) | Silver |
 | It Was Like That When I Got There | Involved in an incident noted by race control (never implies blame) | Bronze |
 | Bumper Cars | Penalty for causing a collision | Silver |

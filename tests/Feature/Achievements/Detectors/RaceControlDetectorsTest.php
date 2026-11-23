@@ -169,15 +169,38 @@ class RaceControlDetectorsTest extends TestCase
         $this->assertStringStartsWith('rcm:', $stares[27]->eventKey);
     }
 
+    public function test_one_deleted_lap_time_is_no_outside_the_lines(): void
+    {
+        $race = $this->raceSession();
+        $this->car($race, 14);
+        $this->message($race, 'CAR 14 (ALO) TIME 1:31.617 DELETED - TRACK LIMITS AT TURN 13 LAP 3 18:15:32');
+
+        $this->assertCount(0, $this->detect('outside_the_lines', $race));
+    }
+
+    public function test_two_deleted_lap_times_are_outside_the_lines(): void
+    {
+        $race = $this->raceSession();
+        $this->car($race, 14);
+        $this->message($race, 'CAR 14 (ALO) TIME 1:31.617 DELETED - TRACK LIMITS AT TURN 13 LAP 3 18:15:32');
+        $this->message($race, 'CAR 14 (ALO) TIME 1:32.001 DELETED - TRACK LIMITS AT TURN 4 LAP 9 18:25:00');
+
+        $detection = $this->detect('outside_the_lines', $race)->sole();
+        $this->assertSame('×2', $detection->detail);
+        $this->assertSame('session', $detection->instanceKey);
+        $this->assertStringStartsWith('track_limits:', $detection->eventKey);
+    }
+
     public function test_a_re_issued_deletion_counts_once(): void
     {
         $race = $this->raceSession();
         $this->car($race, 14);
         $this->message($race, 'CAR 14 (ALO) TIME 1:31.617 DELETED - TRACK LIMITS AT TURN 13 LAP 3 18:15:32');
         $this->message($race, 'CAR 14 (ALO) TIME 1:31.617 DELETED - TRACK LIMITS AT TURN 13 LAP 3 18:15:32');
-        $this->message($race, 'CAR 14 (ALO) TIME 1:32.001 DELETED - TRACK LIMITS AT TURN 4 LAP 9 18:25:00');
+        $this->assertCount(0, $this->detect('outside_the_lines', $race));
 
-        $this->assertCount(2, $this->detect('outside_the_lines', $race));
+        $this->message($race, 'CAR 14 (ALO) TIME 1:32.001 DELETED - TRACK LIMITS AT TURN 4 LAP 9 18:25:00');
+        $this->assertSame('×2', $this->detect('outside_the_lines', $race)->sole()->detail);
     }
 
     public function test_blue_flags_count_from_the_threshold(): void

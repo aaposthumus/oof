@@ -526,14 +526,19 @@ return [
             'shelf' => 'oof',
             'tier' => 'bronze',
             'score_category' => 'driver',
-            'description' => 'Lap time deleted for track limits.',
+            'description' => '2 or more lap times deleted for track limits in one race or sprint.',
             'supersedes' => [],
             'sessions' => ['race', 'sprint'],
             'stacks' => false,
             'recipient' => 'driver',
             'scope' => 'session',
             'withheld_on_sensitive_weekends' => false,
-            'trigger' => ['type' => 'match', 'fact' => 'track_limit_deletion'],
+            'trigger' => [
+                'type' => 'count', 'fact' => 'track_limit_deletion',
+                'per' => 'recipient', 'at_least' => 2,
+                'instance' => 'session',
+                'detail' => '×{count}',
+            ],
         ],
 
         'teachers_stare' => [

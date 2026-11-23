@@ -511,20 +511,29 @@ ssh oof@142.93.134.177 "cd ~/oof-o6o894df.on-forge.com/current && php artisan ti
 ssh oof@142.93.134.177 "cd ~/oof-o6o894df.on-forge.com/current && php artisan tinker --execute 'dump(App\Models\AchievementAward::whereHas(\"season\", fn (\$q) => \$q->where(\"year\", \"<=\", 2025))->count());'"
 ```
 
+The expected values below include the post-deploy fixes of 23 November 2026 (branch
+`post-deploy-fixes`): Outside the Lines needs 2 or more deleted lap times in a session, and a
+team without form is no surprise. The values of the deploy itself were: champions Piastri 785,
+Hamilton 1015 and Tsunoda 1365, 31,752 awards in 1950 to 2025, and 1,100, 1,225 and 1,301
+awards in 2023, 2024 and 2025.
+
 | Check | Expected |
 |---|---|
-| OOFscore Champion 2023 | Piastri, 785 points |
-| OOFscore Champion 2024 | Hamilton, 1015 points |
-| OOFscore Champion 2025 | **Tsunoda, 1365 points** |
+| OOFscore Champion 2023 | Piastri, 745 points |
+| OOFscore Champion 2024 | **Magnussen, 902.5 points** |
+| OOFscore Champion 2025 | **Tsunoda, 1295 points** |
 | Itchy Feet per season | 2024: 4, 2025: 5, 2026: 1 or more |
 | Can't Park There per season | 2023: 3, 2024: 2, 2025: 1, 2026: 1 or more |
-| Awards in seasons 1950 to 2025 | 31,752 |
-| Awards per season | 2023: 1,100; 2024: 1,225; 2025: 1,301 |
+| Outside the Lines per season | 2023: 70, 2024: 84, 2025: 64 |
+| Nothing to See Here per season | 2023: 82, 2024: 66, 2025: 71 |
+| Awards in seasons 1950 to 2025 | 31,430 |
+| Awards per season | 2023: 996; 2024: 1,118; 2025: 1,190 |
 
 In the CMS:
 
-- OOFscore standings 2025 (final): TSU 1365, ANT 1350, BEA 945, SAI 862.5, LAW 790.
-- OOFscore standings 2024: HAM 1015, MAG 952.5, PIA 845, NOR 835, ALB 792.5.
+- OOFscore standings 2025 (final): TSU 1295, ANT 1270, BEA 885, SAI 762.5, LAW 720.
+- OOFscore standings 2024: MAG 902.5, HAM 885, PIA 795, ALB 762.5, PER 750.
+- OOFscore standings 2023: PIA 745, RUS 670, SAR 600, STR 590, PER 585.
 - Rounds, 2026 R6 Monaco, race: Perez has Can't Park There and Drive-Thru; Russell has Double
   Detention and Drive-Thru.
 - Rounds, 2024 R20 Mexico City: Perez has Can't Park There (5 s), not Itchy Feet.

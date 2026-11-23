@@ -14,6 +14,7 @@ use Illuminate\Support\Collection;
 /**
  * A lap time deleted for track limits, once per deleted time (re-issued
  * deletions are left out). It belongs to the car's track-limits event.
+ * Outside the Lines counts them: 2 or more per car in a session.
  *
  * Attributes: phase (qualifying phase), time (as worded, or null), millis,
  * q3_millis and q3_time (the car's classified Q3 time), beats_classified_q3

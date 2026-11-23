@@ -135,8 +135,10 @@ class AchievementEngineTest extends TestCase
         $warnedForTrackLimits = $this->car($race, 18);
         $warnedForWeaving = $this->car($race, 27);
         $this->message($race, 'CAR 18 (STR) TIME 1:07.312 DELETED - TRACK LIMITS AT TURN 10 LAP 12 15:30:01');
+        $this->message($race, 'CAR 18 (STR) TIME 1:07.455 DELETED - TRACK LIMITS AT TURN 10 LAP 13 15:31:10');
         $this->message($race, 'BLACK AND WHITE FLAG FOR CAR 18 (STR) - TRACK LIMITS');
         $this->message($race, 'CAR 27 (HUL) TIME 1:08.100 DELETED - TRACK LIMITS AT TURN 10 LAP 14 15:33:10');
+        $this->message($race, 'CAR 27 (HUL) TIME 1:08.240 DELETED - TRACK LIMITS AT TURN 10 LAP 15 15:34:20');
         $this->message($race, 'BLACK AND WHITE FLAG FOR CAR 27 (HUL) - MOVING UNDER BRAKING');
 
         $this->runEngine($race);
