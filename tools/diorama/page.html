@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OOF.ONE track diorama</title>
+<style>
+/* VOICE: a calm model-maker's table, the diorama is the only thing that matters.
+   IDEA: a cut-paper circuit model standing on a sheet of card, photographed at an angle.
+   PICTURE: the live 3D model of the real circuit outline, filling the frame.
+   COLOUR and TYPE: pure white ground like the cast images; charcoal ink; system sans.
+   LAYOUT: the model full width, one row of small controls below it. */
+:root{color-scheme:light}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:#fff;color:#2a2826;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:clip}
+#view{width:100%;height:min(82vh,820px);display:block;touch-action:none;cursor:grab}
+#view:active{cursor:grabbing}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;padding:6px 16px 20px}
+button{font:600 15px/1 system-ui,sans-serif;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #d8d4cc;background:#f6f3ee;color:#2a2826;cursor:pointer}
+button[aria-pressed=true]{background:#2a2826;color:#fff;border-color:#2a2826}
+button:focus-visible{outline:3px solid #d8322b;outline-offset:2px}
+.note{text-align:center;color:#8a857d;font-size:13px;margin:0 16px 24px}
+body.render .bar,body.render .note{display:none}
+body.render #view{height:100vh;cursor:default}
+</style>
+</head>
+<body>
+<canvas id="view" aria-label="3D paper diorama of the circuit"></canvas>
+<div class="bar" id="circuits"></div>
+<div class="bar">
+  <button id="spin" aria-pressed="true">Turntable</button>
+  <button id="ang">Steeper angle</button>
+  <button id="reset">Reset view</button>
+</div>
+<p class="note" id="note"></p>
+<script src="__THREE__"></script>
+<script>
+{
+const ALL = __DATA__; let D = ALL[0];
+const RENDER = location.hash === '#render'; if(RENDER) document.body.classList.add('render');
+const canvas = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xffffff); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
+const model = new THREE.Group(); scene.add(model);
+
+// paper grain texture
+function grain(base, amt){
+  const c=document.createElement('canvas'); c.width=c.height=512; const x=c.getContext('2d');
+  x.fillStyle=base; x.fillRect(0,0,512,512);
+  const im=x.getImageData(0,0,512,512);
+  for(let i=0;i<im.data.length;i+=4){const n=(Math.random()-.5)*amt; im.data[i]+=n; im.data[i+1]+=n; im.data[i+2]+=n;}
+  x.putImageData(im,0,0);
+  for(let f=0;f<900;f++){ const a=Math.random()*Math.PI, l=4+Math.random()*14, px=Math.random()*512, py=Math.random()*512;
+    x.strokeStyle=Math.random()<.5?'rgba(255,255,255,.10)':'rgba(0,0,0,.07)'; x.lineWidth=.6; x.beginPath(); x.moveTo(px,py); x.lineTo(px+Math.cos(a)*l,py+Math.sin(a)*l); x.stroke(); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(2,2); t.encoding=THREE.sRGBEncoding; return t;
+}
+function grit(){ // fine dark grit, like the black hook-and-loop / sandpaper surface of the grid post
+  const c=document.createElement('canvas'); c.width=c.height=512; const x=c.getContext('2d');
+  x.fillStyle='#343230'; x.fillRect(0,0,512,512);
+  for(let i=0;i<26000;i++){ const v=Math.random(); x.fillStyle = v<.5?`rgba(0,0,0,${.25+Math.random()*.35})`:`rgba(255,255,255,${.05+Math.random()*.12})`;
+    const s=Math.random()<.85?1:2; x.fillRect(Math.random()*512,Math.random()*512,s,s); }
+  for(let i=0;i<1400;i++){ x.strokeStyle='rgba(0,0,0,.18)'; x.lineWidth=.7; const px=Math.random()*512,py=Math.random()*512,a=Math.random()*6.3; x.beginPath(); x.arc(px,py,1.5+Math.random()*1.5,a,a+2.2); x.stroke(); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(3,3); t.encoding=THREE.sRGBEncoding; return t;
+}
+function tape(){ // cream masking tape: slightly translucent, crinkled
+  const c=document.createElement('canvas'); c.width=c.height=256; const x=c.getContext('2d');
+  x.fillStyle='#efe8d6'; x.fillRect(0,0,256,256);
+  for(let i=0;i<220;i++){ x.strokeStyle=`rgba(${Math.random()<.5?'255,255,255':'120,100,70'},.12)`; x.lineWidth=1; const y=Math.random()*256; x.beginPath(); x.moveTo(0,y); x.lineTo(256,y+(Math.random()-.5)*20); x.stroke(); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.encoding=THREE.sRGBEncoding; return t;
+}
+const mat = (hex, amt=14) => new THREE.MeshStandardMaterial({map:grain(hex,amt), roughness:1, metalness:0, side:THREE.DoubleSide});
+const M = {
+  card: mat('#f3eee4'), cardEdge: mat('#e4dccd'),
+  water: mat('#7fb2d6',16), waterEdge: mat('#e6eef2',8), dome: new THREE.MeshStandardMaterial({color:0xf4f1ea, roughness:.9}), glass: new THREE.MeshStandardMaterial({color:0xdfeaf0, roughness:1, transparent:true, opacity:.35, side:THREE.DoubleSide}),
+  grass: mat('#9cb766',18), grass2: mat('#86a656',18), grassEdge: mat('#efe9da',10),
+  track: new THREE.MeshStandardMaterial({map:grit(), roughness:1, side:THREE.DoubleSide}), trackEdge: mat('#d9d1c2',10),
+  line: new THREE.MeshStandardMaterial({map:tape(), roughness:.9, transparent:true, opacity:.94, side:THREE.DoubleSide}), red: mat('#c9423a',8), white: mat('#f4f1ea',6),
+  leaf: mat('#5f8c45',16), leaf2: mat('#7ea455',16), leaf3: mat('#93b862',16), trunk: mat('#8a6a4a',10), pillar: mat('#e2dbcd',8)
+};
+function shapeFrom(pts){ const s=new THREE.Shape(); pts.forEach((p,i)=> i? s.lineTo(p[0],-p[1]) : s.moveTo(p[0],-p[1])); return s; }
+function slab(shape, depth, top, side, y){
+  const g=new THREE.ExtrudeGeometry(shape,{depth, bevelEnabled:false, curveSegments:12});
+  g.rotateX(-Math.PI/2); g.translate(0,y,0);
+  const m=new THREE.Mesh(g,[top,side]); m.castShadow=m.receiveShadow=true; return m;
+}
+let DIAG=10, P, N, H, BOX=[], RFIT=20;
+function build(){
+while(model.children.length) model.remove(model.children[0]);
+// base card
+let bx0=1e9,bx1=-1e9,bz0=1e9,bz1=-1e9; (D.water||D.island).forEach(p=>p.outer.forEach(([x,y])=>{bx0=Math.min(bx0,x);bx1=Math.max(bx1,x);bz0=Math.min(bz0,y);bz1=Math.max(bz1,y);}));
+const MG=0.9, R=0.5, X0=bx0-MG, X1=bx1+MG, Y0=-(bz1+MG), Y1=-(bz0-MG), base=new THREE.Shape();
+base.moveTo(X0+R,Y0); base.lineTo(X1-R,Y0); base.quadraticCurveTo(X1,Y0,X1,Y0+R); base.lineTo(X1,Y1-R); base.quadraticCurveTo(X1,Y1,X1-R,Y1); base.lineTo(X0+R,Y1); base.quadraticCurveTo(X0,Y1,X0,Y1-R); base.lineTo(X0,Y0+R); base.quadraticCurveTo(X0,Y0,X0+R,Y0);
+const CX=(bx0+bx1)/2, CZ=(bz0+bz1)/2; DIAG=Math.hypot(X1-X0,Y1-Y0);
+BOX=[]; for(const x of [X0,X1]) for(const y of [Y0,Y1]) for(const h of [-0.3,0.9]) BOX.push(new THREE.Vector3(x-CX,h,-y-CZ));
+model.position.set(-CX,0,-CZ);
+model.add(slab(base,0.28,M.card,M.cardEdge,-0.28));
+// water
+const polyShape=p=>{ const s=shapeFrom(p.outer); p.holes.forEach(h=>s.holes.push(new THREE.Path(h.map(q=>new THREE.Vector2(q[0],-q[1]))))); return s; };
+if(D.water) D.water.forEach(p=>model.add(slab(polyShape(p),0.04,M.water,M.waterEdge,0)));
+if(D.islet) D.islet.forEach(p=>{ model.add(slab(polyShape(p),0.10,M.grass,M.grassEdge,0)); });
+if(D.landmark && D.landmark.kind==='biosphere'){
+  const g=new THREE.Group(), r=0.72, ico=new THREE.IcosahedronGeometry(r,1), pos=ico.attributes.position, seen=new Set();
+  const up=new THREE.Vector3(0,1,0);
+  for(let i=0;i<pos.count;i+=3){ for(let e=0;e<3;e++){ const a=new THREE.Vector3().fromBufferAttribute(pos,i+e), b=new THREE.Vector3().fromBufferAttribute(pos,i+(e+1)%3);
+    if(a.y<-r*0.25||b.y<-r*0.25) continue; const key=[a,b].map(v=>v.toArray().map(n=>n.toFixed(3)).join()).sort().join('|'); if(seen.has(key)) continue; seen.add(key);
+    const len=a.distanceTo(b), strut=new THREE.Mesh(new THREE.BoxGeometry(0.022,len,0.022),M.dome);
+    strut.position.copy(a).add(b).multiplyScalar(0.5); strut.quaternion.setFromUnitVectors(up,new THREE.Vector3().subVectors(b,a).normalize()); strut.castShadow=true; g.add(strut); } }
+  const glass=new THREE.Mesh(new THREE.SphereGeometry(r*0.985,24,16,0,Math.PI*2,0,Math.PI*0.58),M.glass); g.add(glass);
+  g.position.set(D.landmark.x, 0.10+r*0.25, D.landmark.y); model.add(g);
+}
+// grass island
+D.island.forEach(p=>{ const s=shapeFrom(p.outer); p.holes.forEach(h=>s.holes.push(new THREE.Path(h.map(q=>new THREE.Vector2(q[0],-q[1]))))); model.add(slab(s,0.10,M.grass,M.grassEdge,0)); });
+D.island2.forEach(p=>{ const s=shapeFrom(p.outer); p.holes.forEach(h=>s.holes.push(new THREE.Path(h.map(q=>new THREE.Vector2(q[0],-q[1]))))); model.add(slab(s,0.06,M.grass2,M.grassEdge,0.10)); });
+
+// track ribbon with thickness, following heights (bridge)
+P=D.pts.map(p=>new THREE.Vector2(p[0],p[1])); N=P.length; H=D.h;
+const TOP=0.14, TH=0.06; let HW=0.2;
+const Wd = k => (D.hws ? D.hws[k] : HW);
+function ribbon(off0, off1, lift, thick, matTop, matSide, filter){
+  const o0 = typeof off0==='function'?off0:()=>off0, o1 = typeof off1==='function'?off1:()=>off1;
+  const pos=[], idx=[], sidx=[]; let v=0;
+  for(let i=0;i<N;i++){
+    if(filter && !filter(i)) continue;
+    const a=P[(i-1+N)%N], b=P[(i+1)%N], d=new THREE.Vector2().subVectors(b,a).normalize(), n=new THREE.Vector2(-d.y,d.x);
+    const j=(i+1)%N; if(filter && !filter(j)) continue;
+    const pts=[i,j].map(k=>{
+      const a2=P[(k-3+N)%N], b2=P[(k+3)%N], d2=new THREE.Vector2().subVectors(b2,a2).normalize(), n2=new THREE.Vector2(-d2.y,d2.x);
+      const y=TOP+H[k]+lift, c=P[k];
+      const L=[c.x+n2.x*o0(k), c.y+n2.y*o0(k)], Rr=[c.x+n2.x*o1(k), c.y+n2.y*o1(k)];
+      return {L,R:Rr,y};
+    });
+    const q=(p,yy)=>[p[0],yy,p[1]];
+    const quads=[[pts[0].L,pts[0].R,pts[1].R,pts[1].L,'t'],[pts[0].L,pts[1].L,null,null,'sl'],[pts[0].R,pts[1].R,null,null,'sr']];
+    // top
+    pos.push(...q(pts[0].L,pts[0].y+thick),...q(pts[0].R,pts[0].y+thick),...q(pts[1].R,pts[1].y+thick),...q(pts[1].L,pts[1].y+thick));
+    idx.push(v,v+2,v+1,v,v+3,v+2); v+=4;
+    // sides
+    for(const side of ['L','R']){
+      pos.push(...q(pts[0][side],pts[0].y),...q(pts[1][side],pts[1].y),...q(pts[1][side],pts[1].y+thick),...q(pts[0][side],pts[0].y+thick));
+      sidx.push(v,v+1,v+2,v,v+2,v+3,v,v+2,v+1,v,v+3,v+2); v+=4;
+    }
+  }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx.concat(sidx)); g.addGroup(0,idx.length,0); g.addGroup(idx.length,sidx.length,1); g.computeVertexNormals();
+  // UVs from x/z for grain
+  const uv=[]; for(let k=0;k<pos.length;k+=3) uv.push(pos[k]*0.3,pos[k+2]*0.3); g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+  const m=new THREE.Mesh(g, [matTop, matSide||matTop]); m.castShadow=m.receiveShadow=true; return m;
+}
+model.add(ribbon(k=>-Wd(k),k=>Wd(k),0,TH,M.track,M.trackEdge));
+model.add(ribbon(k=>-Wd(k)*0.86,k=>-Wd(k)*0.78,TH,0.004,M.line));
+model.add(ribbon(k=>Wd(k)*0.78,k=>Wd(k)*0.86,TH,0.004,M.line));
+// kerbs: short alternating red/white blocks on the outside of tight corners
+D.kerb.forEach((s,i)=>{ if(!s) return; const sign=-s; const m=i%2?M.white:M.red;
+  model.add(ribbon(sign>0?(k=>Wd(k)):(k=>-Wd(k)*1.3), sign>0?(k=>Wd(k)*1.3):(k=>-Wd(k)), 0, 0.03, m, null, k=>k===i||k===(i+1)%N)); });
+// bridge pillars
+for(let i=0;i<N;i+=4){ if(H[i]>0.12){ const c=P[i]; const g=new THREE.BoxGeometry(0.09,H[i],0.09); const m=new THREE.Mesh(g,M.pillar); m.position.set(c.x,TOP+H[i]/2,c.y); m.castShadow=true; model.add(m);} }
+// start line chequer
+{ const c=document.createElement('canvas'); c.width=96; c.height=32; const x=c.getContext('2d');
+  for(let a=0;a<6;a++)for(let b=0;b<2;b++){x.fillStyle=(a+b)%2?'#f4f1ea':'#262423'; x.fillRect(a*16,b*16,16,16);}
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding;
+  const g=new THREE.PlaneGeometry(Wd(0)*2,Wd(0)*2/3); g.rotateX(-Math.PI/2);
+  const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({map:t,roughness:1}));
+  const d=new THREE.Vector2().subVectors(P[1],P[N-1]);
+  m.rotation.y=-Math.atan2(d.y,d.x)+Math.PI/2; m.position.set(P[0].x,TOP+H[0]+TH+0.006,P[0].y); model.add(m); }
+// paper pop-up trees: two crossed cut-out silhouettes, like a pop-up card
+function pine(){ const s=new THREE.Shape(); const w=[0.2,0.16,0.11], y=[0.12,0.27,0.4]; s.moveTo(-0.025,0); s.lineTo(-0.025,0.12);
+  s.lineTo(-w[0],0.12); s.lineTo(-0.05,0.26); s.lineTo(-w[1],0.26); s.lineTo(-0.04,0.39); s.lineTo(-w[2],0.39); s.lineTo(0,0.56);
+  s.lineTo(w[2],0.39); s.lineTo(0.04,0.39); s.lineTo(w[1],0.26); s.lineTo(0.05,0.26); s.lineTo(w[0],0.12); s.lineTo(0.025,0.12); s.lineTo(0.025,0); return s; }
+function round(){ const s=new THREE.Shape(); s.moveTo(-0.025,0); s.lineTo(-0.025,0.16);
+  const r=0.17, cy=0.33; for(let a=-Math.PI/2-0.25;a>-Math.PI*2.5+0.25;a-=0.18){ const wob=1+0.08*Math.sin(a*5); s.lineTo(Math.cos(a)*r*wob, cy+Math.sin(a)*r*wob); }
+  s.lineTo(0.025,0.16); s.lineTo(0.025,0); return s; }
+const shapes=[new THREE.ShapeGeometry(pine()), new THREE.ShapeGeometry(round(),8)];
+const leafs=[M.leaf,M.leaf2,M.leaf3];
+D.trees.forEach(([x,z,sc,kind],i)=>{
+  const t=new THREE.Group(), m=leafs[i%3];
+  for(const r of [0,Math.PI/2]){ const p=new THREE.Mesh(shapes[kind],m); p.rotation.y=r; p.castShadow=true; p.receiveShadow=true; t.add(p); }
+  t.scale.setScalar(sc*0.85); t.rotation.y=i*0.7; t.position.set(x,0.16,z); model.add(t);
+});
+
+document.getElementById('note').textContent = D.name + ', built from the real outline (bacinger/f1-circuits, MIT). Drag to turn the model.';
+}
+build();
+// light
+scene.add(new THREE.HemisphereLight(0xffffff,0xc9bfae,0.55));
+const sun=new THREE.DirectionalLight(0xfff4e2,0.7); sun.position.set(-6,12,7); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048); Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:1,far:40}); sun.shadow.radius=4; sun.shadow.bias=-0.0006;
+scene.add(sun);
+
+// camera
+let elev=0.62, yaw=0.35, spin=true, drag=null;
+function camAt(r,y,e){ camera.position.set(r*Math.cos(e)*Math.sin(y), r*Math.sin(e), r*Math.cos(e)*Math.cos(y)); camera.lookAt(0,0,0); camera.updateMatrixWorld(); }
+function needR(y,e,margin){ // smallest distance at which the whole card fits in the frame
+  let lo=2, hi=200;
+  for(let it=0;it<30;it++){ const r=(lo+hi)/2; camAt(r,y,e); let m=0;
+    for(const p of BOX){ const v=p.clone().project(camera); m=Math.max(m,Math.abs(v.x),Math.abs(v.y)); }
+    if(m>margin) lo=r; else hi=r; }
+  return hi; }
+function fit(){ // interactive: one distance that works at every angle; render: the best angle for the frame
+  if(RENDER && D.yaw!==undefined){ yaw=D.yaw*Math.PI/180; RFIT=needR(yaw,elev,0.9); }
+  else if(RENDER){ let best=[1e9,0]; for(let k=0;k<24;k++){ const y=k*Math.PI/12, r=needR(y,elev,0.9); if(r<best[0]) best=[r,y]; } RFIT=best[0]; yaw=best[1]; }
+  else { let r=0; for(let k=0;k<12;k++) r=Math.max(r,needR(k*Math.PI/6,elev,0.92)); RFIT=r; } }
+function place(){ const r=RFIT; camera.position.set(r*Math.cos(elev)*Math.sin(yaw), r*Math.sin(elev), r*Math.cos(elev)*Math.cos(yaw)); camera.lookAt(0,0,0); }
+
+function size(){ const w=canvas.clientWidth, h=canvas.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.fov = 30; camera.updateProjectionMatrix(); fit(); }
+const ro=new ResizeObserver(size); ro.observe(canvas);
+canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,yaw,elev}; canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener('pointermove',e=>{ if(!drag) return; yaw=drag.yaw-(e.clientX-drag.x)*0.006; elev=Math.max(0.25,Math.min(1.3,drag.elev+(e.clientY-drag.y)*0.004)); });
+canvas.addEventListener('pointerup',()=>fit());
+canvas.addEventListener('pointerup',()=>drag=null);
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const spinBtn=document.getElementById('spin');
+if(reduce||RENDER){ spin=false; spinBtn.setAttribute('aria-pressed','false'); }
+spinBtn.addEventListener('click',()=>{ spin=!spin; spinBtn.setAttribute('aria-pressed',spin); });
+document.getElementById('ang').addEventListener('click',e=>{ elev = elev<0.8 ? 0.95 : 0.62; fit(); e.currentTarget.textContent = elev<0.8?'Steeper angle':'Lower angle'; });
+document.getElementById('reset').addEventListener('click',()=>{ elev=0.62; yaw=0.35; fit(); document.getElementById('ang').textContent='Steeper angle'; });
+const cw=document.getElementById('circuits');
+cw.innerHTML=ALL.map((c,i)=>'<button data-c="'+i+'" aria-pressed="'+(i===0)+'"></button>').join('');
+[...cw.children].forEach((b,i)=>{ b.textContent=ALL[i].short||ALL[i].key; b.addEventListener('click',()=>{ D=ALL[i]; build(); fit(); [...cw.children].forEach((x,j)=>x.setAttribute('aria-pressed',j===i)); }); });
+let last=performance.now();
+let frames=0;
+function loop(now){ if(RENDER && ++frames===8) window.DIORAMA_READY=true; const dt=(now-last)/1000; last=now; if(spin && !drag) yaw+=dt*0.12; place(); renderer.render(scene,camera); requestAnimationFrame(loop); }
+size(); requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

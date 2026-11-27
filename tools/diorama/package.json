@@ -1,0 +1,16 @@
+{
+  "name": "oof-diorama",
+  "private": true,
+  "type": "module",
+  "description": "Renders OOF.ONE paper track dioramas from real circuit outlines.",
+  "scripts": {
+    "render": "node render.mjs",
+    "preview": "node render.mjs --preview",
+    "prep": "node prep.mjs"
+  },
+  "dependencies": {
+    "jsts": "2.12.1",
+    "playwright": "1.55.1",
+    "three": "0.128.0"
+  }
+}
